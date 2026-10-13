@@ -1,7 +1,7 @@
 {
 	"$schema": "./node_modules/@emdash-cms/plugin-cli/schemas/emdash-plugin.schema.json",
 	"slug": "polls",
-	"name": "Polls",
+	"name": "WB Polls",
 	"keywords": [
 		"polls",
 		"voting",

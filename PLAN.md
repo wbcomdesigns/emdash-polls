@@ -1,5 +1,7 @@
 # Plan: Polls
 
+**Status: LOCKED on 2026-10-13.** Scope and decisions were agreed with the owner. An agent does not add options or features. If a task cannot be done as written, stop, say why on its issue, and wait for the owner.
+
 The plan for this plugin, kept in the repository so it travels with the code. `SCOPE.md` says what the plugin is. This file says in what order it gets built and what waits.
 
 ## Decisions made with the owner
@@ -10,6 +12,15 @@ The plan for this plugin, kept in the repository so it travels with the code. `S
 | How a poll gets onto a page | Both. The owner attaches a poll in admin (to one page, to every entry of a collection, or site-wide), and a developer can also place a specific poll by id. |
 | Who sees how people voted | The owner chooses per poll: anonymous (totals only) or named. Voters are told before they vote. Guests are always anonymous. |
 | Wording and language | One wording file per plugin kit. Every visitor-facing phrase lives there, so an owner can translate or reword the plugin by editing one file. |
+| Attaching a poll | From a Poll panel on the post or page editing screen (to be proven first), and from the poll form for a whole content type or the whole site. No block inside article text: this kind of plugin cannot add one. |
+| Editing after votes | Wording only. Answers cannot be added, removed or reordered, and the choice type is locked. |
+| Several polls for one place | Most specific wins (page, then content type, then site), then newest. The list warns when a poll is hidden. |
+| Open time | Optional. A poll can open by itself. |
+| Position | Per poll: above or below the content. |
+| Numbers | Per poll: percent and count, or percent only. |
+| Copy a poll | In 0.1.0. |
+| Past polls page, download of votes | Not in 0.1.0. |
+| Long lists and setup | Next, Previous and find in admin. Developer guide plus one command. |
 
 ## 0.1.0: first release
 
@@ -47,3 +58,9 @@ See "Out of scope" in `SCOPE.md`. If a card seems to need one of those, stop and
 - Prove the kit on a preview deploy of one existing site, never on production first
 - Check the site's EmDash version, its content security policy, and its page cache against what the kit does
 - Findings from the first plugin are in `wbcomdesigns/emdash-listora` issue #23
+
+## Order after the owner review (2026-10-13)
+
+Issue numbers are out of order because tasks were added late. Work them like this: #1 schema, #2 admin, #14 Poll panel (prove first), #3 public read, #4 voting, #5 poll component, #11 attach and slots, #12 anonymous and named, #10 guests, #6 my votes, #7 results view, #15 copy a poll, #13 wording file, #8 lab and demo, #9 docs, branding and release gate.
+
+One agent works this repo, in order, on a branch named `0.1.0`, opens a pull request into `main` and stops. It never merges, tags or publishes. Copy the proven patterns from `emdash-listora` (compare-and-set rate limit, guarded writes, version token on admin decisions), do not reinvent them.
