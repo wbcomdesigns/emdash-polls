@@ -1,3 +1,9 @@
+## 0.1.1
+
+- Polls stay readable in dark mode on any site theme.
+- A missing poll explains what to do next.
+- Tapping anywhere on an answer selects it.
+
 ## 0.1.0
 
 - New: create, edit, open, close and delete polls from admin.

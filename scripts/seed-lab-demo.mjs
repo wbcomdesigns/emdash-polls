@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Create the three demo polls the lab page mounts. Lab-only. */
+/** Create the demo polls the lab page mounts. Lab-only. */
 import { readFile, writeFile } from "node:fs/promises";
 
 const base = process.env.BASE;
@@ -58,7 +58,18 @@ const specs = [
 			options: "Blue\nGreen",
 			who: "anyone",
 			results: "always",
-			attach: "site",
+		},
+		then: "open",
+	},
+	{
+		key: "slot",
+		values: {
+			question: "Which layout should this page use?",
+			options: "Wide\nNarrow",
+			who: "anyone",
+			results: "always",
+			attach: "collection",
+			attach_key: "posts",
 		},
 		then: "open",
 	},
@@ -86,7 +97,7 @@ const specs = [
 	},
 ];
 
-const ids = { single: "", multi: "", closed: "" };
+const ids = { single: "", slot: "", multi: "", closed: "" };
 
 for (const spec of specs) {
 	const created = await admin(

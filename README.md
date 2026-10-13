@@ -2,7 +2,7 @@
 
 Create polls, let visitors or members vote once, and show live results anywhere on your site.
 
-Status: 0.1.0, not published. The owner releases to the registry.
+Status: 0.1.1. Live on the EmDash registry as `@vapvarun.bsky.social/polls`.
 
 - Scope and schema: [SCOPE.md](SCOPE.md)
 - Plan and decisions: [PLAN.md](PLAN.md)
