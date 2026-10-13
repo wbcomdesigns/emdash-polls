@@ -21,11 +21,14 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 
 | ID | Steps | Expected |
 | --- | --- | --- |
-| G-1 | Open a page with an open poll | Question and options show. Voting asks to sign in |
+| G-1 | Setting members: open a page with an open poll | Question and options show. Voting asks to sign in |
 | G-2 | Request `vote`, `ballot`, `mine` directly | 401 |
 | G-3 | Read a poll whose results are `after_vote` or `after_close` | No results in the response |
 | G-4 | Open a closed poll with results `always` | Results show, no voting controls |
 | G-5 | Use an id that does not exist | A clear not-found state, no error text |
+| G-6 | Poll set to anyone: vote signed out | Vote saved. Results follow the visibility rule |
+| G-7 | Poll set to anyone: vote again from the same visitor | Follows the poll's change rule. The total never counts one visitor twice |
+| G-8 | Poll set to members: call `vote_guest` directly | Refused |
 
 ## Member (subscriber role)
 
@@ -51,6 +54,7 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | A-5 | Delete a poll (two steps) | Poll and its votes are gone |
 | A-6 | Open results | Bars, counts and totals match the ballots |
 | A-7 | Set a close time in the past, load the poll | It shows as closed |
+| A-8 | Create one poll for anyone and one for members | Each behaves as set. The list shows which is which |
 
 ## Presentation, every screen
 

@@ -34,8 +34,9 @@ npm test
 5. Poll component
 6. My votes and erase
 7. Admin results view
-8. Lab, prove script and demo page
-9. Owner docs, registry branding and release gate
+8. Guest participation
+9. Lab, prove script and demo page
+10. Owner docs, registry branding and release gate
 
 Each card lists what to build, when it is UX ready, when it is function ready, and the QA cases that prove it. A card is done when all three hold and you have commented on it with what you verified and how. Take them in order: later cards assume earlier ones.
 
@@ -53,6 +54,7 @@ Each card lists what to build, when it is UX ready, when it is function ready, a
 - `closes_at` is checked on read. There is no scheduler, so a poll closes the next time anyone loads it
 - Block Kit `repeater` renders nothing inside a form. Options are a textarea
 - Results `after_vote` must be enforced on the server. A guest request must not receive hidden results
+- Guest routes are public writes. Per-visitor limit, honeypot, length caps, and refuse when the host gives no IP. Never trust a visitor id from the request: derive it from the request's IP on the server
 
 ## When you stop
 
