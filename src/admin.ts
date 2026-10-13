@@ -7,7 +7,11 @@ export async function handleAdmin(_input: unknown, _ctx: PluginContext): Promise
 	return {
 		blocks: [
 			{ type: "header", text: "Polls" },
-			{ type: "empty", title: "Nothing here yet", description: "Build the screens listed in SCOPE.md." },
+			{
+				type: "empty",
+				title: "No polls yet",
+				description: "Create a poll to ask a question and collect votes.",
+			},
 		],
 	};
 }
