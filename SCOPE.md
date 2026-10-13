@@ -31,6 +31,7 @@ How it stays general:
 
 - A poll is placed by a component with an id, so it works on any page of any site type
 - Nothing depends on a collection or on any other plugin
+- Every visitor-facing word is in one wording file, so a non-English site or a site with its own vocabulary changes it in one place
 
 **Decided by the owner on 2026-10-13: the site owner chooses who can take part.** One setting: signed-in members only, or anyone. For a guest: one entry per visitor, identified by a salted hash of the IP (never the IP itself, never a cookie the visitor can clear to vote again within the hour limit), an hourly limit per visitor, a honeypot field on every guest form, and written content always held for approval. Guests have no account, so they have no "My ..." list and cannot erase their entries themselves; the owner removes them in admin. If the host supplies no IP, every guest shares one bucket: refuse guest writes in that case and say why in the admin page. Member routes stay private routes using `routeCtx.user`. Guest routes are separate public routes: never merge the two paths.
 
@@ -43,6 +44,7 @@ Settled. Do not reopen these in code review. Dated 2026-10-13 unless noted.
 | Who can take part | The site owner chooses: signed-in members only, or anyone. Default is anyone. |
 | How a poll gets onto a page | Both. The owner attaches a poll in admin (to one page, to every entry of a collection, or site-wide), and a developer can also place a specific poll by id. |
 | Who sees how people voted | The owner chooses per poll: anonymous (totals only) or named. Voters are told before they vote. Guests are always anonymous. |
+| Wording and language | One wording file per plugin kit. Every visitor-facing phrase lives there, so an owner can translate or reword the plugin by editing one file. |
 
 ## In scope for 0.1.0
 
@@ -57,6 +59,7 @@ Settled. Do not reopen these in code review. Dated 2026-10-13 unless noted.
 - Attach a poll in admin: to one chosen entry, to every entry of a collection, or site-wide. The site template carries one `<PollSlot>` added once at install
 - Place a specific poll anywhere with `<Poll id>` for sidebars and special layouts
 - Per poll: anonymous or named. A named poll says so above the options, and the owner can see each signed-in member's choice in admin. Guests are never named
+- One wording file, `site-kit/lib/polls-strings.ts`: every phrase a visitor can see (buttons, labels, messages, empty states, errors shown to visitors). Components and pages take their text only from it
 
 ## Out of scope
 
@@ -72,6 +75,7 @@ Do not build these. If a card seems to need one, stop and ask the owner.
 - Injecting scripts, styles or HTML into pages from the plugin
 - A poll in the middle of article text (needs a native plugin block). The slot goes above or below the content
 - Changing a poll from anonymous to named after it has votes
+- Translating the admin screens, and switching language per visitor. The wording file holds one language
 
 ## Roles
 
@@ -165,6 +169,7 @@ None.
 | `site-kit/components/MyVotes.astro` | `<MyVotes />` |
 | `site-kit/styles/polls.css` | Option rows and result bars |
 | `site-kit/lab/polls-demo.astro` | Lab page with one poll of each kind |
+| `site-kit/lib/polls-strings.ts` | The wording file. The only place visitor-facing text is written |
 
 Plus the two shared files every Wbcom plugin kit carries: `site-kit/lib/wbcom-kit.ts` and `site-kit/styles/wbcom-base.css`.
 
@@ -193,3 +198,4 @@ A screen is done when every state listed here has been seen in a browser at 1440
 - Guest routes are public writes. Per-visitor limit, honeypot, length caps, and refuse when the host gives no IP. Never trust a visitor id from the request: derive it from the request's IP on the server
 - Named polls hold personal data: who chose what. Erase (`mine` DELETE) must remove it, and an anonymous poll must store no name at all
 - Slot lookup order is entry, then collection, then site. Only one poll shows. If two polls target the same place, the newest open one wins: say so in the admin form
+- Messages that come back from a route (for example a refusal) reach the visitor too. Routes return a stable `code`; the kit maps codes to phrases from the wording file and never prints the route's own English message

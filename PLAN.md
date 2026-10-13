@@ -9,6 +9,7 @@ The plan for this plugin, kept in the repository so it travels with the code. `S
 | Who can take part | The site owner chooses: signed-in members only, or anyone. Default is anyone. |
 | How a poll gets onto a page | Both. The owner attaches a poll in admin (to one page, to every entry of a collection, or site-wide), and a developer can also place a specific poll by id. |
 | Who sees how people voted | The owner chooses per poll: anonymous (totals only) or named. Voters are told before they vote. Guests are always anonymous. |
+| Wording and language | One wording file per plugin kit. Every visitor-facing phrase lives there, so an owner can translate or reword the plugin by editing one file. |
 
 ## 0.1.0: first release
 
@@ -24,8 +25,9 @@ Work the cards in this order. Each is a GitHub issue under milestone `0.1.0` wit
 8. **Guest participation**. Proven by: G-6, G-7, G-8, A-8
 9. **Attach a poll and the poll slot**. Proven by: G-9, A-9
 10. **Anonymous and named polls**. Proven by: M-9, A-10, A-11
-11. **Lab, prove script and demo page**. Proven by: tests
-12. **Owner docs, registry branding and release gate**. Proven by: the whole checklist
+11. **Wording file**. Proven by: G-91
+12. **Lab, prove script and demo page**. Proven by: tests
+13. **Owner docs, registry branding and release gate**. Proven by: the whole checklist
 
 0.1.0 is done when every card is closed with a verification comment, `docs/qa/QA_CHECKLIST.md` has an honest last-walk line, and the gate in `CONTRIBUTING.md` passes. The owner publishes.
 

@@ -30,6 +30,7 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | G-7 | Poll set to anyone: vote again from the same visitor | Follows the poll's change rule. The total never counts one visitor twice |
 | G-8 | Poll set to members: call `vote_guest` directly | Refused |
 | G-9 | Open a post with a poll attached to it, then one without | The first shows the poll. The second shows nothing, with no empty box |
+| G-91 | Change three phrases in the wording file (a button, an empty state, an error), rebuild | Each change shows everywhere that phrase is used. No English left on screen that is not in the file |
 
 ## Member (subscriber role)
 

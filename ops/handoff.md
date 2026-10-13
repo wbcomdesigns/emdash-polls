@@ -37,8 +37,9 @@ npm test
 8. Guest participation
 9. Attach a poll and the poll slot
 10. Anonymous and named polls
-11. Lab, prove script and demo page
-12. Owner docs, registry branding and release gate
+11. Wording file
+12. Lab, prove script and demo page
+13. Owner docs, registry branding and release gate
 
 Each card lists what to build, when it is UX ready, when it is function ready, and the QA cases that prove it. A card is done when all three hold and you have commented on it with what you verified and how. Take them in order: later cards assume earlier ones.
 
@@ -59,6 +60,7 @@ Each card lists what to build, when it is UX ready, when it is function ready, a
 - Guest routes are public writes. Per-visitor limit, honeypot, length caps, and refuse when the host gives no IP. Never trust a visitor id from the request: derive it from the request's IP on the server
 - Named polls hold personal data: who chose what. Erase (`mine` DELETE) must remove it, and an anonymous poll must store no name at all
 - Slot lookup order is entry, then collection, then site. Only one poll shows. If two polls target the same place, the newest open one wins: say so in the admin form
+- Messages that come back from a route (for example a refusal) reach the visitor too. Routes return a stable `code`; the kit maps codes to phrases from the wording file and never prints the route's own English message
 
 ## When you stop
 
