@@ -11,7 +11,7 @@ import {
 	visitorWho,
 } from "../src/lib/polls";
 import { POLLS, VOTES } from "../src/lib/types";
-import { admin, openSite } from "./site";
+import { admin, ana, openSite, withPosts } from "./site";
 
 let dispose: (() => Promise<void>) | undefined;
 afterEach(async () => {
@@ -48,6 +48,9 @@ describe("manifest", () => {
 		);
 		expect(host.manifest.admin?.widgets).toEqual(
 			expect.arrayContaining([expect.objectContaining({ id: "open", title: "Open polls" })]),
+		);
+		expect(host.manifest.admin?.editorPanels).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: "poll", title: "Poll", route: "editor_poll" })]),
 		);
 		expect(host.manifest.capabilities ?? []).toEqual([]);
 	});
@@ -288,5 +291,75 @@ describe("admin", () => {
 			blocks: Array<Record<string, unknown>>;
 		};
 		expect(JSON.stringify(card.blocks)).toContain("Which colour should we ship?");
+	});
+});
+
+describe("editing-screen panel", () => {
+	it("loads on a saved post, creates a poll here, then removes it", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		const posts = await withPosts(site.rt);
+
+		const empty = await site.rt.admin.loadEditorPanel("poll", "posts", posts.live);
+		expect(empty.blocks).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ type: "header", text: "Poll" }),
+				expect.objectContaining({ type: "empty", title: "No poll on this page" }),
+			]),
+		);
+
+		const created = await site.rt.admin.submitEditorPanel("poll", "posts", posts.live, "create", {
+			question: "Soup or salad?",
+			options: "Soup\nSalad",
+			who: "anyone",
+			position: "below",
+		});
+		expect(created.toast).toMatchObject({ type: "success" });
+		expect(JSON.stringify(created.blocks)).toContain("Soup or salad?");
+
+		const stored = await site.rt.inspect.storage.list<{ question: string; attach: string; attach_key: string }>(POLLS);
+		expect(stored).toHaveLength(1);
+		expect(stored[0]?.data).toMatchObject({
+			question: "Soup or salad?",
+			attach: "entry",
+			attach_key: `posts:${posts.live}`,
+		});
+
+		const removed = await site.rt.admin.actEditorPanel("poll", "posts", posts.live, "remove");
+		expect(removed.toast).toMatchObject({ type: "success" });
+		expect(removed.blocks).toEqual(
+			expect.arrayContaining([expect.objectContaining({ type: "empty", title: "No poll on this page" })]),
+		);
+		expect((await site.rt.inspect.storage.get<{ attach: string }>(POLLS, stored[0]?.id ?? ""))?.attach).toBe("none");
+	});
+
+	it("attaches an existing poll by question, not by a typed id", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		const posts = await withPosts(site.rt);
+		await site.rt.fixtures.plugin.storage(POLLS, "poll_ready", samplePoll({ rev: "r-panel" }));
+
+		const attached = await site.rt.admin.submitEditorPanel("poll", "posts", posts.live, "attach", {
+			poll_id: "poll_ready",
+		});
+		expect(attached.toast).toMatchObject({ type: "success" });
+		expect(JSON.stringify(attached.blocks)).toContain("Which colour should we ship?");
+		expect(await site.rt.inspect.storage.get(POLLS, "poll_ready")).toMatchObject({
+			attach: "entry",
+			attach_key: `posts:${posts.live}`,
+		});
+	});
+
+	it("refuses guests and members on the panel route", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		const guest = await site.rt.actions.routes.request("editor_poll", { method: "POST", body: { type: "panel_load" } });
+		expect(guest.status).toBe(401);
+		const member = await site.rt.actions.routes.request("editor_poll", {
+			method: "POST",
+			body: { type: "panel_load" },
+			user: ana,
+		});
+		expect(member.status).toBe(403);
 	});
 });

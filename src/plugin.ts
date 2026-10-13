@@ -1,6 +1,7 @@
 import type { SandboxedPlugin } from "emdash/plugin";
 
 import { handleAdmin } from "./admin";
+import { handleEditorPanel } from "./editor";
 import { countOpenPolls } from "./lib/polls";
 
 const plugin: SandboxedPlugin = {
@@ -16,6 +17,9 @@ const plugin: SandboxedPlugin = {
 		},
 		admin: {
 			handler: async (routeCtx, ctx) => handleAdmin(routeCtx.input, ctx),
+		},
+		editor_poll: {
+			handler: async (routeCtx, ctx) => handleEditorPanel(routeCtx, ctx),
 		},
 	},
 };

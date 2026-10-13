@@ -251,6 +251,25 @@ export async function deleteVotesForPoll(ctx: Ctx, pollId: string): Promise<numb
 
 export type PollRow = Poll & { id: string };
 
+export function entryAttachKey(collection: string, entryId: string): string {
+	return `${collection}:${entryId}`;
+}
+
+export async function pollForEntry(ctx: Ctx, collection: string, entryId: string): Promise<PollRow | null> {
+	const key = entryAttachKey(collection, entryId);
+	if (!key || key.endsWith(":")) return null;
+	const found = await ctx.storage[POLLS].query({
+		where: { attach_key: key },
+		orderBy: { createdAt: "desc" },
+		limit: 10,
+	});
+	for (const item of found.items) {
+		const poll = { id: item.id, ...parsePoll(item.data) };
+		if (poll.attach === "entry") return poll;
+	}
+	return null;
+}
+
 export async function listPolls(
 	ctx: Ctx,
 	opts: { q?: string; before?: string; after?: string; limit?: number } = {},

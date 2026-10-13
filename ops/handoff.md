@@ -12,11 +12,11 @@ You are the one agent for this repo. Read this, then work.
 
 ## Where it stands
 
-#1 and #2 are done on branch `0.1.0`. Lab is `../emdash-lab-polls` on port 4332. No pull request yet.
+#1, #2 and #14 are done on branch `0.1.0`. Lab is `../emdash-lab-polls` on port 4332.
 
 ## Start with
 
-#14 (prove the editing-screen panel), then #3 public read.
+#3 public read, then #4 voting.
 
 ## Prove before you build on it
 

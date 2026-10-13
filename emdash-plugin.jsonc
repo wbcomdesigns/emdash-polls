@@ -58,6 +58,13 @@
 				"title": "Open polls",
 				"size": "half"
 			}
+		],
+		"editorPanels": [
+			{
+				"id": "poll",
+				"title": "Poll",
+				"route": "editor_poll"
+			}
 		]
 	},
 	"release": {
