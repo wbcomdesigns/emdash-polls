@@ -77,8 +77,8 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 
 ## Known gaps
 
-- Formal WP QA files are still thin: SURFACES exists. OWNER_INVENTORY, CORE_PATHS, qa-config, fixtures and ROLE_MATRIX are not here. EmDash plugins use GitHub issues, not Basecamp.
-- One lab user. Subscriber is the same account as admin with the role flipped.
+- QA owner files are in `docs/qa/` and `audit/ROLE_MATRIX.md`. EmDash plugins use GitHub issues, not Basecamp.
+- The lab has one bypass account (`dev@emdash.local`). Subscriber vs admin is `scripts/lab-role.sh`. `bin/qa-fixtures.sh` inserts a second subscriber row for named data; that account has no login bypass.
 - Closed polls have no Open in the row menu. That matches the current admin rules.
 - My votes (`<MyVotes>`) is 0.2.0 (#6).
 - In-text Poll block (#16): trusted companion activates (`polls-block` in plugin state). Registry install is unchanged. A live list of polls cannot be filled from static Block Kit fields. The post editor was not proven to show Poll in the slash menu. Reported on #16.

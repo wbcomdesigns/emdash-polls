@@ -8,6 +8,7 @@ Lab is `../emdash-lab-polls` on port 4332.
 
 ## Next
 
+- 0.1.1 branch: presentation fixes #20–#24. Do not republish 0.1.0.
 - Watch listing status: `npx emdash-plugin info vapvarun.bsky.social polls --version 0.1.0`
 - #16 trusted in-text block: proved as far as EmDash allows, waiting on the owner
 - #6 My votes: 0.2.0

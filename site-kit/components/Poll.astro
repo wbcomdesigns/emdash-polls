@@ -99,7 +99,7 @@ const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}` : latest
 			.map((option, index) => {
 				const inputId = `${uid}-${option.id}`;
 				const checked = mine.includes(option.id) ? " checked" : "";
-				return `<div class="wbp-option"><input id="${esc(inputId)}" name="choice" type="${type}" value="${esc(option.id)}"${checked}${index === 0 ? " required" : ""} /><label for="${esc(inputId)}">${esc(option.label)}</label></div>`;
+				return `<label class="wbp-option"><input id="${esc(inputId)}" name="choice" type="${type}" value="${esc(option.id)}"${checked}${index === 0 ? " required" : ""} /><span>${esc(option.label)}</span></label>`;
 			})
 			.join("");
 		const named = poll.named && !mine.length ? `<p class="wb-muted">${esc(S.named)}</p>` : "";
@@ -119,7 +119,7 @@ const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}` : latest
 				body.innerHTML = "";
 				return;
 			}
-			body.innerHTML = `<div class="wb-empty"><p><strong>${esc(S.notFound)}</strong></p></div>`;
+			body.innerHTML = `<div class="wb-empty"><p><strong>${esc(S.notFound)}</strong></p><p class="wb-muted">${esc(S.notFoundHelp)}</p></div>`;
 			return;
 		}
 		const poll = data.poll;

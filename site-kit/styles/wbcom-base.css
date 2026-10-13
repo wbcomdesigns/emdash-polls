@@ -5,11 +5,12 @@
  */
 .wb {
 	color-scheme: light dark;
+	--wb-bg: var(--color-bg, light-dark(#ffffff, #121212));
 	--wb-fg: var(--color-text, light-dark(#1a1a1a, #f4f4f4));
 	--wb-muted: var(--color-text-secondary, light-dark(#555555, #c4c4c4));
 	--wb-border: var(--color-border, light-dark(#e0e0e0, #333333));
 	--wb-surface: var(--color-surface, light-dark(#f7f7f7, #1c1c1c));
-	--wb-brand: var(--color-brand, light-dark(#0066cc, #4d9fff));
+	--wb-brand: var(--color-brand, light-dark(#0066cc, #1d4ed8));
 	--wb-on-brand: var(--color-on-brand, #ffffff);
 	--wb-star: light-dark(#b45309, #f5a623);
 	--wb-ok-bg: light-dark(#ecfdf5, #052e16);
@@ -21,6 +22,10 @@
 	--wb-tap: 44px;
 	display: grid;
 	gap: calc(var(--wb-gap) * 1.5);
+	padding: var(--wb-gap);
+	background: var(--wb-bg);
+	border: 1px solid var(--wb-border);
+	border-radius: var(--wb-radius);
 	color: var(--wb-fg);
 }
 

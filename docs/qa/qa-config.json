@@ -1,0 +1,36 @@
+{
+	"prefix": "QA-RFT",
+	"lab": {
+		"base": "http://127.0.0.1:4332",
+		"bypass": "/_emdash/api/setup/dev-bypass"
+	},
+	"personas": [
+		{
+			"id": "guest",
+			"role": "anonymous",
+			"login": "",
+			"how": "Private window. No cookie."
+		},
+		{
+			"id": "subscriber",
+			"role": "subscriber",
+			"login": "dev@emdash.local",
+			"email": "dev@emdash.local",
+			"how": "scripts/lab-role.sh subscriber then open the bypass URL"
+		},
+		{
+			"id": "subscriber-other",
+			"role": "subscriber",
+			"login": "qa-rft-member@emdash.local",
+			"email": "qa-rft-member@emdash.local",
+			"how": "Row only. Lab bypass signs in the dev account, not this one."
+		},
+		{
+			"id": "admin",
+			"role": "admin",
+			"login": "dev@emdash.local",
+			"email": "dev@emdash.local",
+			"how": "scripts/lab-role.sh admin then open the bypass URL"
+		}
+	]
+}

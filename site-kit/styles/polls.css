@@ -22,7 +22,8 @@
 	padding: 0.35rem 0.75rem;
 	border: 1px solid var(--wb-border);
 	border-radius: 8px;
-	background: var(--color-bg, light-dark(#ffffff, #121212));
+	background: var(--wb-bg, var(--color-bg, light-dark(#ffffff, #121212)));
+	cursor: pointer;
 }
 
 .wbp-option input {
@@ -32,9 +33,13 @@
 	flex: 0 0 auto;
 }
 
-.wbp-option label {
+.wbp-option span {
 	flex: 1;
-	cursor: pointer;
+}
+
+.wbp-option input:focus-visible {
+	outline: 2px solid var(--wb-brand);
+	outline-offset: 2px;
 }
 
 .wbp-option.is-mine {

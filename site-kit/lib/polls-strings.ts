@@ -3,6 +3,7 @@
 export const polls = {
 	loading: "Loading poll...",
 	notFound: "This poll is not available.",
+	notFoundHelp: "Check the poll on this page, or open a different one.",
 	closed: "This poll is closed.",
 	hidden: "Results will show after you vote.",
 	hiddenClosed: "Results will show after the poll closes.",
