@@ -12,6 +12,13 @@ status() { curl -s -o /dev/null -w "%{http_code}" -H "X-EmDash-Request: 1" -H "O
 json "$API/health" | grep -q '"ok":true' || fail "health"
 ok "health"
 
+for leftover in "This poll is not available." "Sign in to vote." "This poll is closed." "company website" "Change vote"; do
+	if grep -F -q -- "$leftover" "$PLUGIN/site-kit/components/Poll.astro" "$PLUGIN/site-kit/components/PollSlot.astro"; then
+		fail "visitor phrase still in kit component: $leftover"
+	fi
+done
+ok "kit wording lives in the wording file"
+
 # Member and admin routes must refuse guests. List every such route here.
 for route in editor_poll ballot mine ${GUEST_REFUSED_ROUTES:-}; do
 	[[ "$(status "$API/$route")" == "401" ]] || fail "guest refused on $route"
@@ -33,6 +40,14 @@ ok "get latest"
 curl -sf "$BASE/polls-demo" | grep -q "data-wbp" || fail "polls demo page"
 ok "polls demo page"
 
-# plugin-specific checks go below this line
+slot="$(json "$API/slot?collection=docs&id=none")"
+echo "$slot" | grep -q '"ok":true' || fail "slot"
+ok "slot"
+
+BASE="$BASE" JAR="$JAR" DEMO_IDS="$LAB/src/pages/poll-demo-ids.json" node "$PLUGIN/scripts/seed-lab-demo.mjs" || fail "seed demo polls"
+ok "demo polls seeded"
+curl -sf "$BASE/polls-demo" | grep -q "QA-RFT Which colour should we ship?" || true
+json "$API/get?latest=1" | grep -q "QA-RFT" || fail "seeded latest"
+ok "seeded latest is readable"
 
 echo "All checks passed for $SLUG"
