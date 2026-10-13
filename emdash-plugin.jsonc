@@ -52,5 +52,15 @@
 				"icon": "sparkle"
 			}
 		]
+	},
+	"release": {
+		"artifacts": {
+			"icon": {
+				"file": "./icon.png"
+			},
+			"banner": {
+				"file": "./images/banner.png"
+			}
+		}
 	}
 }

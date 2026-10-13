@@ -10,7 +10,7 @@ Let the owner ask a question, let signed-in members vote once, and show results 
 
 **WordPress source:** WB Polls (`~/dev/repos/buddypress-polls`) for vocabulary only. Its BuddyPress activity features do not apply. Do not copy PHP.
 
-**Brand:** Logos: `~/Documents/brand logos/wb-polls/`. Use the mark, never boxed in a tile.
+**Brand:** WB Polls, teal. Full kit (mark, wordmark, horizontal, square, each in light, dark and white, plus PNGs and social banners) and the brand sheet: `~/Documents/brand logos/wb-polls/`. `icon.png` and `images/banner.png` in this repo come from it. Rebuild with the pipeline in `~/Documents/brand logos/_render-src/`, never by hand. The lockup tagline names WordPress, so use the mark and the no-tagline lockup on EmDash.
 
 ## Fits every kind of site
 
