@@ -64,3 +64,9 @@ See "Out of scope" in `SCOPE.md`. If a card seems to need one of those, stop and
 Issue numbers are out of order because tasks were added late. Work them like this: #1 schema, #2 admin, #14 Poll panel (prove first), #3 public read, #4 voting, #5 poll component, #11 attach and slots, #12 anonymous and named, #10 guests, #6 my votes, #7 results view, #15 copy a poll, #13 wording file, #8 lab and demo, #9 docs, branding and release gate.
 
 One agent works this repo, in order, on a branch named `0.1.0`, opens a pull request into `main` and stops. It never merges, tags or publishes. Copy the proven patterns from `emdash-listora` (compare-and-set rate limit, guarded writes, version token on admin decisions), do not reinvent them.
+
+## Who uses this today (owner, 2026-10-13)
+
+Everyone installing an EmDash plugin today is a developer. So a step that needs a developer (copying the kit, a trusted install to get an in-text block) is acceptable now. The screens the site owner and visitors use after setup still have to be plain and complete: no internal ids, no half-built features. We keep polishing setup as EmDash grows.
+
+After #14, do #16 (in-text Poll block, prove first).
