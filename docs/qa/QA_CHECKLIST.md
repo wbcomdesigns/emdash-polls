@@ -2,7 +2,7 @@
 
 One living list of flow-level cases. Walk all of it before every release. When you add or fix behaviour, add or change its case in the same pull request. There are no per-release QA files.
 
-**Last walk:** 2026-10-14, 0.1.0 in progress. Browser (headless Chromium on the lab, Playwright MCP locked): G-4, G-5, guest vote on `<Poll latest />` at 1440 and 390 (no sideways scroll), not-found state, members poll shows question plus sign-in, closed poll shows results and no vote control. Route/HTTP: G-1, G-2, G-3, G-6 (guest vote + honeypot + members refused), G-8, M-1, M-4, M-5. A-1, A-2, A-4, A-5 and the editor panel as before. M-2, M-3, M-6 in tests or not walked. Dark: kit uses light-dark() tokens; the lab body itself stays light. P-3 contrast not measured. Other cases not walked.
+**Last walk:** 2026-10-14, 0.1.0 working tree before push, lab http://127.0.0.1:4332. Isolated Chromium. Guest, then subscriber (same lab account, role flipped), then admin. Browser: G-4, G-5, G-6, G-9 (slot + empty missing), M-9 named notice and vote, A-6 anonymous results, A-9 site attach on the demo slot, copy with `(copy)`, admin list Actions on-screen at 390, P-1 1440/768/390 guest, P-2 kit dark via color-scheme on `.wb` (host chrome stays with the lab theme), P-4 vote button 44px, P-7 names not ids. Route/HTTP and tests: G-2, G-3, G-8, G-91 (wording grep), A-10 named results (`Dev Admin` / Map), A-11 named lock, slot ladder, copy, erase. Not walked: G-1 on a members-only poll this pass, G-7 change-vote, M-2/M-3 as a second account, M-6 keyboard this pass, M-7/M-8 (0.2.0), A-1/A-3/A-5/A-7 this pass (covered earlier or by tests), A-8 as a fresh pair, in-text block (#16). One lab user.
 
 When you walk it, replace that line with the date, the version, and three lists: cases walked in the browser, cases checked at route level only, cases not walked. Do not claim a case you did not run.
 
@@ -77,4 +77,10 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 
 ## Known gaps
 
-None recorded yet. List anything a release ships without, here, in plain words.
+- Formal WP QA files are still thin: SURFACES exists. OWNER_INVENTORY, CORE_PATHS, qa-config, fixtures and ROLE_MATRIX are not here. EmDash plugins use GitHub issues, not Basecamp.
+- One lab user. Subscriber is the same account as admin with the role flipped.
+- Closed polls have no Open in the row menu. That matches the current admin rules.
+- My votes (`<MyVotes>`) is 0.2.0 (#6).
+- In-text Poll block (#16): trusted companion activates (`polls-block` in plugin state). Registry install is unchanged. A live list of polls cannot be filled from static Block Kit fields. The post editor was not proven to show Poll in the slash menu. Reported on #16.
+- Admin Actions control is about 36px tall (EmDash table chrome). Kit vote buttons meet 40px.
+- Registry screenshots still need a clean reset without QA-RFT names before publish.
