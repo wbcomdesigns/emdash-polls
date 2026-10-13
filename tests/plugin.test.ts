@@ -363,3 +363,188 @@ describe("editing-screen panel", () => {
 		expect(member.status).toBe(403);
 	});
 });
+
+describe("public get", () => {
+	it("returns NOT_FOUND for a missing id and for a draft", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await site.rt.fixtures.plugin.storage(POLLS, "poll_draft", samplePoll({ status: "draft" }));
+		expect(await site.call("get", { id: "nope" }, { method: "GET" })).toEqual({
+			ok: false,
+			error: { code: "NOT_FOUND" },
+		});
+		expect(await site.call("get", { id: "poll_draft" }, { method: "GET" })).toEqual({
+			ok: false,
+			error: { code: "NOT_FOUND" },
+		});
+		expect(await site.call("get", { latest: "1" }, { method: "GET" })).toEqual({
+			ok: false,
+			error: { code: "NOT_FOUND" },
+		});
+		await site.rt.fixtures.plugin.storage(
+			POLLS,
+			"poll_never_opened",
+			samplePoll({ status: "draft", closes_at: "2020-01-01T00:00:00.000Z" }),
+		);
+		expect(await site.call("get", { id: "poll_never_opened" }, { method: "GET" })).toEqual({
+			ok: false,
+			error: { code: "NOT_FOUND" },
+		});
+		expect(await site.rt.inspect.storage.get<{ status: string }>(POLLS, "poll_never_opened")).toMatchObject({
+			status: "draft",
+		});
+	});
+
+	it("returns question and options on a members-only poll, and hides after_vote results", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await site.rt.fixtures.plugin.storage(
+			POLLS,
+			"poll_members",
+			samplePoll({ who: "members", results: "after_vote" }),
+		);
+		await site.rt.fixtures.plugin.storage(VOTES, "poll_members:ana:blue", {
+			poll: "poll_members",
+			poll_option: "poll_members:blue",
+			member_id: "ana",
+			createdAt: "2026-10-13T02:00:00.000Z",
+			visitor: "",
+			member_name: "",
+		});
+		const got = (await site.call("get", { id: "poll_members" }, { method: "GET" })) as {
+			ok: boolean;
+			poll: { question: string; who: string; status: string; options: Array<{ id: string }> };
+			results?: unknown;
+		};
+		expect(got).toMatchObject({
+			ok: true,
+			poll: {
+				question: "Which colour should we ship?",
+				who: "members",
+				status: "open",
+				options: [
+					{ id: "blue", label: "Blue" },
+					{ id: "green", label: "Green" },
+				],
+			},
+		});
+		expect(got.results).toBeUndefined();
+	});
+
+	it("hides after_close results while open, then closes on read and shows them", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		const openHidden = samplePoll({ results: "after_close", rev: "r-open" });
+		await site.rt.fixtures.plugin.storage(POLLS, "poll_hidden", openHidden);
+		const hidden = (await site.call("get", { id: "poll_hidden" }, { method: "GET" })) as { results?: unknown };
+		expect(hidden.results).toBeUndefined();
+
+		await site.rt.fixtures.plugin.storage(
+			POLLS,
+			"poll_due",
+			samplePoll({
+				results: "after_close",
+				closes_at: "2020-01-01T00:00:00.000Z",
+				rev: "r-due",
+			}),
+		);
+		await site.rt.fixtures.plugin.storage(VOTES, "poll_due:ana:blue", {
+			poll: "poll_due",
+			poll_option: "poll_due:blue",
+			member_id: "ana",
+			createdAt: "2026-10-13T02:00:00.000Z",
+			visitor: "",
+			member_name: "",
+		});
+		const closed = (await site.call("get", { id: "poll_due" }, { method: "GET" })) as {
+			ok: boolean;
+			poll: { status: string };
+			results?: { total: number; options: Array<{ id: string; count: number; percent: number }> };
+		};
+		expect(closed).toMatchObject({
+			ok: true,
+			poll: { status: "closed" },
+			results: {
+				total: 1,
+				options: [
+					{ id: "blue", count: 1, percent: 100 },
+					{ id: "green", count: 0, percent: 0 },
+				],
+			},
+		});
+		expect(await site.rt.inspect.storage.get<{ status: string }>(POLLS, "poll_due")).toMatchObject({
+			status: "closed",
+		});
+
+		await site.rt.fixtures.plugin.storage(
+			POLLS,
+			"poll_due_open",
+			samplePoll({
+				status: "draft",
+				opens_at: "2020-01-01T00:00:00.000Z",
+				rev: "r-open-due",
+			}),
+		);
+		const opened = (await site.call("get", { id: "poll_due_open" }, { method: "GET" })) as {
+			poll: { status: string };
+		};
+		expect(opened.poll.status).toBe("open");
+		expect(await site.rt.inspect.storage.get<{ status: string }>(POLLS, "poll_due_open")).toMatchObject({
+			status: "open",
+		});
+	});
+
+	it("returns the newest still-open poll for latest, and skips one that just closed", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await site.rt.fixtures.plugin.storage(
+			POLLS,
+			"poll_old",
+			samplePoll({
+				question: "Older open",
+				createdAt: "2026-10-12T00:00:00.000Z",
+			}),
+		);
+		await site.rt.fixtures.plugin.storage(
+			POLLS,
+			"poll_expired",
+			samplePoll({
+				question: "Just closed",
+				createdAt: "2026-10-14T00:00:00.000Z",
+				closes_at: "2020-01-01T00:00:00.000Z",
+			}),
+		);
+		const got = (await site.call("get", { latest: 1 }, { method: "GET" })) as {
+			ok: boolean;
+			poll: { id: string; question: string; status: string };
+		};
+		expect(got).toMatchObject({
+			ok: true,
+			poll: { id: "poll_old", question: "Older open", status: "open" },
+		});
+	});
+
+	it("includes a tally when results are always visible", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await site.rt.fixtures.plugin.storage(POLLS, "poll_open", samplePoll({ results: "always" }));
+		const got = (await site.call("get", { id: "poll_open" }, { method: "GET" })) as {
+			results?: { total: number };
+		};
+		expect(got.results).toEqual({
+			total: 0,
+			options: [
+				{ id: "blue", label: "Blue", count: 0, percent: 0 },
+				{ id: "green", label: "Green", count: 0, percent: 0 },
+			],
+		});
+	});
+
+	it("refuses guests on vote, ballot and mine", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		expect((await site.rt.actions.routes.request("vote", { method: "POST" })).status).toBe(401);
+		expect((await site.rt.actions.routes.request("ballot", { method: "GET" })).status).toBe(401);
+		expect((await site.rt.actions.routes.request("mine", { method: "GET" })).status).toBe(401);
+	});
+});

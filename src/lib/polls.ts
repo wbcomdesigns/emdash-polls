@@ -146,6 +146,102 @@ export async function countOpenPolls(ctx: Ctx): Promise<number> {
 	return ctx.storage[POLLS].count({ status: "open" });
 }
 
+export async function applySchedule(ctx: Ctx, poll: PollRow): Promise<PollRow> {
+	const status = effectiveStatus(poll);
+	if (status === poll.status) return poll;
+	const rev = newRev();
+	const applied = await ctx.storage[POLLS].updateIf(poll.id, {
+		where: { rev: poll.rev },
+		set: { status, rev },
+	});
+	if (!applied.applied) return (await getPoll(ctx, poll.id)) ?? { ...poll, status };
+	return { ...poll, status, rev };
+}
+
+export function guestSeesResults(poll: Poll, status: PollStatus): boolean {
+	if (poll.results === "always") return true;
+	if (poll.results === "after_close" && status === "closed") return true;
+	return false;
+}
+
+export async function tally(ctx: Ctx, poll: PollRow): Promise<{
+	total: number;
+	options: Array<{ id: string; label: string; count: number; percent: number }>;
+}> {
+	const counts = await Promise.all(
+		poll.options.map(async (option) => ({
+			id: option.id,
+			label: option.label,
+			count: await ctx.storage[VOTES].count({ poll_option: pollOptionKey(poll.id, option.id) }),
+		})),
+	);
+	const total = counts.reduce((sum, row) => sum + row.count, 0);
+	return {
+		total,
+		options: counts.map((row) => ({
+			...row,
+			percent: total ? Math.round((row.count / total) * 100) : 0,
+		})),
+	};
+}
+
+export function publicPoll(poll: PollRow, status: PollStatus) {
+	return {
+		id: poll.id,
+		question: poll.question,
+		options: poll.options.map((option) => ({ id: option.id, label: option.label })),
+		multiple: poll.multiple,
+		status,
+		closes_at: poll.closes_at,
+		who: poll.who,
+		named: poll.named,
+		results: poll.results,
+		numbers: poll.numbers,
+	};
+}
+
+export const NOT_FOUND = { ok: false as const, error: { code: "NOT_FOUND" } };
+
+async function latestOpen(ctx: Ctx): Promise<PollRow | null> {
+	const found = await ctx.storage[POLLS].query({
+		where: { status: "open" },
+		orderBy: { createdAt: "desc" },
+		limit: 1,
+	});
+	const first = found.items[0];
+	return first ? { id: first.id, ...parsePoll(first.data) } : null;
+}
+
+export async function readPublicPoll(
+	ctx: Ctx,
+	input: unknown,
+): Promise<
+	| typeof NOT_FOUND
+	| { ok: true; poll: ReturnType<typeof publicPoll>; results?: Awaited<ReturnType<typeof tally>> }
+> {
+	const raw = asRecord(input);
+	let row: PollRow | null = null;
+	if (asBoolean(raw.latest)) {
+		row = await latestOpen(ctx);
+		if (row) row = await applySchedule(ctx, row);
+		if (!row || effectiveStatus(row) !== "open") {
+			row = await latestOpen(ctx);
+			if (row) row = await applySchedule(ctx, row);
+		}
+		if (!row || effectiveStatus(row) !== "open") return NOT_FOUND;
+	} else {
+		row = await getPoll(ctx, asString(raw.id));
+		if (!row) return NOT_FOUND;
+		if (row.status === "draft" && effectiveStatus(row) !== "open") return NOT_FOUND;
+		row = await applySchedule(ctx, row);
+		if (effectiveStatus(row) === "draft") return NOT_FOUND;
+	}
+	const status = effectiveStatus(row);
+	const poll = publicPoll(row, status);
+	if (!guestSeesResults(row, status)) return { ok: true, poll };
+	return { ok: true, poll, results: await tally(ctx, row) };
+}
+
 export async function getPoll(ctx: Ctx, id: string): Promise<(Poll & { id: string }) | null> {
 	if (!id) return null;
 	const data = await ctx.storage[POLLS].get(id);

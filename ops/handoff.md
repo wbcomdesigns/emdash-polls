@@ -12,11 +12,11 @@ You are the one agent for this repo. Read this, then work.
 
 ## Where it stands
 
-#1, #2 and #14 are done on branch `0.1.0`. Pull request: https://github.com/wbcomdesigns/emdash-polls/pull/17. Lab is `../emdash-lab-polls` on port 4332.
+#1, #2, #14 and #3 are done on branch `0.1.0`. Pull request: https://github.com/wbcomdesigns/emdash-polls/pull/17. Lab is `../emdash-lab-polls` on port 4332.
 
 ## Start with
 
-#3 public read, then #4 voting.
+#4 voting.
 
 ## Prove before you build on it
 
