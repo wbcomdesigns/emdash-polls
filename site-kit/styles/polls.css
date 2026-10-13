@@ -1,0 +1,93 @@
+/* Polls: option rows and result bars. Colours come from wbcom-base. */
+
+.wbp-options {
+	display: grid;
+	gap: 0.5rem;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+.wbp-options legend {
+	padding: 0;
+	margin-block-end: 0.5rem;
+	font-weight: 600;
+}
+
+.wbp-option {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	min-height: var(--wb-tap);
+	padding: 0.35rem 0.75rem;
+	border: 1px solid var(--wb-border);
+	border-radius: 8px;
+	background: var(--color-bg, light-dark(#ffffff, #121212));
+}
+
+.wbp-option input {
+	width: 1.15rem;
+	height: 1.15rem;
+	margin: 0;
+	flex: 0 0 auto;
+}
+
+.wbp-option label {
+	flex: 1;
+	cursor: pointer;
+}
+
+.wbp-option.is-mine {
+	outline: 2px solid var(--wb-brand);
+	outline-offset: 0;
+}
+
+.wbp-results {
+	display: grid;
+	gap: 0.75rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.wbp-row {
+	display: grid;
+	gap: 0.35rem;
+}
+
+.wbp-row-top {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
+	gap: 0.35rem 1rem;
+}
+
+.wbp-bar {
+	height: 0.65rem;
+	border: 1px solid var(--wb-border);
+	border-radius: 999px;
+	background: var(--wb-surface);
+	overflow: hidden;
+}
+
+.wbp-bar > i {
+	display: block;
+	height: 100%;
+	background: var(--wb-fg);
+	opacity: 0.35;
+}
+
+.wbp-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+	align-items: center;
+}
+
+.wbp-hp {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+}

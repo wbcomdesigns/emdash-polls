@@ -148,7 +148,7 @@ export async function renderList(
 			{ type: "header", text: "Polls" },
 			{
 				type: "section",
-				text: "Create a poll, open it when you are ready, then close it when voting should stop.",
+				text: "Create a poll, open it when you are ready, then close it when voting should stop. Guest votes use the visitor's address when the host provides one. On hosting that does not, they use a browser cookie, which is easier to clear.",
 				accessory: link("Create a poll", "/edit"),
 			},
 			{

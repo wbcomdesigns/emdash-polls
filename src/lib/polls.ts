@@ -191,6 +191,7 @@ export function publicPoll(poll: PollRow, status: PollStatus) {
 		question: poll.question,
 		options: poll.options.map((option) => ({ id: option.id, label: option.label })),
 		multiple: poll.multiple,
+		allow_change: poll.allow_change,
 		status,
 		closes_at: poll.closes_at,
 		who: poll.who,

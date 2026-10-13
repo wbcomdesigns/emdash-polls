@@ -30,6 +30,9 @@ latest="$(json "$API/get?latest=1")"
 echo "$latest" | grep -q '"code":"NOT_FOUND"' || echo "$latest" | grep -q '"status":"open"' || fail "get latest"
 ok "get latest"
 
+curl -sf "$BASE/polls-demo" | grep -q "data-wbp" || fail "polls demo page"
+ok "polls demo page"
+
 # plugin-specific checks go below this line
 
 echo "All checks passed for $SLUG"

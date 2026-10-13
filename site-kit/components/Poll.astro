@@ -1,0 +1,195 @@
+---
+/**
+ * One poll on any page. Markup is the same for every visitor.
+ *   <Poll id="p_..." />
+ *   <Poll latest />
+ */
+import "../styles/wbcom-base.css";
+import "../styles/polls.css";
+import { polls as S } from "../lib/polls-strings";
+
+interface Props {
+	id?: string;
+	latest?: boolean;
+}
+
+const { id = "", latest = false } = Astro.props;
+const uid = `wbp-${latest ? "latest" : id || "missing"}`;
+---
+
+<section class="wb" id={uid} data-wbp data-id={id} data-latest={latest ? "1" : ""} aria-busy="true">
+	<p class="wb-muted" data-wbp-live aria-live="polite">{S.loading}</p>
+	<div data-wbp-body></div>
+	<p class="wb-status" data-wbp-status role="status" hidden></p>
+</section>
+
+<script>
+	import { api, esc, signInUrl } from "../lib/wbcom-kit";
+	import { phrase, polls as S } from "../lib/polls-strings";
+
+	type Option = { id: string; label: string; count?: number; percent?: number };
+	type Poll = {
+		id: string;
+		question: string;
+		options: Option[];
+		multiple?: boolean;
+		allow_change?: boolean;
+		status?: string;
+		who?: string;
+		named?: boolean;
+		results?: string;
+		numbers?: string;
+	};
+	type Payload = {
+		ok?: boolean;
+		poll?: Poll;
+		choices?: string[];
+		results?: { total: number; options: Option[] };
+		thanks?: string;
+		error?: { code?: string };
+	};
+
+	function visitorToken(): string {
+		const key = "wbp-visitor";
+		let token = "";
+		try {
+			token = localStorage.getItem(key) || "";
+		} catch {
+			token = "";
+		}
+		if (token.replace(/[^a-zA-Z0-9]/g, "").length < 32) {
+			token = `${crypto.randomUUID().replace(/-/g, "")}${crypto.randomUUID().replace(/-/g, "")}`;
+			try {
+				localStorage.setItem(key, token);
+			} catch {
+				/* private mode still votes once this session */
+			}
+		}
+		return token;
+	}
+
+	function tell(box: HTMLElement, result: Payload, success = "") {
+		box.hidden = false;
+		box.dataset.tone = result.ok ? "success" : "error";
+		if (result.ok) box.textContent = success;
+		else if (result.error?.code === "SIGN_IN_REQUIRED" || result.error?.code === "MEMBERS_ONLY") {
+			box.innerHTML = `${esc(S.signIn)} <a href="${esc(signInUrl())}">${esc(S.signInLink)}</a>`;
+		} else box.textContent = phrase(result.error?.code);
+	}
+
+	function bars(poll: Poll, results: { total: number; options: Option[] }, mine: string[]) {
+		const full = poll.numbers !== "percent";
+		return `<ul class="wbp-results">${results.options
+			.map((row) => {
+				const picked = mine.includes(row.id) ? " is-mine" : "";
+				const numbers = full
+					? `${esc(S.percent(row.percent ?? 0))} · ${esc(S.count(row.count ?? 0))}`
+					: esc(S.percent(row.percent ?? 0));
+				return `<li class="wbp-row${picked}"><div class="wbp-row-top"><span>${esc(row.label)}</span><span class="wb-muted">${numbers}</span></div><div class="wbp-bar" role="img" aria-label="${esc(numbers)}"><i style="width:${Math.max(0, Math.min(100, row.percent ?? 0))}%"></i></div></li>`;
+			})
+			.join("")}</ul><p class="wb-muted">${esc(S.total(results.total))}</p>`;
+	}
+
+	function formHtml(uid: string, poll: Poll, mine: string[]) {
+		const type = poll.multiple ? "checkbox" : "radio";
+		const options = poll.options
+			.map((option, index) => {
+				const inputId = `${uid}-${option.id}`;
+				const checked = mine.includes(option.id) ? " checked" : "";
+				return `<div class="wbp-option"><input id="${esc(inputId)}" name="choice" type="${type}" value="${esc(option.id)}"${checked}${index === 0 ? " required" : ""} /><label for="${esc(inputId)}">${esc(option.label)}</label></div>`;
+			})
+			.join("");
+		const named = poll.named && !mine.length ? `<p class="wb-muted">${esc(S.named)}</p>` : "";
+		const label = mine.length ? S.change : S.vote;
+		return `<form class="wb-form" data-wbp-form novalidate>${named}<fieldset class="wbp-options"><legend class="wb-sr">${esc(S.answers)}</legend>${options}</fieldset><div class="wb-sr" aria-hidden="true"><label>company website<input name="website" tabindex="-1" autocomplete="off" /></label></div><div class="wbp-actions"><button class="wb-btn" type="submit">${esc(label)}</button></div></form>`;
+	}
+
+	function paint(root: HTMLElement, data: Payload, signedIn: boolean) {
+		const body = root.querySelector<HTMLElement>("[data-wbp-body]");
+		const live = root.querySelector<HTMLElement>("[data-wbp-live]");
+		const status = root.querySelector<HTMLElement>("[data-wbp-status]");
+		if (!body || !live) return;
+		if (!data.ok || !data.poll) {
+			live.textContent = "";
+			body.innerHTML = `<div class="wb-empty"><p><strong>${esc(S.notFound)}</strong></p></div>`;
+			return;
+		}
+		const poll = data.poll;
+		const mine = data.choices ?? [];
+		const closed = poll.status === "closed";
+		const members = poll.who === "members";
+		const canVote = !closed && (!members || signedIn) && (!mine.length || Boolean(poll.allow_change));
+		let html = `<h2>${esc(poll.question)}</h2>`;
+		if (closed) html += `<p class="wb-muted">${esc(S.closed)}</p>`;
+		if (data.results) html += bars(poll, data.results, mine);
+		else if (poll.results === "after_vote" && !mine.length) html += `<p class="wb-muted">${esc(S.hidden)}</p>`;
+		else if (poll.results === "after_close" && !closed) html += `<p class="wb-muted">${esc(S.hiddenClosed)}</p>`;
+		if (mine.length) html += `<p class="wb-muted">${esc(S.voted)}</p>`;
+		if (canVote) html += formHtml(root.id || "wbp", poll, mine);
+		else if (!closed && members && !signedIn) {
+			html += `<p class="wb-status" data-tone="error">${esc(S.signIn)} <a href="${esc(signInUrl())}">${esc(S.signInLink)}</a></p>`;
+			html += `<ul class="wb-list">${poll.options.map((option) => `<li class="wbp-option"><span>${esc(option.label)}</span></li>`).join("")}</ul>`;
+		}
+		body.innerHTML = html;
+		live.textContent = "";
+		if (status && data.thanks) tell(status, { ok: true }, data.thanks);
+		bind(root, poll, signedIn);
+	}
+
+	function bind(root: HTMLElement, poll: Poll, signedIn: boolean) {
+		const form = root.querySelector<HTMLFormElement>("[data-wbp-form]");
+		const status = root.querySelector<HTMLElement>("[data-wbp-status]");
+		const button = form?.querySelector<HTMLButtonElement>("button[type=submit]");
+		form?.addEventListener("submit", async (event) => {
+			event.preventDefault();
+			if (!status || !button) return;
+			const picked = [...form.querySelectorAll<HTMLInputElement>("input[name=choice]:checked")].map((input) => input.value);
+			if (!picked.length) {
+				tell(status, { ok: false, error: { code: "INVALID_CHOICE" } });
+				form.querySelector<HTMLInputElement>("input[name=choice]")?.focus();
+				return;
+			}
+			button.setAttribute("aria-busy", "true");
+			button.textContent = S.busy;
+			root.setAttribute("aria-busy", "true");
+			const website = String(new FormData(form).get("website") ?? "");
+			const result = signedIn
+				? await api("polls", "vote", { id: poll.id, choices: picked })
+				: await api("polls", "vote_guest", { id: poll.id, choices: picked, visitor: visitorToken(), website });
+			button.removeAttribute("aria-busy");
+			button.textContent = S.vote;
+			root.removeAttribute("aria-busy");
+			if (result.ok) paint(root, result as Payload, signedIn);
+			else tell(status, result);
+		});
+	}
+
+	async function load(root: HTMLElement) {
+		const latest = root.dataset.latest === "1";
+		const id = root.dataset.id ?? "";
+		const path = latest ? "get?latest=1" : `get?id=${encodeURIComponent(id)}`;
+		const got = (await api("polls", path)) as Payload;
+		if (!got.ok || !got.poll) {
+			paint(root, got, false);
+			root.removeAttribute("aria-busy");
+			return;
+		}
+		const memberBallot = (await api("polls", `ballot?id=${encodeURIComponent(got.poll.id)}`)) as Payload;
+		const signedIn = Boolean(memberBallot.ok);
+		let data: Payload = got;
+		if (signedIn) data = { ...got, ...memberBallot, poll: memberBallot.poll || got.poll };
+		else if (got.poll.who === "anyone") {
+			const guest = (await api(
+				"polls",
+				`ballot_guest?id=${encodeURIComponent(got.poll.id)}&visitor=${encodeURIComponent(visitorToken())}`,
+			)) as Payload;
+			if (guest.ok) data = { ...got, ...guest, poll: guest.poll || got.poll };
+		}
+		paint(root, data, signedIn);
+		root.removeAttribute("aria-busy");
+	}
+
+	document.querySelectorAll<HTMLElement>("[data-wbp]").forEach((root) => {
+		void load(root);
+	});
+</script>

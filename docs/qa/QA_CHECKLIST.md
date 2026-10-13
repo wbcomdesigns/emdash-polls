@@ -2,7 +2,7 @@
 
 One living list of flow-level cases. Walk all of it before every release. When you add or fix behaviour, add or change its case in the same pull request. There are no per-release QA files.
 
-**Last walk:** 2026-10-14, 0.1.0 in progress. Browser (Playwright) still not walked: 1440 / 390 / light / dark not seen. Route and lab HTTP: G-1, G-2, G-3, G-5, public get (latest, auto-close, draft hidden). M-1 (subscriber vote, choice marked on ballot), M-4 (ALREADY_VOTED), M-5 (forged member id ignored; foreign option refused). A-1, A-2, A-4, A-5 and the editor panel as before. M-2 and M-3 in tests only. Other cases not walked.
+**Last walk:** 2026-10-14, 0.1.0 in progress. Browser (headless Chromium on the lab, Playwright MCP locked): G-4, G-5, guest vote on `<Poll latest />` at 1440 and 390 (no sideways scroll), not-found state, members poll shows question plus sign-in, closed poll shows results and no vote control. Route/HTTP: G-1, G-2, G-3, G-6 (guest vote + honeypot + members refused), G-8, M-1, M-4, M-5. A-1, A-2, A-4, A-5 and the editor panel as before. M-2, M-3, M-6 in tests or not walked. Dark: kit uses light-dark() tokens; the lab body itself stays light. P-3 contrast not measured. Other cases not walked.
 
 When you walk it, replace that line with the date, the version, and three lists: cases walked in the browser, cases checked at route level only, cases not walked. Do not claim a case you did not run.
 

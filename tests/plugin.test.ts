@@ -11,6 +11,7 @@ import {
 	visitorWho,
 } from "../src/lib/polls";
 import { POLLS, VOTES } from "../src/lib/types";
+import { phrase } from "../site-kit/lib/polls-strings";
 import { admin, ana, ben, openSite, withPosts } from "./site";
 
 let dispose: (() => Promise<void>) | undefined;
@@ -31,6 +32,14 @@ function samplePoll(overrides: Record<string, unknown> = {}) {
 		...overrides,
 	};
 }
+
+describe("wording", () => {
+	it("maps route codes to phrases and never prints an unknown code", () => {
+		expect(phrase("NOT_FOUND")).toBe("This poll is not available.");
+		expect(phrase("ALREADY_VOTED")).toBe("You have already voted.");
+		expect(phrase("nope")).toBe("Something went wrong. Try again.");
+	});
+});
 
 describe("manifest", () => {
 	it("declares polls and votes with the scoped indexes, and both admin pages", async () => {
@@ -652,6 +661,54 @@ describe("member vote", () => {
 		expect(await site.rt.inspect.storage.get(VOTES, "poll_named:ana:green")).toMatchObject({
 			member_id: "ana",
 			member_name: "ana",
+		});
+	});
+});
+
+describe("guest vote", () => {
+	const visitor = "a".repeat(32);
+
+	it("saves one ballot per visitor and never stores an IP", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await site.rt.fixtures.plugin.storage(POLLS, "poll_guest", samplePoll({ who: "anyone" }));
+		const saved = (await site.call("vote_guest", { id: "poll_guest", choices: ["blue"], visitor })) as {
+			ok: boolean;
+			choices: string[];
+		};
+		expect(saved).toMatchObject({ ok: true, choices: ["blue"] });
+		const rows = await site.rt.inspect.storage.list<{
+			member_id: string;
+			visitor: string;
+			member_name: string;
+			poll: string;
+		}>(VOTES);
+		expect(rows).toHaveLength(1);
+		expect(rows[0]?.data).toMatchObject({ member_id: "", member_name: "", poll: "poll_guest" });
+		expect(rows[0]?.data.visitor).toMatch(/^[a-f0-9]{64}$/);
+		expect(rows[0]?.id.startsWith("poll_guest:v-")).toBe(true);
+
+		expect(await site.call("vote_guest", { id: "poll_guest", choices: ["green"], visitor })).toMatchObject({
+			ok: false,
+			error: { code: "ALREADY_VOTED" },
+		});
+	});
+
+	it("refuses a members-only poll, a honeypot, and a missing visitor", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await site.rt.fixtures.plugin.storage(POLLS, "poll_members", samplePoll({ who: "members" }));
+		await site.rt.fixtures.plugin.storage(POLLS, "poll_open", samplePoll({ who: "anyone" }));
+		expect(await site.call("vote_guest", { id: "poll_members", choices: ["blue"], visitor })).toMatchObject({
+			ok: false,
+			error: { code: "MEMBERS_ONLY" },
+		});
+		expect(
+			await site.call("vote_guest", { id: "poll_open", choices: ["blue"], visitor, website: "https://spam.example" }),
+		).toMatchObject({ ok: false, error: { code: "SPAM" } });
+		expect(await site.call("vote_guest", { id: "poll_open", choices: ["blue"] })).toMatchObject({
+			ok: false,
+			error: { code: "NO_VISITOR" },
 		});
 	});
 });
