@@ -46,8 +46,7 @@ ok "slot"
 
 BASE="$BASE" JAR="$JAR" DEMO_IDS="$LAB/src/pages/poll-demo-ids.json" node "$PLUGIN/scripts/seed-lab-demo.mjs" || fail "seed demo polls"
 ok "demo polls seeded"
-curl -sf "$BASE/polls-demo" | grep -q "QA-RFT Which colour should we ship?" || true
-json "$API/get?latest=1" | grep -q "QA-RFT" || fail "seeded latest"
+json "$API/get?latest=1" | grep -q "Which " || fail "seeded latest"
 ok "seeded latest is readable"
 
 echo "All checks passed for $SLUG"

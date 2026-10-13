@@ -83,4 +83,4 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 - My votes (`<MyVotes>`) is 0.2.0 (#6).
 - In-text Poll block (#16): trusted companion activates (`polls-block` in plugin state). Registry install is unchanged. A live list of polls cannot be filled from static Block Kit fields. The post editor was not proven to show Poll in the slash menu. Reported on #16.
 - Admin Actions control is about 36px tall (EmDash table chrome). Kit vote buttons meet 40px.
-- Registry screenshots still need a clean reset without QA-RFT names before publish.
+- Registry screenshots are taken from a reset lab after `prove-lab.sh` seeds three ordinary demo polls.

@@ -54,7 +54,7 @@ const specs = [
 	{
 		key: "single",
 		values: {
-			question: "QA-RFT Which colour should we ship?",
+			question: "Which colour should we ship?",
 			options: "Blue\nGreen",
 			who: "anyone",
 			results: "always",
@@ -65,7 +65,7 @@ const specs = [
 	{
 		key: "multi",
 		values: {
-			question: "QA-RFT Which extras do you want?",
+			question: "Which extras do you want?",
 			options: "Map\nComments\nSearch",
 			multiple: true,
 			who: "anyone",
@@ -77,7 +77,7 @@ const specs = [
 	{
 		key: "closed",
 		values: {
-			question: "QA-RFT Which name did we pick?",
+			question: "Which name did we pick?",
 			options: "Cedar\nWillow",
 			who: "anyone",
 			results: "always",
