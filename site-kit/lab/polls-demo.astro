@@ -1,0 +1,53 @@
+---
+/**
+ * Lab only. Mounts the poll so it can be walked in a browser.
+ * A real site puts <Poll id /> or <Poll latest /> on its own pages.
+ */
+import Base from "../layouts/Base.astro";
+import Poll from "../components/Poll.astro";
+import PollSlot from "../components/PollSlot.astro";
+import seeded from "./poll-demo-ids.json";
+
+const id = Astro.url.searchParams.get("id") || "";
+const collection = Astro.url.searchParams.get("collection") || "posts";
+const entry = Astro.url.searchParams.get("entry") || "";
+const single = Astro.url.searchParams.get("single") || seeded.single;
+const multi = Astro.url.searchParams.get("multi") || seeded.multi;
+const closed = Astro.url.searchParams.get("closed") || seeded.closed;
+---
+
+<Base title="Polls demo" description="Lab page for the Polls kit.">
+	<div style="max-width: 40rem; margin-inline: auto; padding: 2rem 1rem; display: grid; gap: 3rem;">
+		<section>
+			<h1>Polls demo</h1>
+			<p>This is the component a site owner copies onto any page. Open a poll in admin, then visit this page.</p>
+			{id ? <p>Showing one poll from the address bar.</p> : <p>Single choice, several choices, and a closed poll when the prove script has seeded them.</p>}
+		</section>
+		{id ? <Poll id={id} /> : single ? <Poll id={single} /> : <Poll latest />}
+		{
+			!id && multi && (
+				<section>
+					<h2>Several answers</h2>
+					<Poll id={multi} />
+				</section>
+			)
+		}
+		{
+			!id && closed && (
+				<section>
+					<h2>Closed</h2>
+					<Poll id={closed} />
+				</section>
+			)
+		}
+		<section>
+			<h2>Slot</h2>
+			<p>The poll attached to this page, then its content type, then the whole site. Nothing here if none match.</p>
+			<PollSlot collection={collection} id={entry} />
+		</section>
+		<section>
+			<h2>Missing poll</h2>
+			<Poll id="missing" />
+		</section>
+	</div>
+</Base>

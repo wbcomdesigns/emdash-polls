@@ -10,7 +10,9 @@
 			"import": "./dist/index.mjs",
 			"types": "./dist/index.d.mts"
 		},
-		"./sandbox": "./dist/plugin.mjs"
+		"./sandbox": "./dist/plugin.mjs",
+		"./trusted": "./trusted/index.ts",
+		"./trusted/astro": "./trusted/astro.ts"
 	},
 	"files": [
 		"dist",

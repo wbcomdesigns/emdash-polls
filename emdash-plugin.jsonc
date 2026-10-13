@@ -20,7 +20,13 @@
 	"security": {
 		"email": "security@wbcomdesigns.com"
 	},
-	"description": "Create polls, let members vote once, and show live results anywhere on your site.",
+	"description": "Create polls, let visitors or members vote once, and show live results anywhere on your site.",
+	"sections": {
+		"description": { "file": "./docs/registry/description.md" },
+		"installation": { "file": "./docs/registry/installation.md" },
+		"faq": { "file": "./docs/registry/faq.md" },
+		"changelog": { "file": "./docs/registry/changelog.md" }
+	},
 	"capabilities": [],
 	"allowedHosts": [],
 	"storage": {
@@ -48,8 +54,22 @@
 			},
 			{
 				"path": "/edit",
-				"label": "Edit",
-				"icon": "sparkle"
+				"label": "New poll",
+				"icon": "plus"
+			}
+		],
+		"widgets": [
+			{
+				"id": "open",
+				"title": "Open polls",
+				"size": "half"
+			}
+		],
+		"editorPanels": [
+			{
+				"id": "poll",
+				"title": "Poll",
+				"route": "editor_poll"
 			}
 		]
 	},
@@ -60,7 +80,13 @@
 			},
 			"banner": {
 				"file": "./images/banner.png"
-			}
+			},
+			"screenshots": [
+				{ "file": "./images/screenshot-1-poll.png" },
+				{ "file": "./images/screenshot-2-admin-list.png" },
+				{ "file": "./images/screenshot-3-admin-form.png" },
+				{ "file": "./images/screenshot-4-admin-results.png" }
+			]
 		}
 	}
 }
