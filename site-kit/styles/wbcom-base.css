@@ -4,6 +4,7 @@
  * Wrap plugin markup in class="wb". Colours follow the site theme through light-dark().
  */
 .wb {
+	color-scheme: light dark;
 	--wb-fg: var(--color-text, light-dark(#1a1a1a, #f4f4f4));
 	--wb-muted: var(--color-text-secondary, light-dark(#555555, #c4c4c4));
 	--wb-border: var(--color-border, light-dark(#e0e0e0, #333333));

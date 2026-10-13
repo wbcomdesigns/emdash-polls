@@ -3,7 +3,7 @@ import type { SandboxedPlugin } from "emdash/plugin";
 import { handleAdmin } from "./admin";
 import { MEMBER } from "./core";
 import { handleEditorPanel } from "./editor";
-import { countOpenPolls, readPublicPoll } from "./lib/polls";
+import { countOpenPolls, readPublicPoll, readSlot } from "./lib/polls";
 import { handleBallot, handleBallotGuest, handleVote, handleVoteGuest } from "./vote";
 
 const later = async () => ({ ok: false, error: { code: "UNAVAILABLE" } });
@@ -23,6 +23,11 @@ const plugin: SandboxedPlugin = {
 			public: true,
 			methods: ["GET"],
 			handler: async (routeCtx, ctx) => readPublicPoll(ctx, routeCtx.input),
+		},
+		slot: {
+			public: true,
+			methods: ["GET"],
+			handler: async (routeCtx, ctx) => readSlot(ctx, routeCtx.input),
 		},
 		vote: {
 			permission: MEMBER,

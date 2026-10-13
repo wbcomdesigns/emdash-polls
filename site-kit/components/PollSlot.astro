@@ -1,0 +1,16 @@
+---
+/**
+ * Shows the poll the owner attached to this page, its content type, or the site.
+ * Renders nothing when no open poll matches.
+ */
+import Poll from "./Poll.astro";
+
+interface Props {
+	collection: string;
+	id: string;
+}
+
+const { collection, id } = Astro.props;
+---
+
+<Poll collection={collection} entry={id} />

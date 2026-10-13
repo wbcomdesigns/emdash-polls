@@ -14,6 +14,7 @@ export const polls = {
 	named: "Your choice will be visible to the site owner.",
 	signIn: "Sign in to vote.",
 	signInLink: "Sign in",
+	honeypot: "company website",
 	total: (n: number) => (n === 1 ? "1 vote" : `${n} votes`),
 	count: (n: number) => (n === 1 ? "1 vote" : `${n} votes`),
 	percent: (n: number) => `${n}%`,

@@ -39,6 +39,14 @@ describe("wording", () => {
 		expect(phrase("ALREADY_VOTED")).toBe("You have already voted.");
 		expect(phrase("nope")).toBe("Something went wrong. Try again.");
 	});
+
+	it("keeps visitor-facing kit phrases in the wording file", async () => {
+		const { polls } = await import("../site-kit/lib/polls-strings");
+		expect(polls.vote).toBe("Vote");
+		expect(polls.change).toBe("Change vote");
+		expect(polls.honeypot).toBe("company website");
+		expect(phrase("FAILED")).toBe(polls.fallback);
+	});
 });
 
 describe("manifest", () => {
@@ -710,5 +718,172 @@ describe("guest vote", () => {
 			ok: false,
 			error: { code: "NO_VISITOR" },
 		});
+	});
+
+	it("stores no name when a guest votes on a named poll", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await site.rt.fixtures.plugin.storage(POLLS, "poll_named_guest", samplePoll({ named: true, who: "anyone" }));
+		await site.call("vote_guest", { id: "poll_named_guest", choices: ["blue"], visitor });
+		const rows = await site.rt.inspect.storage.list<{ member_name: string; visitor: string }>(VOTES);
+		expect(rows[0]?.data.member_name).toBe("");
+		expect(rows[0]?.data.visitor).toMatch(/^[a-f0-9]{64}$/);
+	});
+});
+
+describe("slot", () => {
+	it("returns the page poll, then the content-type poll, then the site poll, and skips closed", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		const posts = await withPosts(site.rt);
+		await site.rt.fixtures.plugin.storage(
+			POLLS,
+			"poll_site",
+			samplePoll({ question: "Site?", attach: "site", attach_key: "", createdAt: "2026-01-01T00:00:00.000Z" }),
+		);
+		await site.rt.fixtures.plugin.storage(
+			POLLS,
+			"poll_type",
+			samplePoll({
+				question: "Posts?",
+				attach: "collection",
+				attach_key: "posts",
+				createdAt: "2026-02-01T00:00:00.000Z",
+			}),
+		);
+		await site.rt.fixtures.plugin.storage(
+			POLLS,
+			"poll_page",
+			samplePoll({
+				question: "This page?",
+				attach: "entry",
+				attach_key: `posts:${posts.live}`,
+				createdAt: "2026-03-01T00:00:00.000Z",
+			}),
+		);
+		await site.rt.fixtures.plugin.storage(
+			POLLS,
+			"poll_closed",
+			samplePoll({
+				question: "Old page?",
+				status: "closed",
+				attach: "entry",
+				attach_key: `posts:${posts.live}`,
+				createdAt: "2026-04-01T00:00:00.000Z",
+			}),
+		);
+
+		const page = (await site.call("slot", { collection: "posts", id: posts.live }, { method: "GET" })) as {
+			ok: boolean;
+			poll?: { question: string };
+		};
+		expect(page.poll?.question).toBe("This page?");
+
+		const other = (await site.call("slot", { collection: "posts", id: "no-such" }, { method: "GET" })) as {
+			poll?: { question: string };
+		};
+		expect(other.poll?.question).toBe("Posts?");
+
+		const siteWide = (await site.call("slot", { collection: "pages", id: "home" }, { method: "GET" })) as {
+			poll?: { question: string };
+		};
+		expect(siteWide.poll?.question).toBe("Site?");
+
+		await site.rt.fixtures.plugin.storage(
+			POLLS,
+			"poll_site",
+			samplePoll({ question: "Site?", attach: "site", attach_key: "", status: "closed" }),
+		);
+		const afterClose = (await site.call("slot", { collection: "pages", id: "home" }, { method: "GET" })) as {
+			ok: boolean;
+			poll?: unknown;
+		};
+		expect(afterClose.ok).toBe(true);
+		expect(afterClose.poll).toBeUndefined();
+	});
+});
+
+describe("named lock, copy, results, erase", () => {
+	it("refuses switching a voted poll from anonymous to named", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await site.rt.fixtures.plugin.storage(POLLS, "poll_anon", samplePoll({ named: false, rev: "r-anon" }));
+		await site.call("vote", { id: "poll_anon", choices: ["blue"] }, site.as(ana));
+		const stored = await site.rt.inspect.storage.get<{ rev: string }>(POLLS, "poll_anon");
+		const refused = (await site.call(
+			"admin",
+			{
+				type: "form_submit",
+				action_id: `save|${stored?.rev}|poll_anon`,
+				values: { question: "Which colour should we ship?", options: "Blue\nGreen", named: true },
+			},
+			site.as(admin),
+		)) as { toast?: { message: string } };
+		expect(refused.toast?.message).toBe("This poll has votes, so anonymous or named is locked.");
+	});
+
+	it("copies a poll as a draft with new option ids and no votes", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await site.rt.fixtures.plugin.storage(POLLS, "poll_src", samplePoll({ rev: "r-src", named: true }));
+		await site.call("vote", { id: "poll_src", choices: ["blue"] }, site.as(ana));
+		const copied = (await site.call(
+			"admin",
+			{ type: "block_action", action_id: "poll_mod", value: "copy|r-src|poll_src" },
+			site.as(admin),
+		)) as { toast?: { message: string } };
+		expect(copied.toast?.message).toBe("Poll copied. It is a draft.");
+		const rows = await site.rt.inspect.storage.list<{
+			question: string;
+			status: string;
+			named: boolean;
+			options: Array<{ id: string }>;
+		}>(POLLS);
+		const copy = rows.find((row) => row.id !== "poll_src");
+		expect(copy?.data.status).toBe("draft");
+		expect(copy?.data.named).toBe(true);
+		expect(copy?.data.question).toBe("Which colour should we ship? (copy)");
+		expect(copy?.data.options[0]?.id).not.toBe("blue");
+		const votes = await site.rt.inspect.storage.list(VOTES);
+		expect(votes.every((row) => row.id.startsWith("poll_src:"))).toBe(true);
+	});
+
+	it("shows named members on results and can erase their votes", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await site.rt.fixtures.plugin.storage(POLLS, "poll_named", samplePoll({ named: true, rev: "r-n" }));
+		await site.call("vote", { id: "poll_named", choices: ["green"] }, site.as(ana));
+		const results = (await site.call(
+			"admin",
+			{ type: "block_action", action_id: "poll_mod", value: "results|r-n|poll_named" },
+			site.as(admin),
+		)) as { blocks: Array<Record<string, unknown>> };
+		const text = JSON.stringify(results.blocks);
+		expect(text).toContain("ana");
+		expect(text).toContain("Green");
+		expect(text).not.toMatch(/p_named|poll_named:ana/);
+
+		const live = await site.rt.inspect.storage.get<{ rev: string }>(POLLS, "poll_named");
+		const erased = (await site.call(
+			"admin",
+			{ type: "block_action", action_id: "poll_mod", value: `erase|${live?.rev}|poll_named|ana` },
+			site.as(admin),
+		)) as { toast?: { message: string } };
+		expect(erased.toast?.message).toBe("Those votes were removed.");
+		expect(await site.rt.inspect.storage.get(VOTES, "poll_named:ana:green")).toBeNull();
+	});
+
+	it("shows no names on anonymous results", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await site.rt.fixtures.plugin.storage(POLLS, "poll_quiet", samplePoll({ named: false, rev: "r-q" }));
+		await site.call("vote", { id: "poll_quiet", choices: ["blue"] }, site.as(ana));
+		const results = (await site.call(
+			"admin",
+			{ type: "block_action", action_id: "poll_mod", value: "results|r-q|poll_quiet" },
+			site.as(admin),
+		)) as { blocks: Array<Record<string, unknown>> };
+		expect(JSON.stringify(results.blocks)).not.toContain("ana");
+		expect(JSON.stringify(results.blocks)).toContain("Anonymous");
 	});
 });

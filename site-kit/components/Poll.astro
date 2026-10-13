@@ -3,6 +3,7 @@
  * One poll on any page. Markup is the same for every visitor.
  *   <Poll id="p_..." />
  *   <Poll latest />
+ *   <Poll collection="posts" entry="..." />  (slot lookup)
  */
 import "../styles/wbcom-base.css";
 import "../styles/polls.css";
@@ -11,13 +12,15 @@ import { polls as S } from "../lib/polls-strings";
 interface Props {
 	id?: string;
 	latest?: boolean;
+	collection?: string;
+	entry?: string;
 }
 
-const { id = "", latest = false } = Astro.props;
-const uid = `wbp-${latest ? "latest" : id || "missing"}`;
+const { id = "", latest = false, collection = "", entry = "" } = Astro.props;
+const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}` : latest ? "latest" : id || "missing"}`;
 ---
 
-<section class="wb" id={uid} data-wbp data-id={id} data-latest={latest ? "1" : ""} aria-busy="true">
+<section class="wb" id={uid} data-wbp data-id={id} data-latest={latest ? "1" : ""} data-collection={collection} data-entry={entry} aria-busy="true">
 	<p class="wb-muted" data-wbp-live aria-live="polite">{S.loading}</p>
 	<div data-wbp-body></div>
 	<p class="wb-status" data-wbp-status role="status" hidden></p>
@@ -101,7 +104,7 @@ const uid = `wbp-${latest ? "latest" : id || "missing"}`;
 			.join("");
 		const named = poll.named && !mine.length ? `<p class="wb-muted">${esc(S.named)}</p>` : "";
 		const label = mine.length ? S.change : S.vote;
-		return `<form class="wb-form" data-wbp-form novalidate>${named}<fieldset class="wbp-options"><legend class="wb-sr">${esc(S.answers)}</legend>${options}</fieldset><div class="wb-sr" aria-hidden="true"><label>company website<input name="website" tabindex="-1" autocomplete="off" /></label></div><div class="wbp-actions"><button class="wb-btn" type="submit">${esc(label)}</button></div></form>`;
+		return `<form class="wb-form" data-wbp-form novalidate>${named}<fieldset class="wbp-options"><legend class="wb-sr">${esc(S.answers)}</legend>${options}</fieldset><div class="wb-sr" aria-hidden="true"><label>${esc(S.honeypot)}<input name="website" tabindex="-1" autocomplete="off" /></label></div><div class="wbp-actions"><button class="wb-btn" type="submit">${esc(label)}</button></div></form>`;
 	}
 
 	function paint(root: HTMLElement, data: Payload, signedIn: boolean) {
@@ -111,6 +114,11 @@ const uid = `wbp-${latest ? "latest" : id || "missing"}`;
 		if (!body || !live) return;
 		if (!data.ok || !data.poll) {
 			live.textContent = "";
+			if (root.dataset.collection) {
+				root.hidden = true;
+				body.innerHTML = "";
+				return;
+			}
 			body.innerHTML = `<div class="wb-empty"><p><strong>${esc(S.notFound)}</strong></p></div>`;
 			return;
 		}
@@ -167,7 +175,13 @@ const uid = `wbp-${latest ? "latest" : id || "missing"}`;
 	async function load(root: HTMLElement) {
 		const latest = root.dataset.latest === "1";
 		const id = root.dataset.id ?? "";
-		const path = latest ? "get?latest=1" : `get?id=${encodeURIComponent(id)}`;
+		const collection = root.dataset.collection ?? "";
+		const entry = root.dataset.entry ?? "";
+		const path = collection
+			? `slot?collection=${encodeURIComponent(collection)}&id=${encodeURIComponent(entry)}`
+			: latest
+				? "get?latest=1"
+				: `get?id=${encodeURIComponent(id)}`;
 		const got = (await api("polls", path)) as Payload;
 		if (!got.ok || !got.poll) {
 			paint(root, got, false);

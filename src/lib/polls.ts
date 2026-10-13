@@ -353,18 +353,120 @@ export function entryAttachKey(collection: string, entryId: string): string {
 }
 
 export async function pollForEntry(ctx: Ctx, collection: string, entryId: string): Promise<PollRow | null> {
-	const key = entryAttachKey(collection, entryId);
-	if (!key || key.endsWith(":")) return null;
+	return firstAttached(ctx, "entry", entryAttachKey(collection, entryId), false);
+}
+
+/** Open poll for this page: one page, then its content type, then the whole site. Newest at each step. */
+export async function pollForSlot(ctx: Ctx, collection: string, entryId: string): Promise<PollRow | null> {
+	const page = await firstAttached(ctx, "entry", entryAttachKey(collection, entryId), true);
+	if (page) return page;
+	if (collection) {
+		const type = await firstAttached(ctx, "collection", collection, true);
+		if (type) return type;
+	}
+	return firstAttached(ctx, "site", "", true);
+}
+
+export async function readSlot(
+	ctx: Ctx,
+	input: unknown,
+): Promise<{ ok: true; poll?: ReturnType<typeof publicPoll>; results?: Awaited<ReturnType<typeof tally>> }> {
+	const raw = asRecord(input);
+	const row = await pollForSlot(ctx, asString(raw.collection), asString(raw.id));
+	if (!row) return { ok: true };
+	const live = await applySchedule(ctx, row);
+	if (effectiveStatus(live) !== "open") return { ok: true };
+	const status = effectiveStatus(live);
+	const poll = publicPoll(live, status);
+	if (!guestSeesResults(live, status)) return { ok: true, poll };
+	return { ok: true, poll, results: await tally(ctx, live) };
+}
+
+async function firstAttached(
+	ctx: Ctx,
+	attach: Poll["attach"],
+	key: string,
+	openOnly: boolean,
+): Promise<PollRow | null> {
+	if (attach === "entry" && (!key || key.endsWith(":"))) return null;
 	const found = await ctx.storage[POLLS].query({
-		where: { attach_key: key },
+		where: attach === "site" ? undefined : { attach_key: key },
 		orderBy: { createdAt: "desc" },
-		limit: 10,
+		limit: attach === "site" ? 100 : 25,
 	});
 	for (const item of found.items) {
-		const poll = { id: item.id, ...parsePoll(item.data) };
-		if (poll.attach === "entry") return poll;
+		let poll: PollRow = { id: item.id, ...parsePoll(item.data) };
+		if (poll.attach !== attach) continue;
+		if (openOnly) {
+			poll = await applySchedule(ctx, poll);
+			if (effectiveStatus(poll) !== "open") continue;
+		}
+		return poll;
 	}
 	return null;
+}
+
+export async function listVotesForPoll(ctx: Ctx, pollId: string): Promise<Array<Vote & { id: string }>> {
+	const rows: Array<Vote & { id: string }> = [];
+	let cursor: string | undefined;
+	for (let step = 0; step < 50; step += 1) {
+		const found = await ctx.storage[VOTES].query({
+			where: { poll: pollId },
+			limit: 100,
+			cursor,
+		});
+		for (const item of found.items) rows.push({ id: item.id, ...parseVote(item.data) });
+		if (!found.hasMore || !found.cursor) break;
+		cursor = found.cursor;
+	}
+	return rows;
+}
+
+export function ballotsFromVotes(
+	poll: Poll,
+	votes: Vote[],
+): Array<{ who: string; name: string; labels: string[] }> {
+	const byWho = new Map<string, { who: string; name: string; optionIds: string[] }>();
+	for (const vote of votes) {
+		const who = vote.member_id || (vote.visitor ? `v-${vote.visitor}` : "");
+		if (!who) continue;
+		const current = byWho.get(who) ?? { who, name: vote.member_name, optionIds: [] };
+		const optionId = vote.poll_option.split(":").pop() ?? "";
+		if (optionId && !current.optionIds.includes(optionId)) current.optionIds.push(optionId);
+		if (vote.member_name) current.name = vote.member_name;
+		byWho.set(who, current);
+	}
+	return [...byWho.values()].map((row) => ({
+		who: row.who,
+		name: row.name,
+		labels: row.optionIds
+			.map((id) => poll.options.find((option) => option.id === id)?.label ?? "")
+			.filter(Boolean),
+	}));
+}
+
+export async function deleteVotesForMember(ctx: Ctx, pollId: string, memberId: string): Promise<number> {
+	if (!pollId || !memberId) return 0;
+	const votes = await listVotesForPoll(ctx, pollId);
+	const ids = votes.filter((vote) => vote.member_id === memberId).map((vote) => vote.id);
+	if (ids.length) await ctx.storage[VOTES].deleteMany(ids);
+	return ids.length;
+}
+
+export function copyPoll(poll: Poll, now = nowIso()): Poll {
+	const suffix = " (copy)";
+	const base = poll.question || "Untitled poll";
+	const question = `${base.slice(0, Math.max(0, QUESTION_MAX - suffix.length))}${suffix}`;
+	return parsePoll({
+		...poll,
+		question,
+		status: "draft",
+		attach: "none",
+		attach_key: "",
+		createdAt: now,
+		rev: newRev(),
+		options: poll.options.map((option) => ({ id: newId("o"), label: option.label })),
+	});
 }
 
 export async function listPolls(

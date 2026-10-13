@@ -3,12 +3,16 @@ import type { PluginContext } from "emdash/plugin";
 import {
 	applyOptionEdits,
 	attachLabel,
+	ballotsFromVotes,
+	copyPoll,
 	countVotes,
+	deleteVotesForMember,
 	deleteVotesForPoll,
 	emptyPoll,
 	getPoll,
 	hasVotes,
 	listPolls,
+	listVotesForPoll,
 	newId,
 	newRev,
 	optionsToText,
@@ -16,6 +20,7 @@ import {
 	parseTimeField,
 	putPoll,
 	statusLabel,
+	tally,
 } from "./lib/polls";
 import { OPTIONS_MAX, OPTIONS_MIN, QUESTION_MAX, THANKS_MAX, type Poll } from "./lib/types";
 import { asBoolean, asRecord, asString } from "./util";
@@ -33,13 +38,17 @@ function link(label: string, path: string) {
 	return { type: "link", label, target: { kind: "plugin-page", path } };
 }
 
-function stamped(action: string, id: string, rev: string): string {
-	return `${action}|${rev}|${id}`;
+function stamped(action: string, id: string, rev: string, extra = ""): string {
+	return extra ? `${action}|${rev}|${id}|${extra}` : `${action}|${rev}|${id}`;
 }
 
-function parseStamped(value: unknown): { action: string; rev: string; id: string } {
-	const [action = "", rev = "", ...rest] = asString(value).split("|");
-	return { action, rev, id: rest.join("|") };
+function parseStamped(value: unknown): { action: string; rev: string; id: string; extra: string } {
+	const [action = "", rev = "", id = "", ...rest] = asString(value).split("|");
+	return { action, rev, id, extra: rest.join("|") };
+}
+
+function extraOf(value: unknown): string {
+	return parseStamped(value).extra;
 }
 
 function select(
@@ -78,14 +87,19 @@ export async function renderList(
 			if (displayStatus(poll) !== "Closed") {
 				items.push({ label: "Close", value: stamped("close", poll.id, poll.rev) });
 			}
+			items.push({ label: "Results", value: stamped("results", poll.id, poll.rev) });
+			items.push({ label: "Copy", value: stamped("copy", poll.id, poll.rev) });
 			items.push({ label: "Delete", value: stamped("delete", poll.id, poll.rev) });
+			const hidden =
+				poll.attach === "site" || poll.attach === "collection"
+					? " A more specific poll can hide this one."
+					: "";
 			return {
-				question: poll.question || "Untitled poll",
-				status: displayStatus(poll),
-				who: poll.who === "members" ? "Members" : "Anyone",
-				named: poll.named ? "Named" : "Anonymous",
-				where: attachLabel(poll),
-				votes: String(votes),
+				poll: `${poll.question || "Untitled poll"}\n${displayStatus(poll)} · ${
+					poll.who === "members" ? "Members" : "Anyone"
+				} · ${poll.named ? "Named" : "Anonymous"} · ${attachLabel(poll)} · ${votes} ${
+					votes === 1 ? "vote" : "votes"
+				}.${hidden}`,
 				action: { type: "menu", action_id: "poll_mod", label: "Actions", items },
 			};
 		}),
@@ -130,12 +144,7 @@ export async function renderList(
 						type: "table",
 						page_action_id: "polls_page",
 						columns: [
-							{ key: "question", label: "Question" },
-							{ key: "status", label: "Status" },
-							{ key: "who", label: "Who can vote" },
-							{ key: "named", label: "Names" },
-							{ key: "where", label: "Where it shows" },
-							{ key: "votes", label: "Votes" },
+							{ key: "poll", label: "Poll" },
 							{ key: "action", label: "Actions", format: "element" },
 						],
 						rows,
@@ -189,6 +198,10 @@ export async function renderForm(
 		blocks: [
 			{ type: "header", text: existing ? "Edit poll" : "New poll" },
 			{ type: "context", text: lockedNote },
+			{
+				type: "context",
+				text: "Whole site shows on every page that has a poll slot. One content type shows on every entry of that type. A poll on a single page, set from the page editor, hides those. Put the content type slug in the next field when you choose one content type.",
+			},
 			{
 				type: "form",
 				block_id: "poll",
@@ -254,7 +267,18 @@ export async function renderForm(
 					select("attach", "Where it shows", asString(values.attach) || poll.attach, [
 						{ label: "Not attached", value: "none" },
 						{ label: "Whole site", value: "site" },
+						{ label: "One content type", value: "collection" },
+						...(poll.attach === "entry"
+							? [{ label: "One page (set from the page editor)", value: "entry" }]
+							: []),
 					]),
+					{
+						type: "text_input",
+						action_id: "attach_key",
+						label: "Content type slug (for example posts). Needed for one content type.",
+						initial_value:
+							asString(values.attach_key) || (poll.attach === "collection" ? poll.attach_key : ""),
+					},
 					select("position", "Position on the page", asString(values.position) || poll.position, [
 						{ label: "Below the content", value: "below" },
 						{ label: "Above the content", value: "above" },
@@ -311,6 +335,79 @@ export async function renderOpenWidget(ctx: Ctx): Promise<BlockResponse> {
 			},
 			{ type: "actions", elements: [link("All polls", "/polls")] },
 		],
+	};
+}
+
+async function renderResults(ctx: Ctx, poll: Poll & { id: string }, extra?: Extra): Promise<BlockResponse> {
+	const results = await tally(ctx, poll);
+	const votes = await listVotesForPoll(ctx, poll.id);
+	const ballots = ballotsFromVotes(poll, votes);
+	const namedRows = poll.named
+		? ballots
+				.filter((row) => row.who && !row.who.startsWith("v-"))
+				.map((row) => ({
+					who: row.name || "A member",
+					choice: row.labels.join(", ") || "No choice",
+					action: {
+						type: "button",
+						action_id: "poll_mod",
+						label: "Remove votes",
+						style: "danger",
+						value: stamped("erase", poll.id, poll.rev, row.who),
+						confirm: {
+							title: "Remove these votes?",
+							text: "This person can vote again if the poll is still open.",
+							confirm: "Remove",
+							deny: "Keep them",
+						},
+					},
+				}))
+		: [];
+
+	return {
+		blocks: [
+			{ type: "header", text: "Results" },
+			{ type: "section", text: poll.question || "Untitled poll" },
+			{
+				type: "context",
+				text: poll.named
+					? "Named: each signed-in member and their choice. Guests stay anonymous."
+					: "Anonymous: totals only. Names are not stored.",
+			},
+			{
+				type: "table",
+				page_action_id: "poll_results",
+				columns: [
+					{ key: "label", label: "Answer" },
+					{ key: "count", label: "Votes" },
+					{ key: "percent", label: "Share" },
+				],
+				rows: results.options.map((row) => ({
+					label: row.label,
+					count: String(row.count),
+					percent: `${row.percent}%`,
+				})),
+			},
+			{ type: "context", text: `${results.total} ${results.total === 1 ? "vote" : "votes"} in total.` },
+			...(poll.named
+				? namedRows.length
+					? [
+							{
+								type: "table",
+								page_action_id: "poll_named",
+								columns: [
+									{ key: "who", label: "Member" },
+									{ key: "choice", label: "Choice" },
+									{ key: "action", label: "Erase", format: "element" },
+								],
+								rows: namedRows,
+							} as BlockMap,
+						]
+					: [{ type: "empty", title: "No named votes yet", description: "Totals above still count guest votes." } as BlockMap]
+				: []),
+			{ type: "actions", elements: [link("Back to polls", "/polls")] },
+		],
+		toast: extra?.toast,
 	};
 }
 
@@ -378,6 +475,26 @@ async function savePoll(ctx: Ctx, values: Record<string, unknown>): Promise<Bloc
 		named = existing.named;
 	}
 
+	const attach = asString(values.attach) || "none";
+	let attach_key = "";
+	if (attach === "collection") {
+		attach_key = asString(values.attach_key);
+		if (!attach_key) {
+			return renderForm(ctx, existing?.id ?? "", {
+				toast: { message: "Write the content type this poll belongs to, for example posts.", type: "error" },
+				values,
+			});
+		}
+	} else if (attach === "entry") {
+		attach_key = existing?.attach_key ?? "";
+		if (!attach_key) {
+			return renderForm(ctx, existing?.id ?? "", {
+				toast: { message: "Attach a poll to one page from that page's Poll panel.", type: "error" },
+				values,
+			});
+		}
+	}
+
 	const next = parsePoll({
 		...existing,
 		question,
@@ -390,8 +507,8 @@ async function savePoll(ctx: Ctx, values: Record<string, unknown>): Promise<Bloc
 		opens_at: opens.value,
 		closes_at: closes.value,
 		thanks,
-		attach: asString(values.attach) || "none",
-		attach_key: asString(values.attach) === "site" ? "" : (existing?.attach_key ?? ""),
+		attach,
+		attach_key,
 		position: asString(values.position) || "below",
 		numbers: asString(values.numbers) || "full",
 		status: existing?.status ?? "draft",
@@ -425,6 +542,25 @@ async function moderate(ctx: Ctx, value: unknown): Promise<BlockResponse> {
 	if (!poll) return renderList(ctx, {}, { toast: { message: "That poll is gone.", type: "error" } });
 
 	if (action === "edit") return renderForm(ctx, poll.id);
+	if (action === "results") return renderResults(ctx, poll);
+	if (action === "copy") {
+		const copyId = newId("p");
+		await putPoll(ctx, copyId, copyPoll(poll));
+		return renderList(ctx, {}, { toast: { message: "Poll copied. It is a draft.", type: "success" } });
+	}
+	if (action === "erase") {
+		const memberId = extraOf(value);
+		if (!memberId) {
+			return renderResults(ctx, poll, { toast: { message: "Pick a member to remove.", type: "error" } });
+		}
+		const removed = await deleteVotesForMember(ctx, poll.id, memberId);
+		return renderResults(ctx, (await getPoll(ctx, poll.id)) ?? poll, {
+			toast: {
+				message: removed ? "Those votes were removed." : "No votes to remove.",
+				type: removed ? "success" : "info",
+			},
+		});
+	}
 
 	if (action === "open") {
 		const applied = await ctx.storage.polls.updateIf(poll.id, {
