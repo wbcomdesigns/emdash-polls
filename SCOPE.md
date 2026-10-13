@@ -34,6 +34,16 @@ How it stays general:
 
 **Decided by the owner on 2026-10-13: the site owner chooses who can take part.** One setting: signed-in members only, or anyone. For a guest: one entry per visitor, identified by a salted hash of the IP (never the IP itself, never a cookie the visitor can clear to vote again within the hour limit), an hourly limit per visitor, a honeypot field on every guest form, and written content always held for approval. Guests have no account, so they have no "My ..." list and cannot erase their entries themselves; the owner removes them in admin. If the host supplies no IP, every guest shares one bucket: refuse guest writes in that case and say why in the admin page. Member routes stay private routes using `routeCtx.user`. Guest routes are separate public routes: never merge the two paths.
 
+## Decisions made with the owner
+
+Settled. Do not reopen these in code review. Dated 2026-10-13 unless noted.
+
+| Question | Decision |
+| --- | --- |
+| Who can take part | The site owner chooses: signed-in members only, or anyone. Default is anyone. |
+| How a poll gets onto a page | Both. The owner attaches a poll in admin (to one page, to every entry of a collection, or site-wide), and a developer can also place a specific poll by id. |
+| Who sees how people voted | The owner chooses per poll: anonymous (totals only) or named. Voters are told before they vote. Guests are always anonymous. |
+
 ## In scope for 0.1.0
 
 - Owner creates a poll: question, 2 to 10 options, single or multiple choice
@@ -44,6 +54,9 @@ How it stays general:
 - Drop-in `<MyVotes>` for an account page, with delete-my-votes
 - Admin: poll list with status and vote totals, create and edit form, open / close / delete, results view
 - Setting per poll "Who can vote": signed-in members only, or anyone. A guest gets one ballot per visitor per poll
+- Attach a poll in admin: to one chosen entry, to every entry of a collection, or site-wide. The site template carries one `<PollSlot>` added once at install
+- Place a specific poll anywhere with `<Poll id>` for sidebars and special layouts
+- Per poll: anonymous or named. A named poll says so above the options, and the owner can see each signed-in member's choice in admin. Guests are never named
 
 ## Out of scope
 
@@ -52,13 +65,13 @@ Do not build these. If a card seems to need one, stop and ask the owner.
 - Image options
 - Ranked or weighted voting
 - Poll comments
-- Embedding a poll inside post content
-- Scheduling a poll to open later
 - Export of votes
 - Any paid or Pro feature
 - Email sending (the host may have no mail configured)
 - Portable Text blocks or anything that needs a native plugin
 - Injecting scripts, styles or HTML into pages from the plugin
+- A poll in the middle of article text (needs a native plugin block). The slot goes above or below the content
+- Changing a poll from anonymous to named after it has votes
 
 ## Roles
 
@@ -78,7 +91,7 @@ Ask for nothing more without the owner's agreement: every capability is shown to
 
 ### `polls`
 
-Row id: Random id made at create time. Indexes: `status`, `createdAt`.
+Row id: Random id made at create time. Indexes: `status`, `createdAt`, `attach_key`.
 
 | Field | Type | Notes |
 | --- | --- | --- |
@@ -91,6 +104,9 @@ Row id: Random id made at create time. Indexes: `status`, `createdAt`.
 | `closes_at` | string | ISO time or empty |
 | `createdAt` | string | ISO time |
 | `who` | string | `members` or `anyone`. Default `anyone` |
+| `named` | boolean | True for a named poll. Locked once the poll has votes |
+| `attach` | string | `none`, `entry`, `collection` or `site` |
+| `attach_key` | string | `<collection>:<entryId>` for `entry`, the collection slug for `collection`, empty otherwise. Indexed |
 
 ### `votes`
 
@@ -103,6 +119,7 @@ Row id: `<pollId>:<memberId>:<optionId>`. One row per chosen option. A guest's r
 | `member_id` | string | From `routeCtx.user.id` |
 | `createdAt` | string | ISO time |
 | `visitor` | string | Guests only: SHA-256 of the IP plus a per-site salt. Empty for members |
+| `member_name` | string | Only on a named poll: the member's display name at vote time. Empty on anonymous polls and for guests |
 
 ## Settings
 
@@ -118,6 +135,7 @@ Base: `/_emdash/api/plugins/polls/<name>`.
 | --- | --- | --- | --- | --- |
 | `health` | public | GET | - | `ok`, version, open poll count |
 | `get` | public | GET | `id` or `latest=1` | Poll (question, options, multiple, status, closes_at) and `results` when visible to a guest |
+| `slot` | public | GET | `collection`, `id` | The open poll attached to this entry, else to its collection, else site-wide, else nothing |
 | `ballot` | member | GET | `id` | The caller's own choices and the results they are allowed to see |
 | `vote` | member | POST | `id`, `choices` (option ids) | Saved choices and results if now visible |
 | `mine` | member | GET, DELETE | - | GET: polls the caller voted in. DELETE: erase all own votes |
@@ -135,14 +153,15 @@ None.
 
 | Page | What it shows |
 | --- | --- |
-| `/polls` | Table: question, status, total votes, closes. Row menu: Edit, Open, Close, Results, Delete (two-step) |
-| `/edit` | Form: question, options as a textarea with one per line, choice type, results visibility, allow change, close time |
+| `/polls` | Table: question, status, who can vote, anonymous or named, where it shows, total votes. Row menu: Edit, Open, Close, Results, Delete (two-step) |
+| `/edit` | Form: question, options (one per line), choice type, who can vote, anonymous or named, where it shows, results visibility, allow change, close time |
 
 ## Site kit
 
 | File | What it is |
 | --- | --- |
 | `site-kit/components/Poll.astro` | `<Poll id />` or `<Poll latest />` |
+| `site-kit/components/PollSlot.astro` | `<PollSlot collection id />`. Shows whichever poll the owner attached, or nothing |
 | `site-kit/components/MyVotes.astro` | `<MyVotes />` |
 | `site-kit/styles/polls.css` | Option rows and result bars |
 | `site-kit/lab/polls-demo.astro` | Lab page with one poll of each kind |
@@ -160,6 +179,9 @@ A screen is done when every state listed here has been seen in a browser at 1440
 | My votes | Loading, empty, list, two-click delete, guest sign-in prompt |
 | Admin list | Empty state with a Create button, status wording, vote totals |
 | Admin form | Validation messages for fewer than 2 or more than 10 options and an empty question |
+| Poll slot | Renders nothing at all when no poll is attached: no heading, no gap |
+| Named poll | A plain line above the options: your choice will be visible to the site owner. Shown before voting, not after |
+| Admin results on a named poll | A list of members and their choices under the bars. On an anonymous poll that list does not exist |
 
 ## Risks and open questions
 
@@ -169,3 +191,5 @@ A screen is done when every state listed here has been seen in a browser at 1440
 - Block Kit `repeater` renders nothing inside a form. Options are a textarea
 - Results `after_vote` must be enforced on the server. A guest request must not receive hidden results
 - Guest routes are public writes. Per-visitor limit, honeypot, length caps, and refuse when the host gives no IP. Never trust a visitor id from the request: derive it from the request's IP on the server
+- Named polls hold personal data: who chose what. Erase (`mine` DELETE) must remove it, and an anonymous poll must store no name at all
+- Slot lookup order is entry, then collection, then site. Only one poll shows. If two polls target the same place, the newest open one wins: say so in the admin form

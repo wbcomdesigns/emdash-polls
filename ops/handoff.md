@@ -1,6 +1,6 @@
 # Handoff: Polls
 
-Read this first. Then `SCOPE.md`, `AGENTS.md`, `CONTRIBUTING.md` and `docs/qa/QA_CHECKLIST.md`.
+Read this first. Then `SCOPE.md`, `PLAN.md`, `AGENTS.md`, `CONTRIBUTING.md` and `docs/qa/QA_CHECKLIST.md`.
 
 ## Where it stands (2026-10-13)
 
@@ -35,8 +35,10 @@ npm test
 6. My votes and erase
 7. Admin results view
 8. Guest participation
-9. Lab, prove script and demo page
-10. Owner docs, registry branding and release gate
+9. Attach a poll and the poll slot
+10. Anonymous and named polls
+11. Lab, prove script and demo page
+12. Owner docs, registry branding and release gate
 
 Each card lists what to build, when it is UX ready, when it is function ready, and the QA cases that prove it. A card is done when all three hold and you have commented on it with what you verified and how. Take them in order: later cards assume earlier ones.
 
@@ -55,6 +57,8 @@ Each card lists what to build, when it is UX ready, when it is function ready, a
 - Block Kit `repeater` renders nothing inside a form. Options are a textarea
 - Results `after_vote` must be enforced on the server. A guest request must not receive hidden results
 - Guest routes are public writes. Per-visitor limit, honeypot, length caps, and refuse when the host gives no IP. Never trust a visitor id from the request: derive it from the request's IP on the server
+- Named polls hold personal data: who chose what. Erase (`mine` DELETE) must remove it, and an anonymous poll must store no name at all
+- Slot lookup order is entry, then collection, then site. Only one poll shows. If two polls target the same place, the newest open one wins: say so in the admin form
 
 ## When you stop
 

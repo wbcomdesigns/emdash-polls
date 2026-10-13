@@ -5,6 +5,7 @@ Create polls, let members vote once, and show live results anywhere on your site
 Status: in development. Not published.
 
 - Scope and schema: [SCOPE.md](SCOPE.md)
+- Plan and decisions: [PLAN.md](PLAN.md)
 - State of the work: [ops/handoff.md](ops/handoff.md)
 - How to build and release: [CONTRIBUTING.md](CONTRIBUTING.md)
 - Release cases: [docs/qa/QA_CHECKLIST.md](docs/qa/QA_CHECKLIST.md)

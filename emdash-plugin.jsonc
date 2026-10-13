@@ -27,7 +27,8 @@
 		"polls": {
 			"indexes": [
 				"status",
-				"createdAt"
+				"createdAt",
+				"attach_key"
 			]
 		},
 		"votes": {

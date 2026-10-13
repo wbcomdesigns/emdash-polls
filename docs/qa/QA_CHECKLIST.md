@@ -29,6 +29,7 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | G-6 | Poll set to anyone: vote signed out | Vote saved. Results follow the visibility rule |
 | G-7 | Poll set to anyone: vote again from the same visitor | Follows the poll's change rule. The total never counts one visitor twice |
 | G-8 | Poll set to members: call `vote_guest` directly | Refused |
+| G-9 | Open a post with a poll attached to it, then one without | The first shows the poll. The second shows nothing, with no empty box |
 
 ## Member (subscriber role)
 
@@ -42,6 +43,7 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | M-6 | Vote using only the keyboard | Works. Focus ring visible |
 | M-7 | Open My votes | Polls voted in, with the choice |
 | M-8 | Delete my votes (two clicks) | List empties. Poll totals drop |
+| M-9 | Vote in a named poll | The notice is visible before voting. The vote is saved with your name |
 
 ## Admin
 
@@ -55,6 +57,9 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | A-6 | Open results | Bars, counts and totals match the ballots |
 | A-7 | Set a close time in the past, load the poll | It shows as closed |
 | A-8 | Create one poll for anyone and one for members | Each behaves as set. The list shows which is which |
+| A-9 | Attach one poll to a post, one to all posts, one site-wide | The post shows its own poll. Other posts show the collection poll. Pages show the site-wide poll |
+| A-10 | Open results of a named poll and of an anonymous one | Named: members and choices listed. Anonymous: totals only, no names anywhere |
+| A-11 | Try to switch a poll with votes from anonymous to named | Refused |
 
 ## Presentation, every screen
 
