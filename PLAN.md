@@ -76,3 +76,7 @@ Everyone installing an EmDash plugin today is a developer. So a step that needs 
 After #14, do #16 (in-text Poll block, prove first).
 
 **Owner decision 2026-10-13:** the member account piece (My votes / My reviews) moves to 0.2.0. EmDash is not member-focused for now. Erase-by-person stays in 0.1.0 as an admin action.
+
+## Before any task
+
+Read `EMDASH-SUPPORT.md` in `~/code/emdash-plugin-starter` (`wbcomdesigns/emdash-plugin-starter`). If a task depends on a row marked "not proven", prove it on the lab first. If the proof fails, stop and tell the owner on the issue. Do not build around it.
