@@ -11,7 +11,7 @@ import {
 	visitorWho,
 } from "../src/lib/polls";
 import { POLLS, VOTES } from "../src/lib/types";
-import { admin, ana, openSite, withPosts } from "./site";
+import { admin, ana, ben, openSite, withPosts } from "./site";
 
 let dispose: (() => Promise<void>) | undefined;
 afterEach(async () => {
@@ -546,5 +546,112 @@ describe("public get", () => {
 		expect((await site.rt.actions.routes.request("vote", { method: "POST" })).status).toBe(401);
 		expect((await site.rt.actions.routes.request("ballot", { method: "GET" })).status).toBe(401);
 		expect((await site.rt.actions.routes.request("mine", { method: "GET" })).status).toBe(401);
+	});
+});
+
+describe("member vote", () => {
+	it("saves one choice, ignores a forged member id, and hides after_vote results until they vote", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await site.rt.fixtures.plugin.storage(
+			POLLS,
+			"poll_vote",
+			samplePoll({ results: "after_vote", thanks: "Thanks for voting." }),
+		);
+
+		const empty = (await site.call("ballot", { id: "poll_vote" }, { method: "GET", user: ana })) as {
+			choices: string[];
+			results?: unknown;
+		};
+		expect(empty.choices).toEqual([]);
+		expect(empty.results).toBeUndefined();
+
+		const saved = (await site.call(
+			"vote",
+			{ id: "poll_vote", choices: ["blue"], member_id: "ben" },
+			site.as(ana),
+		)) as {
+			ok: boolean;
+			choices: string[];
+			thanks?: string;
+			results?: { total: number };
+		};
+		expect(saved).toMatchObject({
+			ok: true,
+			choices: ["blue"],
+			thanks: "Thanks for voting.",
+			results: { total: 1 },
+		});
+		expect(await site.rt.inspect.storage.get(VOTES, "poll_vote:ana:blue")).toMatchObject({
+			member_id: "ana",
+			member_name: "",
+			poll_option: "poll_vote:blue",
+		});
+		expect(await site.rt.inspect.storage.get(VOTES, "poll_vote:ben:blue")).toBeNull();
+	});
+
+	it("saves two choices on a multiple poll, then replaces them when change is allowed", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await site.rt.fixtures.plugin.storage(
+			POLLS,
+			"poll_multi",
+			samplePoll({
+				multiple: true,
+				allow_change: true,
+				options: [
+					{ id: "blue", label: "Blue" },
+					{ id: "green", label: "Green" },
+					{ id: "red", label: "Red" },
+				],
+			}),
+		);
+		const first = (await site.call("vote", { id: "poll_multi", choices: ["blue", "green"] }, site.as(ana))) as {
+			choices: string[];
+		};
+		expect(first.choices.sort()).toEqual(["blue", "green"]);
+		const second = (await site.call("vote", { id: "poll_multi", choices: ["red"] }, site.as(ana))) as {
+			choices: string[];
+		};
+		expect(second.choices).toEqual(["red"]);
+		expect(await site.rt.inspect.storage.get(VOTES, "poll_multi:ana:blue")).toBeNull();
+		expect(await site.rt.inspect.storage.get(VOTES, "poll_multi:ana:red")).toMatchObject({ member_id: "ana" });
+	});
+
+	it("refuses a second vote when change is off, a closed poll, and a foreign option id", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await site.rt.fixtures.plugin.storage(POLLS, "poll_once", samplePoll({ allow_change: false }));
+		await site.call("vote", { id: "poll_once", choices: ["blue"] }, site.as(ana));
+		expect(await site.call("vote", { id: "poll_once", choices: ["green"] }, site.as(ana))).toMatchObject({
+			ok: false,
+			error: { code: "ALREADY_VOTED" },
+		});
+
+		await site.rt.fixtures.plugin.storage(POLLS, "poll_shut", samplePoll({ status: "closed" }));
+		expect(await site.call("vote", { id: "poll_shut", choices: ["blue"] }, site.as(ana))).toMatchObject({
+			ok: false,
+			error: { code: "NOT_OPEN" },
+		});
+
+		expect(await site.call("vote", { id: "poll_once", choices: ["from-elsewhere"] }, site.as(ben))).toMatchObject({
+			ok: false,
+			error: { code: "INVALID_CHOICE" },
+		});
+		expect(await site.call("vote", { id: "poll_once", choices: ["blue", "green"] }, site.as(ben))).toMatchObject({
+			ok: false,
+			error: { code: "INVALID_CHOICE" },
+		});
+	});
+
+	it("stores the member name only on a named poll", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await site.rt.fixtures.plugin.storage(POLLS, "poll_named", samplePoll({ named: true }));
+		await site.call("vote", { id: "poll_named", choices: ["green"] }, site.as(ana));
+		expect(await site.rt.inspect.storage.get(VOTES, "poll_named:ana:green")).toMatchObject({
+			member_id: "ana",
+			member_name: "ana",
+		});
 	});
 });

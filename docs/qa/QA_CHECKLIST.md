@@ -2,7 +2,7 @@
 
 One living list of flow-level cases. Walk all of it before every release. When you add or fix behaviour, add or change its case in the same pull request. There are no per-release QA files.
 
-**Last walk:** 2026-10-14, 0.1.0 in progress. Browser (Playwright) still not walked: 1440 / 390 / light / dark not seen. Route and lab HTTP: G-1 (question and options on a members poll), G-2 (vote / ballot / mine 401), G-3 (after_vote and after_close hide results while open), G-5 (NOT_FOUND), after_close shows results once closed, latest=1 returns the newest open poll, auto-close on get-by-id when closes_at has passed, a never-opened draft stays hidden. A-1, A-2, A-4, A-5 and the editor panel as before. Other cases not walked.
+**Last walk:** 2026-10-14, 0.1.0 in progress. Browser (Playwright) still not walked: 1440 / 390 / light / dark not seen. Route and lab HTTP: G-1, G-2, G-3, G-5, public get (latest, auto-close, draft hidden). M-1 (subscriber vote, choice marked on ballot), M-4 (ALREADY_VOTED), M-5 (forged member id ignored; foreign option refused). A-1, A-2, A-4, A-5 and the editor panel as before. M-2 and M-3 in tests only. Other cases not walked.
 
 When you walk it, replace that line with the date, the version, and three lists: cases walked in the browser, cases checked at route level only, cases not walked. Do not claim a case you did not run.
 

@@ -26,8 +26,9 @@ ok "admin page loads"
 
 json "$API/get?id=missing" | grep -q '"code":"NOT_FOUND"' || fail "get missing"
 ok "get missing is NOT_FOUND"
-json "$API/get?latest=1" | grep -q '"code":"NOT_FOUND"' || fail "get latest empty"
-ok "get latest empty is NOT_FOUND"
+latest="$(json "$API/get?latest=1")"
+echo "$latest" | grep -q '"code":"NOT_FOUND"' || echo "$latest" | grep -q '"status":"open"' || fail "get latest"
+ok "get latest"
 
 # plugin-specific checks go below this line
 
