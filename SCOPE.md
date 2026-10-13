@@ -4,6 +4,18 @@
 
 This file is the contract for the plugin. Code, tests, docs and cards all follow it. If something here is wrong, change it here first, in the same pull request as the code.
 
+## Corrections after reading EmDash's own guides (2026-10-13)
+
+**This section wins over any older line below that disagrees with it.**
+
+- **Attaching a poll from the editing screen is a documented plugin surface** (`admin.editorPanels`, saved-entry panels). An ordinary panel gets the saved entry's identity, which is all this needs. While proving it, also try a field widget (`admin.fieldWidgets`): a "Poll" field an owner adds to a content type. Report which is plainer for the owner; build one, not both, unless the owner says otherwise.
+- **Dashboard card** (`admin.widgets`): open polls with their vote totals.
+- **Visitors first:** a visitor is never locked out by hosting. Trusted visitor address where EmDash supplies it, browser cookie otherwise, written content always approved first.
+- **Member account list (`<My...>`):** not in 0.1.0. Moved to 0.2.0. The erase-by-person function stays, as an admin action.
+- **Block inside post text:** only with a trusted install. The registry install is the whole product without it.
+- **Open and close times** are shown in the site's time zone and date format, from EmDash's site settings.
+- **Capabilities:** still none for the core product. `content:read` is added only if the editing-screen panel needs to show the entry's title.
+
 ## Purpose
 
 Let the owner ask a question, let signed-in members vote once, and show results the way the owner chooses.
@@ -81,7 +93,6 @@ Paid WordPress features (image, video and audio answers, surveys, email capture,
 - One ballot per member per poll. A member can change their vote while the poll is open (setting per poll)
 - Results visibility per poll: always, after voting, or after the poll closes
 - Drop-in `<Poll id>` component and `<Poll latest />` for the newest open poll
-- Drop-in `<MyVotes>` for an account page, with delete-my-votes
 - Admin: poll list with status and vote totals, create and edit form, open / close / delete, results view
 - Setting per poll "Who can vote": signed-in members only, or anyone. A guest gets one ballot per visitor per poll
 - Attach a poll in admin: to one chosen entry, to every entry of a collection, or site-wide. The site template carries one `<PollSlot>` added once at install
@@ -199,7 +210,6 @@ None.
 | --- | --- |
 | `site-kit/components/Poll.astro` | `<Poll id />` or `<Poll latest />` |
 | `site-kit/components/PollSlot.astro` | `<PollSlot collection id />`. Shows whichever poll the owner attached, or nothing |
-| `site-kit/components/MyVotes.astro` | `<MyVotes />` |
 | `site-kit/styles/polls.css` | Option rows and result bars |
 | `site-kit/lab/polls-demo.astro` | Lab page with one poll of each kind |
 | `site-kit/lib/polls-strings.ts` | The wording file. The only place visitor-facing text is written |
@@ -214,7 +224,6 @@ A screen is done when every state listed here has been seen in a browser at 1440
 | --- | --- |
 | Poll component | Loading, poll not found, open and not voted, open and voted, results hidden until vote, closed, guest sign-in prompt, busy, error |
 | Results | Bar per option with percent and count, the member's own choice marked, total votes, readable without colour |
-| My votes | Loading, empty, list, two-click delete, guest sign-in prompt |
 | Admin list | Empty state with a Create button, status wording, vote totals |
 | Admin form | Validation messages for fewer than 2 or more than 10 options and an empty question |
 | Poll slot | Renders nothing at all when no poll is attached: no heading, no gap |
