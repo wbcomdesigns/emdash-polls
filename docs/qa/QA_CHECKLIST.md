@@ -2,7 +2,7 @@
 
 One living list of flow-level cases. Walk all of it before every release. When you add or fix behaviour, add or change its case in the same pull request. There are no per-release QA files.
 
-**Last walk:** not walked yet.
+**Last walk:** 2026-10-13, 0.1.0 in progress. A-1, A-2, A-4, A-5 checked at route and lab HTTP level as admin. Guest 401 and subscriber 403 on the admin route. Playwright MCP was locked by another session, so 1440 / 390 / light / dark were not seen. A-3 checked in tests only. Other cases not walked.
 
 When you walk it, replace that line with the date, the version, and three lists: cases walked in the browser, cases checked at route level only, cases not walked. Do not claim a case you did not run.
 

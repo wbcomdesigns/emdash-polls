@@ -163,3 +163,134 @@ export async function getVote(ctx: Ctx, id: string): Promise<(Vote & { id: strin
 	if (!data) return null;
 	return { id, ...parseVote(data) };
 }
+
+export function optionsToText(options: PollOption[]): string {
+	return options.map((option) => option.label).join("\n");
+}
+
+export function applyOptionEdits(
+	previous: PollOption[],
+	text: string,
+	locked: boolean,
+): { ok: true; options: PollOption[] } | { ok: false; error: string } {
+	const labels = text
+		.split(/\r?\n/)
+		.map((line) => line.trim())
+		.filter(Boolean)
+		.map((label) => label.slice(0, QUESTION_MAX));
+	if (locked) {
+		if (labels.length !== previous.length) {
+			return { ok: false, error: "This poll has votes, so answers cannot be added or removed." };
+		}
+		if (labels.some((label) => !label)) {
+			return { ok: false, error: "Every answer needs text." };
+		}
+		return {
+			ok: true,
+			options: previous.map((option, index) => ({ id: option.id, label: labels[index] ?? option.label })),
+		};
+	}
+	const options = labels.slice(0, OPTIONS_MAX).map((label, index) => ({
+		id: previous[index]?.id || newId("o"),
+		label,
+	}));
+	const error = optionLabelsOk(options);
+	if (error) return { ok: false, error };
+	return { ok: true, options };
+}
+
+export function parseTimeField(value: unknown): { ok: true; value: string } | { ok: false; error: string } {
+	const text = asString(value);
+	if (!text) return { ok: true, value: "" };
+	const ms = Date.parse(text);
+	if (Number.isNaN(ms)) return { ok: false, error: "Use a real date and time, or leave the field empty." };
+	return { ok: true, value: new Date(ms).toISOString() };
+}
+
+export function statusLabel(poll: Poll, now = Date.now()): string {
+	const status = effectiveStatus(poll, now);
+	if (status === "closed") return "Closed";
+	if (status === "open") return "Open";
+	if (poll.opens_at && Date.parse(poll.opens_at) > now) return "Scheduled";
+	return "Draft";
+}
+
+export function attachLabel(poll: Poll): string {
+	if (poll.attach === "site") return "Whole site";
+	if (poll.attach === "collection") return "A content type";
+	if (poll.attach === "entry") return "One page";
+	return "Not attached";
+}
+
+export async function countVotes(ctx: Ctx, pollId: string): Promise<number> {
+	if (!pollId) return 0;
+	return ctx.storage[VOTES].count({ poll: pollId });
+}
+
+export async function hasVotes(ctx: Ctx, pollId: string): Promise<boolean> {
+	return (await countVotes(ctx, pollId)) > 0;
+}
+
+export async function deleteVotesForPoll(ctx: Ctx, pollId: string): Promise<number> {
+	let removed = 0;
+	let cursor: string | undefined;
+	for (let step = 0; step < 50; step += 1) {
+		const found = await ctx.storage[VOTES].query({
+			where: { poll: pollId },
+			limit: 100,
+			cursor,
+		});
+		if (found.items.length) {
+			removed += await ctx.storage[VOTES].deleteMany(found.items.map((item) => item.id));
+		}
+		if (!found.hasMore || !found.cursor) break;
+		cursor = found.cursor;
+	}
+	return removed;
+}
+
+export type PollRow = Poll & { id: string };
+
+export async function listPolls(
+	ctx: Ctx,
+	opts: { q?: string; before?: string; after?: string; limit?: number } = {},
+): Promise<{ items: PollRow[]; hasOlder: boolean; hasNewer: boolean }> {
+	const limit = opts.limit ?? 25;
+	const q = asString(opts.q).toLowerCase();
+	if (opts.after) {
+		const found = await ctx.storage[POLLS].query({
+			where: { createdAt: { gt: opts.after } },
+			orderBy: { createdAt: "asc" },
+			limit: limit + 1,
+		});
+		const sliced = found.items.slice(0, limit);
+		const items = sliced.reverse().map((item) => ({ id: item.id, ...parsePoll(item.data) }));
+		return { items, hasOlder: true, hasNewer: found.items.length > limit || found.hasMore };
+	}
+
+	const collected: PollRow[] = [];
+	let cursor: string | undefined;
+	let hasOlder = false;
+	for (let step = 0; step < 20 && collected.length < limit + 1; step += 1) {
+		const found = await ctx.storage[POLLS].query({
+			where: opts.before ? { createdAt: { lt: opts.before } } : undefined,
+			orderBy: { createdAt: "desc" },
+			limit: q ? 100 : limit + 1,
+			cursor,
+		});
+		for (const item of found.items) {
+			const poll = { id: item.id, ...parsePoll(item.data) };
+			if (q && !poll.question.toLowerCase().includes(q)) continue;
+			collected.push(poll);
+			if (collected.length > limit) break;
+		}
+		hasOlder = collected.length > limit || found.hasMore;
+		if (!found.hasMore || !found.cursor || collected.length > limit) break;
+		cursor = found.cursor;
+	}
+	return {
+		items: collected.slice(0, limit),
+		hasOlder,
+		hasNewer: Boolean(opts.before),
+	};
+}

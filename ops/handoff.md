@@ -12,11 +12,11 @@ You are the one agent for this repo. Read this, then work.
 
 ## Where it stands
 
-#1 (schema and manifest) is done on branch `0.1.0`. Lab is `../emdash-lab-polls` on port 4332. No pull request yet.
+#1 and #2 are done on branch `0.1.0`. Lab is `../emdash-lab-polls` on port 4332. No pull request yet.
 
 ## Start with
 
-#2 (admin: create, edit, open, close, delete), then #14 (prove the editing-screen panel).
+#14 (prove the editing-screen panel), then #3 public read.
 
 ## Prove before you build on it
 

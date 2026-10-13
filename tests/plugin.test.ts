@@ -11,7 +11,7 @@ import {
 	visitorWho,
 } from "../src/lib/polls";
 import { POLLS, VOTES } from "../src/lib/types";
-import { openSite } from "./site";
+import { admin, openSite } from "./site";
 
 let dispose: (() => Promise<void>) | undefined;
 afterEach(async () => {
@@ -43,8 +43,11 @@ describe("manifest", () => {
 		expect(host.manifest.admin?.pages).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({ path: "/polls", label: "Polls" }),
-				expect.objectContaining({ path: "/edit" }),
+				expect.objectContaining({ path: "/edit", label: "New poll" }),
 			]),
+		);
+		expect(host.manifest.admin?.widgets).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: "open", title: "Open polls" })]),
 		);
 		expect(host.manifest.capabilities ?? []).toEqual([]);
 	});
@@ -136,14 +139,154 @@ describe("storage and health", () => {
 });
 
 describe("admin", () => {
-	it("renders Polls on both declared pages", async () => {
+	it("renders the empty list and the new-poll form", async () => {
 		const site = await openSite();
 		dispose = site.dispose;
-		for (const path of ["/polls", "/edit"]) {
-			const page = await site.rt.admin.loadPage(path);
-			expect(page.blocks).toEqual(
-				expect.arrayContaining([expect.objectContaining({ type: "header", text: "Polls" })]),
-			);
-		}
+		const list = await site.rt.admin.loadPage("/polls");
+		expect(list.blocks).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ type: "header", text: "Polls" }),
+				expect.objectContaining({ type: "empty", title: "No polls yet" }),
+			]),
+		);
+		const form = await site.rt.admin.loadPage("/edit");
+		expect(form.blocks).toEqual(
+			expect.arrayContaining([expect.objectContaining({ type: "header", text: "New poll" })]),
+		);
+	});
+
+	it("refuses a poll with one option", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		const result = (await site.call(
+			"admin",
+			{
+				type: "form_submit",
+				action_id: "save||",
+				values: { question: "Only one?", options: "Yes" },
+			},
+			site.as(admin),
+		)) as { toast?: { message: string; type: string } };
+		expect(result.toast).toMatchObject({ type: "error", message: "Add at least two answers." });
+		expect(await site.rt.inspect.storage.list(POLLS)).toHaveLength(0);
+	});
+
+	it("creates, opens, closes and deletes a poll", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		const created = (await site.call(
+			"admin",
+			{
+				type: "form_submit",
+				action_id: "save||",
+				values: { question: "Which colour?", options: "Blue\nGreen", who: "anyone" },
+			},
+			site.as(admin),
+		)) as { toast?: { message: string } };
+		expect(created.toast?.message).toBe("Poll created.");
+		const row = (
+			await site.rt.inspect.storage.list<{
+				question: string;
+				status: string;
+				rev: string;
+				options: Array<{ id: string; label: string }>;
+			}>(POLLS)
+		)[0];
+		expect(row.data).toMatchObject({ question: "Which colour?", status: "draft" });
+		expect(row.data.options).toHaveLength(2);
+
+		const opened = (await site.call(
+			"admin",
+			{ type: "block_action", action_id: "poll_mod", value: `open|${row.data.rev}|${row.id}` },
+			site.as(admin),
+		)) as { toast?: { message: string } };
+		expect(opened.toast?.message).toBe("Poll opened.");
+		const afterOpen = await site.rt.inspect.storage.get<{ status: string; rev: string }>(POLLS, row.id);
+		expect(afterOpen?.status).toBe("open");
+
+		const closed = (await site.call(
+			"admin",
+			{ type: "block_action", action_id: "poll_mod", value: `close|${afterOpen?.rev}|${row.id}` },
+			site.as(admin),
+		)) as { toast?: { message: string } };
+		expect(closed.toast?.message).toBe("Poll closed.");
+		expect((await site.rt.inspect.storage.get<{ status: string }>(POLLS, row.id))?.status).toBe("closed");
+
+		const latest = await site.rt.inspect.storage.get<{ rev: string }>(POLLS, row.id);
+		const asking = (await site.call(
+			"admin",
+			{ type: "block_action", action_id: "poll_mod", value: `delete|${latest?.rev}|${row.id}` },
+			site.as(admin),
+		)) as { blocks: Array<Record<string, unknown>> };
+		expect(asking.blocks).toEqual(
+			expect.arrayContaining([expect.objectContaining({ type: "banner", title: "Delete this poll?" })]),
+		);
+
+		const deleted = (await site.call(
+			"admin",
+			{ type: "block_action", action_id: "delete_confirm", value: `delete_confirm|${latest?.rev}|${row.id}` },
+			site.as(admin),
+		)) as { toast?: { message: string } };
+		expect(deleted.toast?.message).toBe("Poll deleted.");
+		expect(await site.rt.inspect.storage.get(POLLS, row.id)).toBeNull();
+	});
+
+	it("locks answers once a poll has votes, and still allows wording fixes", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		const poll = samplePoll({ rev: "r1" });
+		await site.rt.fixtures.plugin.storage(POLLS, "poll_lock", poll);
+		await site.rt.fixtures.plugin.storage(VOTES, "poll_lock:ana:blue", {
+			poll: "poll_lock",
+			poll_option: "poll_lock:blue",
+			member_id: "ana",
+			createdAt: "2026-10-13T02:00:00.000Z",
+			visitor: "",
+			member_name: "",
+		});
+
+		const refused = (await site.call(
+			"admin",
+			{
+				type: "form_submit",
+				action_id: "save|r1|poll_lock",
+				values: { question: "Which colour should we ship?", options: "Blue\nGreen\nRed" },
+			},
+			site.as(admin),
+		)) as { toast?: { message: string; type: string } };
+		expect(refused.toast).toMatchObject({
+			type: "error",
+			message: "This poll has votes, so answers cannot be added or removed.",
+		});
+
+		const saved = (await site.call(
+			"admin",
+			{
+				type: "form_submit",
+				action_id: "save|r1|poll_lock",
+				values: { question: "Which colour should we make?", options: "Navy\nForest" },
+			},
+			site.as(admin),
+		)) as { toast?: { message: string } };
+		expect(saved.toast?.message).toBe("Poll saved.");
+		const updated = await site.rt.inspect.storage.get<{ question: string; options: Array<{ id: string; label: string }> }>(
+			POLLS,
+			"poll_lock",
+		);
+		expect(updated?.question).toBe("Which colour should we make?");
+		expect(updated?.options).toEqual([
+			{ id: "blue", label: "Navy" },
+			{ id: "green", label: "Forest" },
+		]);
+	});
+
+	it("renders the dashboard card of open polls", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await site.rt.fixtures.plugin.storage(POLLS, "poll_open", samplePoll());
+		const card = (await site.call("admin", { type: "page_load", page: "widget:open" }, site.as(admin))) as {
+			blocks: Array<Record<string, unknown>>;
+		};
+		expect(JSON.stringify(card.blocks)).toContain("Which colour should we ship?");
 	});
 });

@@ -48,8 +48,15 @@
 			},
 			{
 				"path": "/edit",
-				"label": "Edit",
-				"icon": "sparkle"
+				"label": "New poll",
+				"icon": "plus"
+			}
+		],
+		"widgets": [
+			{
+				"id": "open",
+				"title": "Open polls",
+				"size": "half"
 			}
 		]
 	},
