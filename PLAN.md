@@ -20,6 +20,10 @@ The plan for this plugin, kept in the repository so it travels with the code. `S
 | Numbers | Per poll: percent and count, or percent only. |
 | Copy a poll | In 0.1.0. |
 | Past polls page, download of votes | Not in 0.1.0. |
+| Members creating polls | No. EmDash is not member-focused for now: the plugin is about what the admin can do. Visitors and members vote; only the admin creates and manages polls. |
+| Poll list page, a page per poll, poll categories, a colour per poll | No. |
+| Who sees voter names | The admin only. |
+| Thank-you message | Yes, optional, per poll. |
 | Long lists and setup | Next, Previous and find in admin. Developer guide plus one command. |
 
 ## 0.1.0: first release

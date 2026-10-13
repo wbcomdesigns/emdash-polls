@@ -55,7 +55,24 @@ Settled. Do not reopen these in code review. Dated 2026-10-13 unless noted.
 | Numbers | Per poll: percent and count, or percent only. |
 | Copy a poll | In 0.1.0. |
 | Past polls page, download of votes | Not in 0.1.0. |
+| Members creating polls | No. EmDash is not member-focused for now: the plugin is about what the admin can do. Visitors and members vote; only the admin creates and manages polls. |
+| Poll list page, a page per poll, poll categories, a colour per poll | No. |
+| Who sees voter names | The admin only. |
+| Thank-you message | Yes, optional, per poll. |
 | Long lists and setup | Next, Previous and find in admin. Developer guide plus one command. |
+
+## Against the free WordPress plugin (WB Polls Lite), checked 2026-10-13
+
+| Free WordPress feature | Here |
+| --- | --- |
+| Text polls, single or several choices, guest voting, start and end dates, result bars, dark mode | Yes |
+| Placed on any page | Yes: editing-screen panel, slots, in-text block with a trusted install |
+| Members create and manage polls, admin approval, role limits on creating | No, by owner decision: admin-only for now |
+| Poll list page, page per poll, categories, colour per poll | No, by owner decision |
+| Voters shown publicly | No. Admin only |
+| BuddyPress activity and group polls | No equivalent on EmDash |
+
+Paid WordPress features (image, video and audio answers, surveys, email capture, chart types, export, notices, comments on votes, voter-added answers) stay out, except the per-poll thank-you message.
 
 ## In scope for 0.1.0
 
@@ -117,6 +134,7 @@ Row id: Random id made at create time. Indexes: `status`, `createdAt`, `attach_k
 | `results` | string | `always`, `after_vote` or `after_close` |
 | `status` | string | `draft`, `open` or `closed` |
 | `closes_at` | string | ISO time or empty |
+| `thanks` | string | Optional line shown after voting. Plain text, up to 140 characters |
 | `opens_at` | string | ISO time or empty. A draft with a future time shows as Scheduled and opens on read |
 | `position` | string | `above` or `below` the content when attached. Default `below` |
 | `numbers` | string | `full` (percent and count) or `percent`. Admin always shows counts |
