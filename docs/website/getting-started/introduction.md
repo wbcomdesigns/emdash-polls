@@ -4,7 +4,7 @@
 
 WB Polls lets you ask your visitors a question and show the results live, on any page of your EmDash site.
 
-![A poll at the end of a blog post, asking what to write about next](../images/poll-vote.webp)
+![A poll at the end of a blog post, asking what to write about next, above the post's reviews](../images/poll-vote.webp)
 
 ## What you can do
 
@@ -30,3 +30,5 @@ EmDash plugins from the registry run in a safe sandbox and cannot add pages or s
 ## Next step
 
 [Install WB Polls](install.md).
+
+Then see [Use cases](use-cases.md) for ideas and settings, and [Posts and pages](posts-and-pages.md) for the template steps.

@@ -15,7 +15,9 @@
       "pages": [
         { "slug": "introduction", "title": "Introduction" },
         { "slug": "install", "title": "Install WB Polls" },
-        { "slug": "first-poll", "title": "Your first poll" }
+        { "slug": "first-poll", "title": "Your first poll" },
+        { "slug": "use-cases", "title": "Use cases" },
+        { "slug": "posts-and-pages", "title": "Posts and pages" }
       ]
     },
     {
