@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createPluginTestHost } from "@emdash-cms/plugin-test";
 
 import {
+	answerFields,
+	answersFromForm,
 	effectiveStatus,
 	emptyPoll,
 	parsePoll,
@@ -76,6 +78,18 @@ describe("manifest", () => {
 });
 
 describe("schema helpers", () => {
+	it("reads only the answer fields the form showed", () => {
+		expect(answersFromForm({ answer_1: " Blue ", answer_2: "Green", answer_3: "Red" })).toBe("Blue\nGreen\nRed");
+		// Answer 2 cleared: answer 3 is hidden again, so its leftover text is not saved.
+		expect(answersFromForm({ answer_1: "Blue", answer_2: "", answer_3: "Red" })).toBe("Blue");
+		const fields = answerFields(["Blue", "Green"], false);
+		expect(fields).toHaveLength(10);
+		expect(fields[1]).not.toHaveProperty("condition");
+		expect(fields[2]).toMatchObject({ action_id: "answer_3", condition: { field: "answer_2", neq: "" } });
+		expect(answerFields(["Blue", "Green", "Red"], true)).toHaveLength(3);
+	});
+
+
 	it("keeps option ids stable and fills missing ones", () => {
 		const poll = parsePoll({
 			question: "Pick one",
@@ -196,7 +210,7 @@ describe("admin", () => {
 			{
 				type: "form_submit",
 				action_id: "save||",
-				values: { question: "Only one?", options: "Yes" },
+				values: { question: "Only one?", answer_1: "Yes" },
 			},
 			site.as(admin),
 		)) as { toast?: { message: string; type: string } };
@@ -212,7 +226,7 @@ describe("admin", () => {
 			{
 				type: "form_submit",
 				action_id: "save||",
-				values: { question: "Which colour?", options: "Blue\nGreen", who: "anyone" },
+				values: { question: "Which colour?", answer_1: "Blue", answer_2: "Green", who: "anyone" },
 			},
 			site.as(admin),
 		)) as { toast?: { message: string } };
@@ -297,7 +311,7 @@ describe("admin", () => {
 			{
 				type: "form_submit",
 				action_id: "save|r1|poll_lock",
-				values: { question: "Which colour should we ship?", options: "Blue\nGreen\nRed" },
+				values: { question: "Which colour should we ship?", answer_1: "Blue", answer_2: "Green", answer_3: "Red" },
 			},
 			site.as(admin),
 		)) as { toast?: { message: string; type: string } };
@@ -311,7 +325,7 @@ describe("admin", () => {
 			{
 				type: "form_submit",
 				action_id: "save|r1|poll_lock",
-				values: { question: "Which colour should we make?", options: "Navy\nForest" },
+				values: { question: "Which colour should we make?", answer_1: "Navy", answer_2: "Forest" },
 			},
 			site.as(admin),
 		)) as { toast?: { message: string } };
@@ -352,7 +366,7 @@ describe("editing-screen panel", () => {
 
 		const created = await site.rt.admin.submitEditorPanel("poll", "posts", posts.live, "create", {
 			question: "Soup or salad?",
-			options: "Soup\nSalad",
+			answer_1: "Soup", answer_2: "Salad",
 			who: "anyone",
 			position: "below",
 		});
@@ -419,7 +433,7 @@ describe("editing-screen panel", () => {
 		const posts = await withPosts(site.rt);
 		const created = await site.rt.admin.submitEditorPanel("poll", "posts", posts.live, "create", {
 			question: "Draft here?",
-			options: "Yes\nNo",
+			answer_1: "Yes", answer_2: "No",
 			who: "anyone",
 			position: "below",
 			open_now: false,
@@ -936,7 +950,7 @@ describe("named lock, copy, results, erase", () => {
 			{
 				type: "form_submit",
 				action_id: `save|${stored?.rev}|poll_anon`,
-				values: { question: "Which colour should we ship?", options: "Blue\nGreen", named: true },
+				values: { question: "Which colour should we ship?", answer_1: "Blue", answer_2: "Green", named: true },
 			},
 			site.as(admin),
 		)) as { toast?: { message: string } };

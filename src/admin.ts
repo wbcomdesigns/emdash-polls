@@ -15,7 +15,8 @@ import {
 	listVotesForPoll,
 	newId,
 	newRev,
-	optionsToText,
+	answerFields,
+	answersFromForm,
 	parsePoll,
 	formTime,
 	parseTimeField,
@@ -25,7 +26,7 @@ import {
 	statusLabel,
 	tally,
 } from "./lib/polls";
-import { OPTIONS_MAX, OPTIONS_MIN, QUESTION_MAX, THANKS_MAX, type Poll } from "./lib/types";
+import { QUESTION_MAX, THANKS_MAX, type Poll } from "./lib/types";
 import { asBoolean, asRecord, asString } from "./util";
 
 type Toast = { message: string; type: "success" | "error" | "info" };
@@ -206,10 +207,9 @@ export async function renderForm(
 	const question = asString(values.question) || poll.question;
 	const opensAt = splitTime(poll.opens_at);
 	const closesAt = splitTime(poll.closes_at);
-	const optionsText = asString(values.options) || optionsToText(poll.options);
-	const lockedNote = voted
-		? "This poll has votes. You can correct the question and the wording of an answer. You cannot add, remove or reorder answers, and you cannot switch between one choice and several."
-		: `Write one answer per line. Use ${OPTIONS_MIN} to ${OPTIONS_MAX} answers.`;
+	const answerLabels = "answer_1" in values ? answersFromForm(values).split("\n") : poll.options.map((option) => option.label);
+	const lockedNote =
+		"This poll has votes. You can correct the question and the wording of an answer. You cannot add, remove or reorder answers, and you cannot switch between one choice and several.";
 	const types = await siteCollections(ctx);
 	const currentType =
 		asString(values.attach_key) || (poll.attach === "collection" ? poll.attach_key : "");
@@ -224,24 +224,21 @@ export async function renderForm(
 	return {
 		blocks: [
 			{ type: "header", text: existing ? "Edit poll" : "New poll" },
-			{ type: "context", text: lockedNote },
+			...(voted ? [{ type: "banner" as const, variant: "default" as const, title: lockedNote }] : []),
 			{
 				type: "form",
 				block_id: "poll",
+				// Order follows the owner's decisions: what to ask, who votes, what voters see,
+				// where it shows, when it runs. Fields that do not apply stay hidden.
 				fields: [
 					{
 						type: "text_input",
 						action_id: "question",
 						label: "Question",
+						placeholder: "Which feature should we build next?",
 						initial_value: question,
 					},
-					{
-						type: "text_input",
-						action_id: "options",
-						label: "Answers (one per line)",
-						multiline: true,
-						initial_value: optionsText,
-					},
+					...answerFields(answerLabels, voted),
 					{
 						type: "toggle",
 						action_id: "multiple",
@@ -258,35 +255,26 @@ export async function renderForm(
 						label: "Show each member's choice to the site owner",
 						initial_value: asBoolean(values.named ?? poll.named),
 					},
-					select("results", "When to show results", asString(values.results) || poll.results, [
-						{ label: "Always", value: "always" },
-						{ label: "After voting", value: "after_vote" },
-						{ label: "After the poll closes", value: "after_close" },
-					]),
 					{
 						type: "toggle",
 						action_id: "allow_change",
 						label: "Members may change their vote while the poll is open",
 						initial_value: asBoolean(values.allow_change ?? poll.allow_change),
 					},
-					{
-						type: "date_input",
-						action_id: "opens_date",
-						label: "Opens on (optional). A draft with a future day shows as Scheduled.",
-						initial_value: "opens_date" in values ? asString(values.opens_date) : opensAt.date,
-					},
-					select("opens_time", "Opens at (UTC)", asString(values.opens_time) || opensAt.time, timeOptions(opensAt.time)),
-					{
-						type: "date_input",
-						action_id: "closes_date",
-						label: "Closes on (optional)",
-						initial_value: "closes_date" in values ? asString(values.closes_date) : closesAt.date,
-					},
-					select("closes_time", "Closes at (UTC)", asString(values.closes_time) || closesAt.time, timeOptions(closesAt.time)),
+					select("results", "When to show results", asString(values.results) || poll.results, [
+						{ label: "Always", value: "always" },
+						{ label: "After voting", value: "after_vote" },
+						{ label: "After the poll closes", value: "after_close" },
+					]),
+					select("numbers", "Numbers visitors see", asString(values.numbers) || poll.numbers, [
+						{ label: "Percent and count", value: "full" },
+						{ label: "Percent only", value: "percent" },
+					]),
 					{
 						type: "text_input",
 						action_id: "thanks",
 						label: "Thank-you line after voting (optional)",
+						placeholder: "Thanks, your vote is in.",
 						initial_value: asString(values.thanks) || poll.thanks,
 					},
 					select("attach", "Where it shows", asString(values.attach) || poll.attach, [
@@ -297,15 +285,37 @@ export async function renderForm(
 							? [{ label: "One page (set from the page editor)", value: "entry" }]
 							: []),
 					]),
-					select("attach_key", "Content type. Needed for one content type.", currentType, typeOptions),
-					select("position", "Position on the page", asString(values.position) || poll.position, [
-						{ label: "Below the content", value: "below" },
-						{ label: "Above the content", value: "above" },
-					]),
-					select("numbers", "Numbers visitors see", asString(values.numbers) || poll.numbers, [
-						{ label: "Percent and count", value: "full" },
-						{ label: "Percent only", value: "percent" },
-					]),
+					{
+						...select("attach_key", "Content type", currentType, typeOptions),
+						condition: { field: "attach", eq: "collection" },
+					},
+					{
+						...select("position", "Position on the page", asString(values.position) || poll.position, [
+							{ label: "Below the content", value: "below" },
+							{ label: "Above the content", value: "above" },
+						]),
+						condition: { field: "attach", neq: "none" },
+					},
+					{
+						type: "date_input",
+						action_id: "opens_date",
+						label: "Opens on (optional, a draft opens by itself that day)",
+						initial_value: "opens_date" in values ? asString(values.opens_date) : opensAt.date,
+					},
+					{
+						...select("opens_time", "Opens at (UTC)", asString(values.opens_time) || opensAt.time, timeOptions(opensAt.time)),
+						condition: { field: "opens_date", neq: "" },
+					},
+					{
+						type: "date_input",
+						action_id: "closes_date",
+						label: "Closes on (optional)",
+						initial_value: "closes_date" in values ? asString(values.closes_date) : closesAt.date,
+					},
+					{
+						...select("closes_time", "Closes at (UTC)", asString(values.closes_time) || closesAt.time, timeOptions(closesAt.time)),
+						condition: { field: "closes_date", neq: "" },
+					},
 				],
 				submit: {
 					action_id: stamped("save", existing?.id ?? "", poll.rev),
@@ -465,7 +475,7 @@ async function savePoll(ctx: Ctx, values: Record<string, unknown>): Promise<Bloc
 	}
 
 	const voted = existing ? await hasVotes(ctx, existing.id) : false;
-	const options = applyOptionEdits(existing?.options ?? [], asString(values.options), voted);
+	const options = applyOptionEdits(existing?.options ?? [], answersFromForm(values), voted);
 	if (!options.ok) {
 		return renderForm(ctx, existing?.id ?? "", { toast: { message: options.error, type: "error" }, values });
 	}

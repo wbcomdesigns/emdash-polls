@@ -8,20 +8,12 @@ This walks through one poll from start to finish: a question at the end of every
 
 1. In admin, open **New poll**.
 2. **Question:** `What should we write about next?`
-3. **Answers (one per line):**
-
-   ```
-   Beginner guides
-   Case studies
-   Product news
-   Behind the scenes
-   ```
-
+3. **Answer 1** to **Answer 4:** `Beginner guides`, `Case studies`, `Product news`, `Behind the scenes`. A new answer field appears each time you fill the last one.
 4. **When to show results:** After voting. Visitors see the totals once they have voted.
 5. **Where it shows:** One content type. Then pick **Posts** in the next field.
 6. Choose **Create poll**.
 
-![The New poll form with a question and three answers, and the options below them](../images/admin-new-poll.webp)
+![The New poll form with a question, three answers and the next empty answer field](../images/admin-new-poll.webp)
 
 A new poll starts as a **Draft**. Visitors do not see it yet.
 

@@ -5,6 +5,8 @@ Versions match `package.json`, the git tag and the registry release. Newest firs
 ## [0.2.3]
 
 - Open and close times use a date picker and a time list (UTC) instead of typed dates.
+- The poll form has one field per answer, and the next one appears as you fill the last, instead of a small box that cut answers off. The same goes for the post editor's Poll panel.
+- The poll form follows the order you decide in: question and answers, who votes, what voters see, where it shows, then when it runs. Content type, position and the open and close times appear only when they apply. A poll with votes says so in a notice at the top.
 - Position on the page works: a slot marked above or below shows only polls set to that side. One slot without a position shows every poll, as before.
 - The post editor's Poll panel names the shared poll a post already shows, instead of saying there is none. Its poll list reads "Choose a poll".
 - Delete asks once. The Polls screen intro is one plain line.

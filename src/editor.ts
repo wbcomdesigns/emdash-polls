@@ -2,6 +2,8 @@ import type { PluginContext } from "emdash/plugin";
 
 import type { BlockResponse } from "./admin";
 import {
+	answerFields,
+	answersFromForm,
 	applyOptionEdits,
 	applySchedule,
 	attachLabel,
@@ -85,12 +87,7 @@ async function renderPanel(
 					block_id: "create",
 					fields: [
 						{ type: "text_input", action_id: "question", label: "Question" },
-						{
-							type: "text_input",
-							action_id: "options",
-							label: "Answers (one per line)",
-							multiline: true,
-						},
+						...answerFields([], false),
 						{
 							type: "select",
 							action_id: "who",
@@ -188,7 +185,7 @@ async function createHere(ctx: Ctx, entry: { collection: string; id: string }, v
 	if (!question) {
 		return renderPanel(ctx, entry, { toast: { message: "Write a question.", type: "error" } });
 	}
-	const options = applyOptionEdits([], asString(values.options), false);
+	const options = applyOptionEdits([], answersFromForm(values), false);
 	if (!options.ok) {
 		return renderPanel(ctx, entry, { toast: { message: options.error, type: "error" } });
 	}

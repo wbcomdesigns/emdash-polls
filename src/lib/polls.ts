@@ -262,8 +262,31 @@ export async function getVote(ctx: Ctx, id: string): Promise<(Vote & { id: strin
 	return { id, ...parseVote(data) };
 }
 
-export function optionsToText(options: PollOption[]): string {
-	return options.map((option) => option.label).join("\n");
+/**
+ * One text field per answer. EmDash's multiline field is about two lines tall and cannot be
+ * resized from Block Kit, so a list of answers clipped inside it. Answers 1 and 2 always show;
+ * each later one appears once the one before it has text. A poll with votes shows exactly its
+ * answers, because answers cannot be added then.
+ */
+export function answerFields(labels: string[], locked: boolean) {
+	const count = locked ? labels.length : OPTIONS_MAX;
+	return Array.from({ length: count }, (_, index) => ({
+		type: "text_input" as const,
+		action_id: `answer_${index + 1}`,
+		label: `Answer ${index + 1}`,
+		initial_value: labels[index] ?? "",
+		...(index >= OPTIONS_MIN && !locked ? { condition: { field: `answer_${index}`, neq: "" } } : {}),
+	}));
+}
+
+/**
+ * The answers a form sent, one per line. A field counts only when the form showed it (the same
+ * rule as answerFields), so text left in a field that was hidden again is not saved. Empty
+ * fields are dropped.
+ */
+export function answersFromForm(values: Record<string, unknown>): string {
+	const raw = Array.from({ length: OPTIONS_MAX }, (_, index) => asString(values[`answer_${index + 1}`]).trim());
+	return raw.filter((text, index) => text && (index < OPTIONS_MIN || raw[index - 1])).join("\n");
 }
 
 export function applyOptionEdits(

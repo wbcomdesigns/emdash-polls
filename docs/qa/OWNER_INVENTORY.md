@@ -19,7 +19,7 @@ Last updated: 2026-10-14 (0.2.1)
 | Control | Default | Notes |
 | --- | --- | --- |
 | Question | empty | Required |
-| Answers (one per line) | empty | At least two |
+| Answer 1 to Answer 10 | empty | At least two; the next field appears when the last is filled |
 | Allow more than one answer | off | Locked after votes |
 | Who can vote | Anyone | Anyone or members |
 | Show each member's choice | off | Locked after votes |
