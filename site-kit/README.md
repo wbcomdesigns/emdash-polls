@@ -6,7 +6,9 @@ Install WB Polls first (or the local package). Then apply this kit. The plugin a
 
 ## Apply on a site
 
-On the lab, prefer `./scripts/apply-kit.sh` (or `./scripts/setup-lab.sh` the first time). Manual copy from the site root (`src/` is the Astro app):
+On the lab, prefer `./scripts/apply-kit.sh` (or `./scripts/setup-lab.sh` the first time). That script never replaces a newer shared `wbcom-kit.ts` or `wbcom-base.css` another plugin already copied. Manual copy from the site root (`src/` is the Astro app):
+
+`wbcom-kit.ts` finds the plugin on a registry install (EmDash gives it an id, not the name `polls`) and on a local install. After you update the plugin, copy the kit again.
 
 ```bash
 K=path/to/emdash-polls/site-kit
@@ -18,6 +20,7 @@ cp $K/styles/wbcom-base.css src/styles/wbcom-base.css
 cp $K/styles/polls.css src/styles/polls.css
 cp $K/components/Poll.astro src/components/Poll.astro
 cp $K/components/PollSlot.astro src/components/PollSlot.astro
+cp $K/components/MyVotes.astro src/components/MyVotes.astro
 ```
 
 Then add one slot to the layout that wraps posts and pages:
@@ -36,6 +39,15 @@ Or place a specific poll:
 import Poll from "../components/Poll.astro";
 ---
 <Poll id="p_..." />
+```
+
+On an account page, show the member their votes:
+
+```astro
+---
+import MyVotes from "../components/MyVotes.astro";
+---
+<MyVotes />
 ```
 
 `astro.config.mjs` must load the sandbox runner and the plugin.
@@ -61,6 +73,7 @@ A registry install cannot put a poll inside article text. The slot and `<Poll id
 - A poll question, answers and a Vote button on an open poll
 - Results when the poll's visibility rule allows them
 - Nothing, not an empty box, when a slot has no matching poll
+- My votes: polls the signed-in member voted in, and a two-click erase
 - Admin → Polls: list, create, edit, results, copy, delete
 
 ## Lab prove
@@ -70,4 +83,4 @@ A registry install cannot put a poll inside article text. The slot and `<Poll id
 ./scripts/prove-lab.sh
 ```
 
-Then open http://127.0.0.1:4332/polls-demo
+Then open http://127.0.0.1:4332/polls-demo and http://127.0.0.1:4332/polls-mine

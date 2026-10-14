@@ -21,6 +21,7 @@ const closed = Astro.url.searchParams.get("closed") || seeded.closed;
 		<section>
 			<h1>Polls demo</h1>
 			<p>This is the component a site owner copies onto any page. Open a poll in admin, then visit this page.</p>
+			<p><a href="/polls-mine">My votes</a></p>
 			{id ? <p>Showing one poll from the address bar.</p> : <p>Single choice, several choices, a slot poll, and a closed poll when the prove script has seeded them.</p>}
 		</section>
 		{id ? <Poll id={id} /> : single ? <Poll id={single} /> : <Poll latest />}

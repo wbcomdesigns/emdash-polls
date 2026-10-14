@@ -1,0 +1,18 @@
+---
+/**
+ * Lab only. Mounts My votes so M-7 and M-8 can be walked in a browser.
+ * A real site puts <MyVotes /> on an account page.
+ */
+import Base from "../layouts/Base.astro";
+import MyVotes from "../components/MyVotes.astro";
+---
+
+<Base title="My votes" description="Lab page for the Polls My votes kit.">
+	<div style="max-width: 40rem; margin-inline: auto; padding: 2rem 1rem; display: grid; gap: 2rem;">
+		<section>
+			<p>This is the component a site owner copies onto an account page. Vote on the demo first, then come back.</p>
+			<p><a href="/polls-demo">Open the polls demo</a></p>
+		</section>
+		<MyVotes />
+	</div>
+</Base>

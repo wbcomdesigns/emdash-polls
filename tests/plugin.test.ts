@@ -44,6 +44,8 @@ describe("wording", () => {
 		const { polls } = await import("../site-kit/lib/polls-strings");
 		expect(polls.vote).toBe("Vote");
 		expect(polls.change).toBe("Change vote");
+		expect(polls.myVotes).toBe("My votes");
+		expect(polls.erase).toBe("Delete my votes");
 		expect(polls.honeypot).toBe("company website");
 		expect(phrase("FAILED")).toBe(polls.fallback);
 	});
@@ -69,7 +71,7 @@ describe("manifest", () => {
 		expect(host.manifest.admin?.editorPanels).toEqual(
 			expect.arrayContaining([expect.objectContaining({ id: "poll", title: "Poll", route: "editor_poll" })]),
 		);
-		expect(host.manifest.capabilities ?? []).toEqual([]);
+		expect(host.manifest.capabilities ?? []).toEqual(["schema:read"]);
 	});
 });
 
@@ -173,6 +175,17 @@ describe("admin", () => {
 		expect(form.blocks).toEqual(
 			expect.arrayContaining([expect.objectContaining({ type: "header", text: "New poll" })]),
 		);
+	});
+
+	it("offers content types by name, not a typed slug", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await withPosts(site.rt);
+		const form = await site.rt.admin.loadPage("/edit");
+		const text = JSON.stringify(form.blocks);
+		expect(text).toContain("Posts");
+		expect(text).not.toContain("Content type slug");
+		expect(text).toContain("Choose a content type");
 	});
 
 	it("refuses a poll with one option", async () => {
@@ -563,6 +576,48 @@ describe("public get", () => {
 		expect((await site.rt.actions.routes.request("vote", { method: "POST" })).status).toBe(401);
 		expect((await site.rt.actions.routes.request("ballot", { method: "GET" })).status).toBe(401);
 		expect((await site.rt.actions.routes.request("mine", { method: "GET" })).status).toBe(401);
+		expect((await site.rt.actions.routes.request("mine", { method: "DELETE" })).status).toBe(401);
+	});
+});
+
+describe("my votes", () => {
+	it("lists only the caller's votes and ignores a forged member id on erase", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await site.rt.fixtures.plugin.storage(POLLS, "poll_a", samplePoll({ question: "Colour?" }));
+		await site.rt.fixtures.plugin.storage(POLLS, "poll_b", samplePoll({ question: "Layout?" }));
+		await site.call("vote", { id: "poll_a", choices: ["blue"] }, site.as(ana));
+		await site.call("vote", { id: "poll_b", choices: ["green"] }, site.as(ben));
+
+		const mine = (await site.call("mine", {}, { method: "GET", user: ana })) as {
+			ok: boolean;
+			items: Array<{ id: string; question: string; labels: string[] }>;
+		};
+		expect(mine).toMatchObject({
+			ok: true,
+			items: [{ id: "poll_a", question: "Colour?", labels: ["Blue"] }],
+		});
+		expect(mine.items).toHaveLength(1);
+
+		const erased = (await site.call("mine", { member_id: "ben" }, site.as(ana, "DELETE"))) as {
+			ok: boolean;
+			erased: number;
+		};
+		expect(erased).toMatchObject({ ok: true, erased: 1 });
+		expect(await site.rt.inspect.storage.get(VOTES, "poll_a:ana:blue")).toBeNull();
+		expect(await site.rt.inspect.storage.get(VOTES, "poll_b:ben:green")).toMatchObject({ member_id: "ben" });
+
+		const after = (await site.call("mine", {}, { method: "GET", user: ana })) as { items: unknown[] };
+		expect(after.items).toEqual([]);
+
+		const dropped = (await site.call("get", { id: "poll_a" }, { method: "GET" })) as {
+			results?: { total: number };
+		};
+		expect(dropped.results?.total).toBe(0);
+		const kept = (await site.call("get", { id: "poll_b" }, { method: "GET" })) as {
+			results?: { total: number };
+		};
+		expect(kept.results?.total).toBe(1);
 	});
 });
 

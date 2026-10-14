@@ -13,6 +13,7 @@ Legend: **Y** allowed · **N** denied · **-** not applicable
 | Permission | anonymous | subscriber | contributor | author | editor | admin |
 | --- | --- | --- | --- | --- | --- | --- |
 | public routes | Y | Y | Y | Y | Y | Y |
+| `schema:read` (content type names) | N | N | N | N | Y | Y |
 | `content:read` (MEMBER) | N | Y | Y | Y | Y | Y |
 | staff plugin admin | N | N | N | N | Y | Y |
 
@@ -23,7 +24,7 @@ Legend: **Y** allowed · **N** denied · **-** not applicable
 | Read poll | `GET get`, `GET slot` | Y | Y | Y | Y | Y |
 | Guest vote / ballot | `POST vote_guest`, `GET ballot_guest` | Y | - | - | - | - |
 | Member vote / ballot | `POST vote`, `GET ballot` | N | Y | Y | Y | Y |
-| My votes | `GET/DELETE mine` | N | UNAVAILABLE (#6) | UNAVAILABLE | UNAVAILABLE | UNAVAILABLE |
+| My votes | `GET/DELETE mine` | N | Y | N | Y | Y |
 | Admin pages | `POST admin` | N | N | N | Y | Y |
 | Editor Poll panel | `editor_poll` | N | N | N | Y | Y |
 

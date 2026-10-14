@@ -14,7 +14,7 @@ This file is the contract for the plugin. Code, tests, docs and cards all follow
 - **Member account list (`<My...>`):** not in 0.1.0. Moved to 0.2.0. The erase-by-person function stays, as an admin action.
 - **Block inside post text:** only with a trusted install. The registry install is the whole product without it.
 - **Open and close times** are shown in the site's time zone and date format, from EmDash's site settings.
-- **Capabilities:** still none for the core product. `content:read` is added only if the editing-screen panel needs to show the entry's title.
+- **Capabilities:** `schema:read` so the poll form can list content types by name. Nothing else.
 
 ## Purpose
 
@@ -126,7 +126,7 @@ Do not build these. If a card seems to need one, stop and ask the owner.
 
 ## Capabilities
 
-None. This plugin reads and writes only its own storage.
+`schema:read`. Used to list the site's content types by name on the poll form. The plugin still stores only its own polls and votes.
 
 Ask for nothing more without the owner's agreement: every capability is shown to the site owner at install.
 
@@ -176,7 +176,7 @@ Row id: `<pollId>:<memberId>:<optionId>`. One row per chosen option. A guest's r
 
 ## Routes
 
-Base: `/_emdash/api/plugins/polls/<name>`.
+Base: `/_emdash/api/plugins/polls/<name>` on a local install. A registry install uses the id EmDash assigns (`r_` + 16 characters). The kit tries that id first.
 
 | Route | Who | Methods | Input | Returns |
 | --- | --- | --- | --- | --- |
@@ -210,8 +210,10 @@ None.
 | --- | --- |
 | `site-kit/components/Poll.astro` | `<Poll id />` or `<Poll latest />` |
 | `site-kit/components/PollSlot.astro` | `<PollSlot collection id />`. Shows whichever poll the owner attached, or nothing |
+| `site-kit/components/MyVotes.astro` | `<MyVotes />`. Polls the signed-in member voted in, and a two-click erase |
 | `site-kit/styles/polls.css` | Option rows and result bars |
 | `site-kit/lab/polls-demo.astro` | Lab page with one poll of each kind |
+| `site-kit/lab/polls-mine.astro` | Lab page that mounts My votes |
 | `site-kit/lib/polls-strings.ts` | The wording file. The only place visitor-facing text is written |
 
 Plus the two shared files every Wbcom plugin kit carries: `site-kit/lib/wbcom-kit.ts` and `site-kit/styles/wbcom-base.css`.
@@ -229,6 +231,7 @@ A screen is done when every state listed here has been seen in a browser at 1440
 | Poll slot | Renders nothing at all when no poll is attached: no heading, no gap |
 | Named poll | A plain line above the options: your choice will be visible to the site owner. Shown before voting, not after |
 | Admin results on a named poll | A list of members and their choices under the bars. On an anonymous poll that list does not exist |
+| My votes | Sign-in prompt for guests, empty list with a next step, list of questions and chosen labels (no ids), two-click erase |
 
 ## Risks and open questions
 

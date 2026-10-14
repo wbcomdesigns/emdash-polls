@@ -12,8 +12,8 @@ status() { curl -s -o /dev/null -w "%{http_code}" -H "X-EmDash-Request: 1" -H "O
 json "$API/health" | grep -q '"ok":true' || fail "health"
 ok "health"
 
-for leftover in "This poll is not available." "Sign in to vote." "This poll is closed." "company website" "Change vote"; do
-	if grep -F -q -- "$leftover" "$PLUGIN/site-kit/components/Poll.astro" "$PLUGIN/site-kit/components/PollSlot.astro"; then
+for leftover in "This poll is not available." "Sign in to vote." "This poll is closed." "company website" "Change vote" "My votes" "Delete my votes" "You have not voted in any polls yet."; do
+	if grep -F -q -- "$leftover" "$PLUGIN/site-kit/components/Poll.astro" "$PLUGIN/site-kit/components/PollSlot.astro" "$PLUGIN/site-kit/components/MyVotes.astro"; then
 		fail "visitor phrase still in kit component: $leftover"
 	fi
 done
@@ -39,6 +39,10 @@ ok "get latest"
 
 curl -sf "$BASE/polls-demo" | grep -q "data-wbp" || fail "polls demo page"
 ok "polls demo page"
+curl -sf "$BASE/polls-mine" | grep -q "data-wbp-mine" || fail "polls mine page"
+ok "polls mine page"
+json -b "$JAR" "$API/mine" | grep -q '"ok":true' || fail "mine get"
+ok "mine get as member"
 
 slot="$(json "$API/slot?collection=docs&id=none")"
 echo "$slot" | grep -q '"ok":true' || fail "slot"

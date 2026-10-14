@@ -27,7 +27,7 @@
 		"faq": { "file": "./docs/registry/faq.md" },
 		"changelog": { "file": "./docs/registry/changelog.md" }
 	},
-	"capabilities": [],
+	"capabilities": ["schema:read"],
 	"allowedHosts": [],
 	"storage": {
 		"polls": {

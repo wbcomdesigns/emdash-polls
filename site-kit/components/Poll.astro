@@ -127,9 +127,10 @@ const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}` : latest
 		const closed = poll.status === "closed";
 		const members = poll.who === "members";
 		const canVote = !closed && (!members || signedIn) && (!mine.length || Boolean(poll.allow_change));
+		const showBars = Boolean(data.results) && (mine.length > 0 || closed);
 		let html = `<h2>${esc(poll.question)}</h2>`;
 		if (closed) html += `<p class="wb-muted">${esc(S.closed)}</p>`;
-		if (data.results) html += bars(poll, data.results, mine);
+		if (showBars) html += bars(poll, data.results as { total: number; options: Option[] }, mine);
 		else if (poll.results === "after_vote" && !mine.length) html += `<p class="wb-muted">${esc(S.hidden)}</p>`;
 		else if (poll.results === "after_close" && !closed) html += `<p class="wb-muted">${esc(S.hiddenClosed)}</p>`;
 		if (mine.length) html += `<p class="wb-muted">${esc(S.voted)}</p>`;

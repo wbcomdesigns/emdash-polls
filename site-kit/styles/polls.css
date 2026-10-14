@@ -1,4 +1,15 @@
-/* Polls: option rows and result bars. Colours come from wbcom-base. */
+/* Polls: option rows and result bars. Colours come from wbcom-base.
+   The canvas lives here so the shared .wb file does not frame other plugins. */
+
+.wb[data-wbp],
+.wb[data-wbp-mine] {
+	--wb-bg: var(--color-bg, light-dark(#ffffff, #121212));
+	--wb-brand: var(--color-brand, light-dark(#0066cc, #1d4ed8));
+	padding: var(--wb-gap);
+	background: var(--wb-bg);
+	border: 1px solid var(--wb-border);
+	border-radius: var(--wb-radius);
+}
 
 .wbp-options {
 	display: grid;
@@ -87,6 +98,11 @@
 	flex-wrap: wrap;
 	gap: 0.75rem;
 	align-items: center;
+}
+
+.wbp-erase {
+	display: grid;
+	gap: 0.75rem;
 }
 
 .wbp-hp {
