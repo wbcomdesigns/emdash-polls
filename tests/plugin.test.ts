@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createPluginTestHost } from "@emdash-cms/plugin-test";
 
 import {
+	answerFields,
+	answersFromForm,
 	effectiveStatus,
 	emptyPoll,
 	parsePoll,
@@ -76,6 +78,19 @@ describe("manifest", () => {
 });
 
 describe("schema helpers", () => {
+	it("reads only the answer fields the form showed", () => {
+		expect(answersFromForm({ answer_1: " Blue ", answer_2: "Green", answer_3: "Red" })).toEqual(["Blue", "Green", "Red"]);
+		// Answer 2 cleared: answer 3 is hidden again, so its leftover text is not saved.
+		expect(answersFromForm({ answer_1: "Blue", answer_2: "", answer_3: "Red" })).toEqual(["Blue"]);
+		// A poll with votes shows every answer field, so a cleared one stays in place and is reported.
+		expect(answersFromForm({ answer_1: "Blue", answer_2: "", answer_3: "Red" }, 3)).toEqual(["Blue", "", "Red"]);
+		const fields = answerFields(["Blue", "Green"], false);
+		expect(fields).toHaveLength(10);
+		expect(fields[1]).not.toHaveProperty("condition");
+		expect(fields[2]).toMatchObject({ action_id: "answer_3", condition: { field: "answer_2", neq: "" } });
+		expect(answerFields(["Blue", "Green", "Red"], true)).toHaveLength(3);
+	});
+
 	it("keeps option ids stable and fills missing ones", () => {
 		const poll = parsePoll({
 			question: "Pick one",
@@ -196,7 +211,7 @@ describe("admin", () => {
 			{
 				type: "form_submit",
 				action_id: "save||",
-				values: { question: "Only one?", options: "Yes" },
+				values: { question: "Only one?", answer_1: "Yes" },
 			},
 			site.as(admin),
 		)) as { toast?: { message: string; type: string } };
@@ -212,7 +227,7 @@ describe("admin", () => {
 			{
 				type: "form_submit",
 				action_id: "save||",
-				values: { question: "Which colour?", options: "Blue\nGreen", who: "anyone" },
+				values: { question: "Which colour?", answer_1: "Blue", answer_2: "Green", who: "anyone" },
 			},
 			site.as(admin),
 		)) as { toast?: { message: string } };
@@ -292,26 +307,40 @@ describe("admin", () => {
 			member_name: "",
 		});
 
-		const refused = (await site.call(
+		// A cleared answer is refused, and the form comes back with every answer field still there.
+		const cleared = (await site.call(
 			"admin",
 			{
 				type: "form_submit",
 				action_id: "save|r1|poll_lock",
-				values: { question: "Which colour should we ship?", options: "Blue\nGreen\nRed" },
+				values: { question: "Which colour should we ship?", answer_1: "Blue", answer_2: "" },
 			},
 			site.as(admin),
-		)) as { toast?: { message: string; type: string } };
-		expect(refused.toast).toMatchObject({
-			type: "error",
-			message: "This poll has votes, so answers cannot be added or removed.",
-		});
+		)) as { toast?: { message: string; type: string }; blocks: Array<{ type: string; fields?: Array<{ action_id: string; initial_value?: unknown }> }> };
+		expect(cleared.toast).toMatchObject({ type: "error", message: "Every answer needs text." });
+		const form = cleared.blocks.find((block) => block.type === "form");
+		expect(form?.fields?.filter((field) => field.action_id.startsWith("answer_")).map((field) => field.initial_value)).toEqual(["Blue", ""]);
 
+		// The form shows no slot for a new answer on a poll with votes; a third answer sent anyway is not added.
+		const extra = (await site.call(
+			"admin",
+			{
+				type: "form_submit",
+				action_id: "save|r1|poll_lock",
+				values: { question: "Which colour should we ship?", answer_1: "Blue", answer_2: "Green", answer_3: "Red" },
+			},
+			site.as(admin),
+		)) as { toast?: { message: string } };
+		expect(extra.toast?.message).toBe("Poll saved.");
+		expect((await site.rt.inspect.storage.get<{ options: unknown[] }>(POLLS, "poll_lock"))?.options).toHaveLength(2);
+
+		const rev = (await site.rt.inspect.storage.get<{ rev: string }>(POLLS, "poll_lock"))?.rev;
 		const saved = (await site.call(
 			"admin",
 			{
 				type: "form_submit",
-				action_id: "save|r1|poll_lock",
-				values: { question: "Which colour should we make?", options: "Navy\nForest" },
+				action_id: `save|${rev}|poll_lock`,
+				values: { question: "Which colour should we make?", answer_1: "Navy", answer_2: "Forest" },
 			},
 			site.as(admin),
 		)) as { toast?: { message: string } };
@@ -346,13 +375,13 @@ describe("editing-screen panel", () => {
 
 		const empty = await site.rt.admin.loadEditorPanel("poll", "posts", posts.live);
 		expect(empty.blocks).toEqual(
-			expect.arrayContaining([expect.objectContaining({ type: "empty", title: "No poll here" })]),
+			expect.arrayContaining([expect.objectContaining({ type: "section", text: expect.stringContaining("No poll on this page") })]),
 		);
 		expect(JSON.stringify(empty.blocks)).not.toContain('"text":"Poll"');
 
 		const created = await site.rt.admin.submitEditorPanel("poll", "posts", posts.live, "create", {
 			question: "Soup or salad?",
-			options: "Soup\nSalad",
+			answer_1: "Soup", answer_2: "Salad",
 			who: "anyone",
 			position: "below",
 		});
@@ -372,9 +401,28 @@ describe("editing-screen panel", () => {
 		const removed = await site.rt.admin.actEditorPanel("poll", "posts", posts.live, "remove");
 		expect(removed.toast).toMatchObject({ type: "success" });
 		expect(removed.blocks).toEqual(
-			expect.arrayContaining([expect.objectContaining({ type: "empty", title: "No poll here" })]),
+			expect.arrayContaining([expect.objectContaining({ type: "section", text: expect.stringContaining("No poll on this page") })]),
 		);
 		expect((await site.rt.inspect.storage.get<{ attach: string }>(POLLS, stored[0]?.id ?? ""))?.attach).toBe("none");
+	});
+
+	it("names a shared poll that shows on this page instead of saying there is none", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		const posts = await withPosts(site.rt);
+		await site.rt.fixtures.plugin.storage(
+			POLLS,
+			"poll_type",
+			samplePoll({ status: "open", attach: "collection", attach_key: "posts" }),
+		);
+		const panel = JSON.stringify((await site.rt.admin.loadEditorPanel("poll", "posts", posts.live)).blocks);
+		expect(panel).toContain("Visitors see \\\"Which colour should we ship?\\\" here");
+		expect(panel).toContain("every entry of this content type");
+		expect(panel).not.toContain("No poll on this page");
+
+		await site.rt.fixtures.plugin.storage(POLLS, "poll_type", samplePoll({ status: "draft", attach: "collection", attach_key: "posts" }));
+		const quiet = JSON.stringify((await site.rt.admin.loadEditorPanel("poll", "posts", posts.live)).blocks);
+		expect(quiet).toContain("No poll on this page");
 	});
 
 	it("attaches an existing poll by question, not by a typed id", async () => {
@@ -400,7 +448,7 @@ describe("editing-screen panel", () => {
 		const posts = await withPosts(site.rt);
 		const created = await site.rt.admin.submitEditorPanel("poll", "posts", posts.live, "create", {
 			question: "Draft here?",
-			options: "Yes\nNo",
+			answer_1: "Yes", answer_2: "No",
 			who: "anyone",
 			position: "below",
 			open_now: false,
@@ -494,6 +542,14 @@ describe("public get", () => {
 			},
 		});
 		expect(got.results).toBeUndefined();
+	});
+
+	it("shows results of a closed after_vote poll to someone who never voted", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await site.rt.fixtures.plugin.storage(POLLS, "poll_done", samplePoll({ status: "closed", results: "after_vote" }));
+		const got = (await site.call("get", { id: "poll_done" }, { method: "GET" })) as { results?: { total: number } };
+		expect(got.results).toBeDefined();
 	});
 
 	it("hides after_close results while open, then closes on read and shows them", async () => {
@@ -865,9 +921,11 @@ describe("slot", () => {
 
 		const page = (await site.call("slot", { collection: "posts", id: posts.live }, { method: "GET" })) as {
 			ok: boolean;
-			poll?: { question: string };
+			poll?: { question: string; position?: string };
 		};
 		expect(page.poll?.question).toBe("This page?");
+		// The kit needs the position to fill only the matching above or below slot.
+		expect(page.poll?.position).toBe("below");
 
 		const other = (await site.call("slot", { collection: "posts", id: "no-such" }, { method: "GET" })) as {
 			poll?: { question: string };
@@ -907,7 +965,7 @@ describe("named lock, copy, results, erase", () => {
 			{
 				type: "form_submit",
 				action_id: `save|${stored?.rev}|poll_anon`,
-				values: { question: "Which colour should we ship?", options: "Blue\nGreen", named: true },
+				values: { question: "Which colour should we ship?", answer_1: "Blue", answer_2: "Green", named: true },
 			},
 			site.as(admin),
 		)) as { toast?: { message: string } };
@@ -984,5 +1042,25 @@ describe("named lock, copy, results, erase", () => {
 		)) as { blocks: Array<Record<string, unknown>> };
 		expect(JSON.stringify(results.blocks)).not.toContain("ana");
 		expect(JSON.stringify(results.blocks)).toContain("Anonymous");
+	});
+});
+
+describe("poll times from the date picker", () => {
+	it("joins a day and a time as UTC, keeps stored times exactly, refuses unreal days", async () => {
+		const { joinTime, splitTime, formTime, timeOptions, parseTimeField } = await import("../src/lib/polls");
+		expect(joinTime("", "09:00")).toBe("");
+		expect(joinTime("2026-10-20", "09:30")).toBe("2026-10-20T09:30:00Z");
+		expect(joinTime("2026-10-20", "junk")).toBe("2026-10-20T00:00:00Z");
+		expect(parseTimeField(joinTime("2026-02-31", "09:00")).ok).toBe(false);
+		expect(parseTimeField(joinTime("20261020", "09:00")).ok).toBe(false);
+		expect(parseTimeField(joinTime("2026-10-20", "09:30"))).toEqual({ ok: true, value: "2026-10-20T09:30:00.000Z" });
+		expect(splitTime("2026-10-20T18:45:00.000Z")).toEqual({ date: "2026-10-20", time: "18:45" });
+		expect(splitTime("")).toEqual({ date: "", time: "00:00" });
+		// An old off-grid time stays in the list and is kept untouched on save.
+		expect(timeOptions("18:45").some((o) => o.value === "18:45")).toBe(true);
+		expect(timeOptions("18:30")).toHaveLength(48);
+		expect(formTime("2026-10-20T18:45:30.000Z", "2026-10-20", "18:45")).toBe("2026-10-20T18:45:30.000Z");
+		expect(formTime("2026-10-20T18:45:30.000Z", "2026-10-21", "18:45")).toBe("2026-10-21T18:45:00Z");
+		expect(formTime("2026-10-20T18:45:30.000Z", "", "18:45")).toBe("");
 	});
 });

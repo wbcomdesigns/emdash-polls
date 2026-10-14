@@ -159,8 +159,8 @@ export async function applySchedule(ctx: Ctx, poll: PollRow): Promise<PollRow> {
 }
 
 export function guestSeesResults(poll: Poll, status: PollStatus): boolean {
-	if (poll.results === "always") return true;
-	if (poll.results === "after_close" && status === "closed") return true;
+	// Once voting has ended nobody can vote any more, so "after voting" would hide results for good.
+	if (poll.results === "always" || status === "closed") return true;
 	return false;
 }
 
@@ -198,6 +198,7 @@ export function publicPoll(poll: PollRow, status: PollStatus) {
 		named: poll.named,
 		results: poll.results,
 		numbers: poll.numbers,
+		position: poll.position,
 	};
 }
 
@@ -261,20 +262,42 @@ export async function getVote(ctx: Ctx, id: string): Promise<(Vote & { id: strin
 	return { id, ...parseVote(data) };
 }
 
-export function optionsToText(options: PollOption[]): string {
-	return options.map((option) => option.label).join("\n");
+/**
+ * One text field per answer. EmDash's multiline field is about two lines tall and cannot be
+ * resized from Block Kit, so a list of answers clipped inside it. Answers 1 and 2 always show;
+ * each later one appears once the one before it has text. A poll with votes shows exactly its
+ * answers, because answers cannot be added then.
+ */
+export function answerFields(labels: string[], locked: boolean) {
+	const count = locked ? labels.length : OPTIONS_MAX;
+	return Array.from({ length: count }, (_, index) => ({
+		type: "text_input" as const,
+		action_id: `answer_${index + 1}`,
+		label: `Answer ${index + 1}`,
+		initial_value: labels[index] ?? "",
+		...(index >= OPTIONS_MIN && !locked ? { condition: { field: `answer_${index}`, neq: "" } } : {}),
+	}));
+}
+
+/**
+ * The answers a form sent, in field order. On a poll with votes (lockedCount) every answer field
+ * shows, so all of them are read as they are, empty ones included, and the save can say which
+ * needs text. Otherwise a field counts only when the form showed it (the rule in answerFields),
+ * so text left in a field that was hidden again is not saved, and empty fields are dropped.
+ */
+export function answersFromForm(values: Record<string, unknown>, lockedCount = 0): string[] {
+	const raw = Array.from({ length: OPTIONS_MAX }, (_, index) => asString(values[`answer_${index + 1}`]).trim());
+	if (lockedCount) return raw.slice(0, lockedCount);
+	return raw.filter((text, index) => text && (index < OPTIONS_MIN || raw[index - 1]));
 }
 
 export function applyOptionEdits(
 	previous: PollOption[],
-	text: string,
+	answers: string[],
 	locked: boolean,
 ): { ok: true; options: PollOption[] } | { ok: false; error: string } {
-	const labels = text
-		.split(/\r?\n/)
-		.map((line) => line.trim())
-		.filter(Boolean)
-		.map((label) => label.slice(0, QUESTION_MAX));
+	const trimmed = answers.map((answer) => answer.trim().slice(0, QUESTION_MAX));
+	const labels = locked ? trimmed : trimmed.filter(Boolean);
 	if (locked) {
 		if (labels.length !== previous.length) {
 			return { ok: false, error: "This poll has votes, so answers cannot be added or removed." };
@@ -302,6 +325,43 @@ export function parseTimeField(value: unknown): { ok: true; value: string } | { 
 	const ms = Date.parse(text);
 	if (Number.isNaN(ms)) return { ok: false, error: "Use a real date and time, or leave the field empty." };
 	return { ok: true, value: new Date(ms).toISOString() };
+}
+
+/** Times of day offered next to the date picker, every 30 minutes. */
+export const TIME_OPTIONS: Array<{ label: string; value: string }> = Array.from({ length: 48 }, (_, i) => {
+	const value = `${String(Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`;
+	return { label: value, value };
+});
+
+/** The time list for a poll, plus its stored time when that is not on a half hour (set before 0.2.3). */
+export function timeOptions(current: string): Array<{ label: string; value: string }> {
+	if (!current || TIME_OPTIONS.some((item) => item.value === current)) return TIME_OPTIONS;
+	return [...TIME_OPTIONS, { label: current, value: current }].sort((a, b) => a.value.localeCompare(b.value));
+}
+
+/** A stored ISO time as the date picker's day and the time list's value (UTC), minutes kept as stored. */
+export function splitTime(iso: string): { date: string; time: string } {
+	const ms = Date.parse(iso);
+	if (!iso || Number.isNaN(ms)) return { date: "", time: "00:00" };
+	const text = new Date(ms).toISOString();
+	return { date: text.slice(0, 10), time: text.slice(11, 16) };
+}
+
+/** The date picker's day plus the time list, read as UTC. No day means no time set; a day that is not a real calendar day fails parseTimeField. */
+export function joinTime(date: unknown, time: unknown): string {
+	const day = asString(date);
+	if (!day) return "";
+	const real = /^\d{4}-\d{2}-\d{2}$/.test(day) && new Date(`${day}T00:00:00Z`).toISOString().slice(0, 10) === day;
+	if (!real) return "invalid";
+	const clock = /^([01]\d|2[0-3]):[0-5]\d$/.test(asString(time)) ? asString(time) : "00:00";
+	return `${day}T${clock}:00Z`;
+}
+
+/** Keep the stored time exactly (seconds included) when the owner left the day and time as they were. */
+export function formTime(stored: string, date: unknown, time: unknown): string {
+	const was = splitTime(stored);
+	if (stored && was.date === asString(date) && was.time === asString(time)) return stored;
+	return joinTime(date, time);
 }
 
 export function statusLabel(poll: Poll, now = Date.now()): string {

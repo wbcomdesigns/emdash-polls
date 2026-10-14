@@ -14,13 +14,19 @@ On the lab, prefer `./scripts/apply-kit.sh` (or `./scripts/setup-lab.sh` the fir
 K=path/to/emdash-polls/site-kit
 
 mkdir -p src/lib src/styles src/components
-cp $K/lib/wbcom-kit.ts src/lib/wbcom-kit.ts
 cp $K/lib/polls-strings.ts src/lib/polls-strings.ts
-cp $K/styles/wbcom-base.css src/styles/wbcom-base.css
 cp $K/styles/polls.css src/styles/polls.css
 cp $K/components/Poll.astro src/components/Poll.astro
 cp $K/components/PollSlot.astro src/components/PollSlot.astro
 cp $K/components/MyVotes.astro src/components/MyVotes.astro
+
+# The two shared files are used by every Wbcom plugin. Line 1 carries a number
+# (wbcom-shared: N). Copy only when the site has no copy yet or an older one,
+# so another plugin's newer copy is never replaced.
+shared() { v="$(sed -n '1s/.*wbcom-shared: *\([0-9]*\).*/\1/p' "$1" 2>/dev/null)"; echo "${v:-0}"; }
+newer() { [ ! -f "$2" ] || [ "$(shared "$1")" -ge "$(shared "$2")" ]; }
+newer "$K/lib/wbcom-kit.ts" src/lib/wbcom-kit.ts && cp "$K/lib/wbcom-kit.ts" src/lib/wbcom-kit.ts
+newer "$K/styles/wbcom-base.css" src/styles/wbcom-base.css && cp "$K/styles/wbcom-base.css" src/styles/wbcom-base.css
 ```
 
 Then add one slot to the layout that wraps posts and pages:
@@ -29,7 +35,17 @@ Then add one slot to the layout that wraps posts and pages:
 ---
 import PollSlot from "../components/PollSlot.astro";
 ---
-<PollSlot collection={entry.collection} id={entry.id} />
+<PollSlot collection="posts" id={post.data.id} />
+```
+
+Pass the entry's own id (`post.data.id`), not `post.id`: on the EmDash blog template `post.id` is the slug, and polls attached from the post editor are stored against the entry id. On the page template use `collection="pages" id={page.data.id}`.
+
+To honour each poll's **Position on the page** setting, place two slots instead, one on each side of the content. Each shows only the polls set to its side:
+
+```astro
+<PollSlot collection="posts" id={post.data.id} position="above" />
+<!-- the content -->
+<PollSlot collection="posts" id={post.data.id} position="below" />
 ```
 
 Or place a specific poll:

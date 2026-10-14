@@ -14,13 +14,15 @@ interface Props {
 	latest?: boolean;
 	collection?: string;
 	entry?: string;
+	/** Slot only: show just polls set to this position. Leave out to show any poll here. */
+	position?: "above" | "below" | "";
 }
 
-const { id = "", latest = false, collection = "", entry = "" } = Astro.props;
-const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}` : latest ? "latest" : id || "missing"}`;
+const { id = "", latest = false, collection = "", entry = "", position = "" } = Astro.props;
+const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}${position ? `-${position}` : ""}` : latest ? "latest" : id || "missing"}`;
 ---
 
-<section class="wb" id={uid} data-wbp data-id={id} data-latest={latest ? "1" : ""} data-collection={collection} data-entry={entry} aria-busy="true">
+<section class="wb" id={uid} data-wbp data-id={id} data-latest={latest ? "1" : ""} data-collection={collection} data-entry={entry} data-position={position} aria-busy="true">
 	<p class="wb-muted" data-wbp-live aria-live="polite">{S.loading}</p>
 	<div data-wbp-body></div>
 	<p class="wb-status" data-wbp-status role="status" hidden></p>
@@ -42,6 +44,7 @@ const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}` : latest
 		named?: boolean;
 		results?: string;
 		numbers?: string;
+		position?: string;
 	};
 	type Payload = {
 		ok?: boolean;
@@ -136,8 +139,9 @@ const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}` : latest
 		if (mine.length) html += `<p class="wb-muted">${esc(S.voted)}</p>`;
 		if (canVote) html += formHtml(root.id || "wbp", poll, mine);
 		else if (!closed && members && !signedIn) {
-			html += `<p class="wb-status" data-tone="error">${esc(S.signIn)} <a href="${esc(signInUrl())}">${esc(S.signInLink)}</a></p>`;
-			html += `<ul class="wb-list">${poll.options.map((option) => `<li class="wbp-option"><span>${esc(option.label)}</span></li>`).join("")}</ul>`;
+			// Not signed in is a prompt, not an error: list the answers, then a plain sign-in line.
+			html += `<ul class="wbp-results">${poll.options.map((option) => `<li class="wbp-option"><span>${esc(option.label)}</span></li>`).join("")}</ul>`;
+			html += `<p class="wb-status">${esc(S.signIn)} <a href="${esc(signInUrl())}">${esc(S.signInLink)}</a></p>`;
 		}
 		body.innerHTML = html;
 		live.textContent = "";
@@ -191,6 +195,14 @@ const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}` : latest
 				? "get?latest=1"
 				: `get?id=${encodeURIComponent(id)}`;
 		const got = (await api("polls", path)) as Payload;
+		// A slot placed for one position stays empty when the poll is set to the other one.
+		const wanted = root.dataset.position;
+		// A plugin older than 0.2.3 sends no position: treat it as the default, below, so a poll never shows twice.
+		if (collection && wanted && got.poll && (got.poll.position || "below") !== wanted) {
+			paint(root, { ok: false }, false);
+			root.removeAttribute("aria-busy");
+			return;
+		}
 		if (!got.ok || !got.poll) {
 			paint(root, got, false);
 			root.removeAttribute("aria-busy");

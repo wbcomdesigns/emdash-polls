@@ -15,14 +15,18 @@ import {
 	listVotesForPoll,
 	newId,
 	newRev,
-	optionsToText,
+	answerFields,
+	answersFromForm,
 	parsePoll,
+	formTime,
 	parseTimeField,
+	splitTime,
+	timeOptions,
 	putPoll,
 	statusLabel,
 	tally,
 } from "./lib/polls";
-import { OPTIONS_MAX, OPTIONS_MIN, QUESTION_MAX, THANKS_MAX, type Poll } from "./lib/types";
+import { QUESTION_MAX, THANKS_MAX, type Poll } from "./lib/types";
 import { asBoolean, asRecord, asString } from "./util";
 
 type Toast = { message: string; type: "success" | "error" | "info" };
@@ -96,22 +100,17 @@ export async function renderList(
 			if (displayStatus(poll) !== "Open") {
 				items.push({ label: "Open", value: stamped("open", poll.id, poll.rev) });
 			}
-			if (displayStatus(poll) !== "Closed") {
+			if (displayStatus(poll) === "Open") {
 				items.push({ label: "Close", value: stamped("close", poll.id, poll.rev) });
 			}
 			items.push({ label: "Results", value: stamped("results", poll.id, poll.rev) });
 			items.push({ label: "Copy", value: stamped("copy", poll.id, poll.rev) });
 			items.push({ label: "Delete", value: stamped("delete", poll.id, poll.rev) });
-			const hidden =
-				displayStatus(poll) === "Open" && (poll.attach === "site" || poll.attach === "collection")
-					? " A more specific poll can hide this one."
-					: "";
 			return {
-				poll: `${poll.question || "Untitled poll"}\n${
-					poll.who === "members" ? "Members" : "Anyone"
-				} · ${poll.named ? "Named" : "Anonymous"} · ${attachLabel(poll)} · ${votes} ${
-					votes === 1 ? "vote" : "votes"
-				}.${hidden}`,
+				poll: poll.question || "Untitled poll",
+				who: `${poll.who === "members" ? "Members" : "Anyone"}, ${poll.named ? "named" : "anonymous"}`,
+				where: attachLabel(poll),
+				votes: String(votes),
 				status: displayStatus(poll),
 				action: { type: "menu", action_id: "poll_mod", label: "Actions", items },
 			};
@@ -158,6 +157,9 @@ export async function renderList(
 						page_action_id: "polls_page",
 						columns: [
 							{ key: "poll", label: "Poll" },
+							{ key: "who", label: "Who can vote" },
+							{ key: "where", label: "Shows on" },
+							{ key: "votes", label: "Votes" },
 							{ key: "status", label: "Status" },
 							{ key: "action", label: "Actions", format: "element" },
 						],
@@ -171,7 +173,7 @@ export async function renderList(
 			{ type: "header", text: "Polls" },
 			{
 				type: "section",
-				text: "Create a poll, open it when you are ready, then close it when voting should stop. Guest votes use the visitor's address when the host provides one. On hosting that does not, they use a browser cookie, which is easier to clear.",
+				text: "Create a poll, open it when you are ready, then close it when voting should stop.",
 				accessory: link("Create a poll", "/edit"),
 			},
 			{
@@ -203,10 +205,14 @@ export async function renderForm(
 	const voted = existing ? await hasVotes(ctx, existing.id) : false;
 	const values = extra?.values ?? {};
 	const question = asString(values.question) || poll.question;
-	const optionsText = asString(values.options) || optionsToText(poll.options);
-	const lockedNote = voted
-		? "This poll has votes. You can correct the question and the wording of an answer. You cannot add, remove or reorder answers, and you cannot switch between one choice and several."
-		: `Write one answer per line. Use ${OPTIONS_MIN} to ${OPTIONS_MAX} answers.`;
+	const opensAt = splitTime(poll.opens_at);
+	const closesAt = splitTime(poll.closes_at);
+	const answerLabels =
+		"answer_1" in values
+			? answersFromForm(values, voted ? poll.options.length : 0)
+			: poll.options.map((option) => option.label);
+	const lockedNote =
+		"This poll has votes. You can correct the question and the wording of an answer. You cannot add, remove or reorder answers, and you cannot switch between one choice and several.";
 	const types = await siteCollections(ctx);
 	const currentType =
 		asString(values.attach_key) || (poll.attach === "collection" ? poll.attach_key : "");
@@ -221,24 +227,21 @@ export async function renderForm(
 	return {
 		blocks: [
 			{ type: "header", text: existing ? "Edit poll" : "New poll" },
-			{ type: "context", text: lockedNote },
+			...(voted ? [{ type: "banner" as const, variant: "default" as const, title: lockedNote }] : []),
 			{
 				type: "form",
 				block_id: "poll",
+				// Order follows the owner's decisions: what to ask, who votes, what voters see,
+				// where it shows, when it runs. Fields that do not apply stay hidden.
 				fields: [
 					{
 						type: "text_input",
 						action_id: "question",
 						label: "Question",
+						placeholder: "Which feature should we build next?",
 						initial_value: question,
 					},
-					{
-						type: "text_input",
-						action_id: "options",
-						label: "Answers (one per line)",
-						multiline: true,
-						initial_value: optionsText,
-					},
+					...answerFields(answerLabels, voted),
 					{
 						type: "toggle",
 						action_id: "multiple",
@@ -255,33 +258,26 @@ export async function renderForm(
 						label: "Show each member's choice to the site owner",
 						initial_value: asBoolean(values.named ?? poll.named),
 					},
-					select("results", "When to show results", asString(values.results) || poll.results, [
-						{ label: "Always", value: "always" },
-						{ label: "After voting", value: "after_vote" },
-						{ label: "After the poll closes", value: "after_close" },
-					]),
 					{
 						type: "toggle",
 						action_id: "allow_change",
 						label: "Members may change their vote while the poll is open",
 						initial_value: asBoolean(values.allow_change ?? poll.allow_change),
 					},
-					{
-						type: "text_input",
-						action_id: "opens_at",
-						label: "Open time (optional). Example 2026-10-20T09:00. A draft with a future time shows as Scheduled.",
-						initial_value: asString(values.opens_at) || poll.opens_at,
-					},
-					{
-						type: "text_input",
-						action_id: "closes_at",
-						label: "Close time (optional). Example 2026-10-21T18:00.",
-						initial_value: asString(values.closes_at) || poll.closes_at,
-					},
+					select("results", "When to show results", asString(values.results) || poll.results, [
+						{ label: "Always", value: "always" },
+						{ label: "After voting", value: "after_vote" },
+						{ label: "After the poll closes", value: "after_close" },
+					]),
+					select("numbers", "Numbers visitors see", asString(values.numbers) || poll.numbers, [
+						{ label: "Percent and count", value: "full" },
+						{ label: "Percent only", value: "percent" },
+					]),
 					{
 						type: "text_input",
 						action_id: "thanks",
 						label: "Thank-you line after voting (optional)",
+						placeholder: "Thanks, your vote is in.",
 						initial_value: asString(values.thanks) || poll.thanks,
 					},
 					select("attach", "Where it shows", asString(values.attach) || poll.attach, [
@@ -292,15 +288,37 @@ export async function renderForm(
 							? [{ label: "One page (set from the page editor)", value: "entry" }]
 							: []),
 					]),
-					select("attach_key", "Content type. Needed for one content type.", currentType, typeOptions),
-					select("position", "Position on the page", asString(values.position) || poll.position, [
-						{ label: "Below the content", value: "below" },
-						{ label: "Above the content", value: "above" },
-					]),
-					select("numbers", "Numbers visitors see", asString(values.numbers) || poll.numbers, [
-						{ label: "Percent and count", value: "full" },
-						{ label: "Percent only", value: "percent" },
-					]),
+					{
+						...select("attach_key", "Content type", currentType, typeOptions),
+						condition: { field: "attach", eq: "collection" },
+					},
+					{
+						...select("position", "Position on the page", asString(values.position) || poll.position, [
+							{ label: "Below the content", value: "below" },
+							{ label: "Above the content", value: "above" },
+						]),
+						condition: { field: "attach", neq: "none" },
+					},
+					{
+						type: "date_input",
+						action_id: "opens_date",
+						label: "Opens on (optional, a draft opens by itself that day)",
+						initial_value: "opens_date" in values ? asString(values.opens_date) : opensAt.date,
+					},
+					{
+						...select("opens_time", "Opens at (UTC)", asString(values.opens_time) || opensAt.time, timeOptions(opensAt.time)),
+						condition: { field: "opens_date", neq: "" },
+					},
+					{
+						type: "date_input",
+						action_id: "closes_date",
+						label: "Closes on (optional)",
+						initial_value: "closes_date" in values ? asString(values.closes_date) : closesAt.date,
+					},
+					{
+						...select("closes_time", "Closes at (UTC)", asString(values.closes_time) || closesAt.time, timeOptions(closesAt.time)),
+						condition: { field: "closes_date", neq: "" },
+					},
 				],
 				submit: {
 					action_id: stamped("save", existing?.id ?? "", poll.rev),
@@ -460,13 +478,13 @@ async function savePoll(ctx: Ctx, values: Record<string, unknown>): Promise<Bloc
 	}
 
 	const voted = existing ? await hasVotes(ctx, existing.id) : false;
-	const options = applyOptionEdits(existing?.options ?? [], asString(values.options), voted);
+	const options = applyOptionEdits(existing?.options ?? [], answersFromForm(values, voted ? existing?.options.length : 0), voted);
 	if (!options.ok) {
 		return renderForm(ctx, existing?.id ?? "", { toast: { message: options.error, type: "error" }, values });
 	}
 
-	const opens = parseTimeField(values.opens_at);
-	const closes = parseTimeField(values.closes_at);
+	const opens = parseTimeField(formTime(existing?.opens_at ?? "", values.opens_date, values.opens_time));
+	const closes = parseTimeField(formTime(existing?.closes_at ?? "", values.closes_date, values.closes_time));
 	if (!opens.ok) return renderForm(ctx, existing?.id ?? "", { toast: { message: opens.error, type: "error" }, values });
 	if (!closes.ok) return renderForm(ctx, existing?.id ?? "", { toast: { message: closes.error, type: "error" }, values });
 
@@ -635,12 +653,6 @@ async function moderate(ctx: Ctx, value: unknown): Promise<BlockResponse> {
 							action_id: "delete_confirm",
 							style: "danger",
 							value: stamped("delete_confirm", poll.id, poll.rev),
-							confirm: {
-								title: "Delete this poll?",
-								text: "The poll and its votes will be removed.",
-								confirm: "Delete",
-								deny: "Keep it",
-							},
 						},
 						link("Keep it", "/polls"),
 					],

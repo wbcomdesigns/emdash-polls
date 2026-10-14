@@ -8,9 +8,12 @@ import Poll from "./Poll.astro";
 interface Props {
 	collection: string;
 	id: string;
+	/** Place one slot with "above" before the content and one with "below" after it to honour
+	 *  each poll's Position setting. One slot with no position shows every poll where it sits. */
+	position?: "above" | "below";
 }
 
-const { collection, id } = Astro.props;
+const { collection, id, position } = Astro.props;
 ---
 
-<Poll collection={collection} entry={id} />
+<Poll collection={collection} entry={id} position={position ?? ""} />

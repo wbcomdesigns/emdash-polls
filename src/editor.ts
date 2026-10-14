@@ -2,9 +2,13 @@ import type { PluginContext } from "emdash/plugin";
 
 import type { BlockResponse } from "./admin";
 import {
+	answerFields,
+	answersFromForm,
 	applyOptionEdits,
+	applySchedule,
 	attachLabel,
 	countVotes,
+	effectiveStatus,
 	entryAttachKey,
 	getPoll,
 	listPolls,
@@ -12,6 +16,7 @@ import {
 	newRev,
 	parsePoll,
 	pollForEntry,
+	pollForSlot,
 	putPoll,
 	statusLabel,
 } from "./lib/polls";
@@ -44,13 +49,21 @@ async function renderPanel(
 		}));
 
 	if (!attached) {
+		// Nothing on this page itself, but a poll attached to the content type or the whole site may still show here.
+		const shared = await pollForSlot(ctx, entry.collection, entry.id);
+		const showing = shared && effectiveStatus(await applySchedule(ctx, shared)) !== "draft" ? shared : null;
+		const where = showing?.attach === "site" ? "the whole site" : "every entry of this content type";
 		return {
 			blocks: [
-				{
-					type: "empty",
-					title: "No poll here",
-					description: "Attach one, or create it below. Visitors see it after it is open.",
-				},
+				showing
+					? {
+							type: "section",
+							text: `Visitors see "${showing.question}" here, because it is attached to ${where}. Attach a poll below to show a different one on this page only.`,
+						}
+					: {
+							type: "section",
+							text: "No poll on this page yet. Attach one, or create it below. Visitors see it once it is open.",
+						},
 				...(pickOptions.length
 					? [
 							{
@@ -61,7 +74,7 @@ async function renderPanel(
 										type: "select",
 										action_id: "poll_id",
 										label: "Use an existing poll",
-										placeholder: "Choose a poll",
+										initial_value: "",
 										options: [{ label: "Choose a poll", value: "" }, ...pickOptions],
 									},
 								],
@@ -74,12 +87,7 @@ async function renderPanel(
 					block_id: "create",
 					fields: [
 						{ type: "text_input", action_id: "question", label: "Question" },
-						{
-							type: "text_input",
-							action_id: "options",
-							label: "Answers (one per line)",
-							multiline: true,
-						},
+						...answerFields([], false),
 						{
 							type: "select",
 							action_id: "who",
@@ -93,7 +101,7 @@ async function renderPanel(
 						{
 							type: "select",
 							action_id: "position",
-							label: "Where it appears",
+							label: "Position on the page",
 							initial_value: "below",
 							options: [
 								{ label: "Below the content", value: "below" },
@@ -124,7 +132,6 @@ async function renderPanel(
 		type: "button",
 		label: "Remove from this page",
 		action_id: "remove",
-		style: "danger",
 		confirm: {
 			title: "Remove this poll from the page?",
 			text: "The poll itself stays in Polls. Only this page stops showing it.",
@@ -134,17 +141,17 @@ async function renderPanel(
 	});
 	return {
 		blocks: [
+			// The question goes in its own block: a fields cell cuts long text short in the narrow sidebar.
+			{ type: "section", text: attached.question },
 			{
 				type: "fields",
 				fields: [
-					{ label: "Question", value: attached.question },
 					{ label: "Status", value: status },
 					{ label: "Votes", value: String(votes) },
-					{ label: "Where it appears", value: attached.position === "above" ? "Above the content" : "Below the content" },
+					{ label: "Position on the page", value: attached.position === "above" ? "Above the content" : "Below the content" },
 					{ label: "Who can vote", value: attached.who === "members" ? "Members" : "Anyone" },
 				],
 			},
-			{ type: "context", text: `Also listed as ${attachLabel(attached)}.` },
 			{ type: "actions", elements: actions },
 		],
 		toast: extra?.toast,
@@ -178,7 +185,7 @@ async function createHere(ctx: Ctx, entry: { collection: string; id: string }, v
 	if (!question) {
 		return renderPanel(ctx, entry, { toast: { message: "Write a question.", type: "error" } });
 	}
-	const options = applyOptionEdits([], asString(values.options), false);
+	const options = applyOptionEdits([], answersFromForm(values), false);
 	if (!options.ok) {
 		return renderPanel(ctx, entry, { toast: { message: options.error, type: "error" } });
 	}

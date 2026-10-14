@@ -1,0 +1,74 @@
+{
+  "product": "WB Polls for EmDash",
+  "productType": "plugin",
+  "shortId": "wbpem",
+  "slug": "wb-polls-emdash",
+  "tagline": "Ask your visitors a question and show live results on any EmDash page.",
+  "note": "GitHub-only documentation. Metadata only. No publish or sync target.",
+  "images_dir": "images",
+  "version": "0.2.3",
+  "sections": [
+    {
+      "name": "Getting Started",
+      "folder": "getting-started",
+      "description": "What WB Polls does, how to install it, and your first poll from start to finish.",
+      "pages": [
+        { "slug": "introduction", "title": "Introduction" },
+        { "slug": "install", "title": "Install WB Polls" },
+        { "slug": "first-poll", "title": "Your first poll" }
+      ]
+    },
+    {
+      "name": "Using Polls",
+      "folder": "features",
+      "description": "Place polls on your pages, read the results, and manage polls over time.",
+      "pages": [
+        { "slug": "where-polls-show", "title": "Where a poll shows" },
+        { "slug": "results", "title": "Results and voters" },
+        { "slug": "manage-polls", "title": "Open, close, copy and delete" },
+        { "slug": "my-votes", "title": "My votes for members" }
+      ]
+    },
+    {
+      "name": "Poll Settings",
+      "folder": "settings",
+      "description": "Every field on the poll form, what it controls, and its default.",
+      "pages": [
+        { "slug": "poll-form", "title": "Poll form reference" }
+      ]
+    },
+    {
+      "name": "Customize",
+      "folder": "customize",
+      "description": "Change the words visitors see and match the poll to your theme.",
+      "pages": [
+        { "slug": "wording-and-look", "title": "Wording and look" }
+      ]
+    },
+    {
+      "name": "FAQ",
+      "folder": "faq",
+      "description": "Short answers to the questions site owners ask most.",
+      "pages": [
+        { "slug": "faq", "title": "Frequently asked questions" }
+      ]
+    },
+    {
+      "name": "Troubleshooting",
+      "folder": "troubleshooting",
+      "description": "What to check when a poll does not show or a vote is not saved.",
+      "pages": [
+        { "slug": "troubleshooting", "title": "Troubleshooting" }
+      ]
+    },
+    {
+      "name": "What's New",
+      "folder": "whats-new",
+      "description": "What changed in each release, newest first.",
+      "pages": [
+        { "slug": "0-2-3", "title": "What's new in 0.2.3" },
+        { "slug": "0-2-2", "title": "What's new in 0.2.2" }
+      ]
+    }
+  ]
+}
