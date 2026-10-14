@@ -1,0 +1,18 @@
+---
+import Poll from "../components/Poll.astro";
+
+const node = (Astro.props.node ?? {}) as { poll?: string };
+const question = String(node.poll || "").trim();
+let id = "";
+if (question) {
+	const res = await fetch(new URL("/_emdash/api/plugins/polls/by_question", Astro.url.origin), {
+		method: "POST",
+		headers: { "Content-Type": "application/json", "X-EmDash-Request": "1" },
+		body: JSON.stringify({ question }),
+	});
+	const body = (await res.json().catch(() => ({}))) as { data?: { id?: string }; id?: string };
+	id = String(body.data?.id || body.id || "");
+}
+---
+
+{id ? <Poll id={id} /> : null}

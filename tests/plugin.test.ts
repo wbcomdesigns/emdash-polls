@@ -193,6 +193,23 @@ describe("admin", () => {
 		expect(JSON.stringify(form.blocks)).toContain("One Save stores the question");
 	});
 
+	it("lists polls by question for the in-text block", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await site.rt.fixtures.plugin.storage(
+			POLLS,
+			"poll_q",
+			samplePoll({ question: "Which colour should we ship?", rev: "r-q" }),
+		);
+		const result = (await site.call("questions", {}, site.as(admin))) as {
+			items: Array<{ id: string; name: string }>;
+		};
+		expect(result.items).toContainEqual({
+			id: "Which colour should we ship?",
+			name: "Which colour should we ship?",
+		});
+	});
+
 	it("counts open polls and votes this week, and pages a long list", async () => {
 		const site = await openSite();
 		dispose = site.dispose;

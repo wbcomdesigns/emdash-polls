@@ -52,6 +52,28 @@ Do the same in the page template (`src/pages/pages/[slug].astro`) with `collecti
 
 To let each poll choose above or below the content, place two slots instead. See [Where a poll shows](../features/where-polls-show.md#above-or-below-the-content).
 
+## For the in-text block
+
+This is optional. The plugin from the registry does not add a block inside post text. To put one poll in the middle of a post, copy the block and switch it on as trusted site code.
+
+```bash
+mkdir -p src/polls-block
+cp -R path/to/emdash-polls/site-kit/blocks/. src/polls-block/
+```
+
+In `astro.config.mjs`:
+
+```js
+import { pollsBlock } from "./src/polls-block/descriptor.mjs";
+
+emdash({
+	plugins: [pollsBlock()],
+	// sandboxed: [polls] stays as it is
+});
+```
+
+Restart the site. In a post or page, type `/poll` and choose **Poll**, then pick the poll by its question. Leave this out and the registry plugin works the same.
+
 ## Step 4: link My votes (optional)
 
 Add a **My votes** link to your site menu (**Menus** in admin) pointing at `/account/votes`. Members use it to see and delete their votes.
