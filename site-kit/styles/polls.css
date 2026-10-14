@@ -17,6 +17,22 @@
 	margin-top: 0;
 }
 
+/* Question, status lines, results and the form each get the same breathing room,
+   whatever margins the theme gives h2 and p inside article text. */
+.wb[data-wbp] [data-wbp-body] {
+	display: grid;
+	gap: 0.75rem;
+}
+
+.wb[data-wbp] [data-wbp-body] > * {
+	margin: 0;
+}
+
+/* Inside article text the card would otherwise touch the paragraph above and below. */
+.wb[data-wbp]:not([hidden]) {
+	margin-block: 1.5rem;
+}
+
 /* An empty live region takes no room (the card's gap would still count it) but stays in
    the accessibility tree, so text written into it later is still announced. */
 .wb[data-wbp] [data-wbp-live]:empty,

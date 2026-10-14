@@ -35,15 +35,17 @@ Then add one slot to the layout that wraps posts and pages:
 ---
 import PollSlot from "../components/PollSlot.astro";
 ---
-<PollSlot collection={entry.collection} id={entry.id} />
+<PollSlot collection="posts" id={post.data.id} />
 ```
+
+Pass the entry's own id (`post.data.id`), not `post.id`: on the EmDash blog template `post.id` is the slug, and polls attached from the post editor are stored against the entry id. On the page template use `collection="pages" id={page.data.id}`.
 
 To honour each poll's **Position on the page** setting, place two slots instead, one on each side of the content. Each shows only the polls set to its side:
 
 ```astro
-<PollSlot collection={entry.collection} id={entry.id} position="above" />
+<PollSlot collection="posts" id={post.data.id} position="above" />
 <!-- the content -->
-<PollSlot collection={entry.collection} id={entry.id} position="below" />
+<PollSlot collection="posts" id={post.data.id} position="below" />
 ```
 
 Or place a specific poll:

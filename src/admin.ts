@@ -99,22 +99,17 @@ export async function renderList(
 			if (displayStatus(poll) !== "Open") {
 				items.push({ label: "Open", value: stamped("open", poll.id, poll.rev) });
 			}
-			if (displayStatus(poll) !== "Closed") {
+			if (displayStatus(poll) === "Open") {
 				items.push({ label: "Close", value: stamped("close", poll.id, poll.rev) });
 			}
 			items.push({ label: "Results", value: stamped("results", poll.id, poll.rev) });
 			items.push({ label: "Copy", value: stamped("copy", poll.id, poll.rev) });
 			items.push({ label: "Delete", value: stamped("delete", poll.id, poll.rev) });
-			const hidden =
-				displayStatus(poll) === "Open" && (poll.attach === "site" || poll.attach === "collection")
-					? " A more specific poll can hide this one."
-					: "";
 			return {
-				poll: `${poll.question || "Untitled poll"}\n${
-					poll.who === "members" ? "Members" : "Anyone"
-				} · ${poll.named ? "Named" : "Anonymous"} · ${attachLabel(poll)} · ${votes} ${
-					votes === 1 ? "vote" : "votes"
-				}.${hidden}`,
+				poll: poll.question || "Untitled poll",
+				who: `${poll.who === "members" ? "Members" : "Anyone"}, ${poll.named ? "named" : "anonymous"}`,
+				where: attachLabel(poll),
+				votes: String(votes),
 				status: displayStatus(poll),
 				action: { type: "menu", action_id: "poll_mod", label: "Actions", items },
 			};
@@ -161,6 +156,9 @@ export async function renderList(
 						page_action_id: "polls_page",
 						columns: [
 							{ key: "poll", label: "Poll" },
+							{ key: "who", label: "Who can vote" },
+							{ key: "where", label: "Shows on" },
+							{ key: "votes", label: "Votes" },
 							{ key: "status", label: "Status" },
 							{ key: "action", label: "Actions", format: "element" },
 						],

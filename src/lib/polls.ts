@@ -159,8 +159,8 @@ export async function applySchedule(ctx: Ctx, poll: PollRow): Promise<PollRow> {
 }
 
 export function guestSeesResults(poll: Poll, status: PollStatus): boolean {
-	if (poll.results === "always") return true;
-	if (poll.results === "after_close" && status === "closed") return true;
+	// Once voting has ended nobody can vote any more, so "after voting" would hide results for good.
+	if (poll.results === "always" || status === "closed") return true;
 	return false;
 }
 

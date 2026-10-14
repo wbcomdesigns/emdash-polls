@@ -55,14 +55,12 @@ async function renderPanel(
 			blocks: [
 				showing
 					? {
-							type: "empty",
-							title: "Visitors see a shared poll",
-							description: `"${showing.question}" shows here because it is attached to ${where}. Attach a poll below to show a different one on this page only.`,
+							type: "section",
+							text: `Visitors see "${showing.question}" here, because it is attached to ${where}. Attach a poll below to show a different one on this page only.`,
 						}
 					: {
-							type: "empty",
-							title: "No poll here",
-							description: "Attach one, or create it below. Visitors see it after it is open.",
+							type: "section",
+							text: "No poll on this page yet. Attach one, or create it below. Visitors see it once it is open.",
 						},
 				...(pickOptions.length
 					? [
@@ -106,7 +104,7 @@ async function renderPanel(
 						{
 							type: "select",
 							action_id: "position",
-							label: "Where it appears",
+							label: "Position on the page",
 							initial_value: "below",
 							options: [
 								{ label: "Below the content", value: "below" },
@@ -137,7 +135,6 @@ async function renderPanel(
 		type: "button",
 		label: "Remove from this page",
 		action_id: "remove",
-		style: "danger",
 		confirm: {
 			title: "Remove this poll from the page?",
 			text: "The poll itself stays in Polls. Only this page stops showing it.",
@@ -147,17 +144,17 @@ async function renderPanel(
 	});
 	return {
 		blocks: [
+			// The question goes in its own block: a fields cell cuts long text short in the narrow sidebar.
+			{ type: "section", text: attached.question },
 			{
 				type: "fields",
 				fields: [
-					{ label: "Question", value: attached.question },
 					{ label: "Status", value: status },
 					{ label: "Votes", value: String(votes) },
-					{ label: "Where it appears", value: attached.position === "above" ? "Above the content" : "Below the content" },
+					{ label: "Position on the page", value: attached.position === "above" ? "Above the content" : "Below the content" },
 					{ label: "Who can vote", value: attached.who === "members" ? "Members" : "Anyone" },
 				],
 			},
-			{ type: "context", text: `Also listed as ${attachLabel(attached)}.` },
 			{ type: "actions", elements: actions },
 		],
 		toast: extra?.toast,

@@ -139,8 +139,9 @@ const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}${position
 		if (mine.length) html += `<p class="wb-muted">${esc(S.voted)}</p>`;
 		if (canVote) html += formHtml(root.id || "wbp", poll, mine);
 		else if (!closed && members && !signedIn) {
-			html += `<p class="wb-status" data-tone="error">${esc(S.signIn)} <a href="${esc(signInUrl())}">${esc(S.signInLink)}</a></p>`;
-			html += `<ul class="wb-list">${poll.options.map((option) => `<li class="wbp-option"><span>${esc(option.label)}</span></li>`).join("")}</ul>`;
+			// Not signed in is a prompt, not an error: list the answers, then a plain sign-in line.
+			html += `<ul class="wbp-results">${poll.options.map((option) => `<li class="wbp-option"><span>${esc(option.label)}</span></li>`).join("")}</ul>`;
+			html += `<p class="wb-status">${esc(S.signIn)} <a href="${esc(signInUrl())}">${esc(S.signInLink)}</a></p>`;
 		}
 		body.innerHTML = html;
 		live.textContent = "";

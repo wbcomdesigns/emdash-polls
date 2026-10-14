@@ -43,10 +43,12 @@ Open the template that shows a single post (in the blog starter, `src/pages/post
 ---
 import PollSlot from "../../components/PollSlot.astro";
 ---
-<PollSlot collection={entry.collection} id={entry.id} />
+<PollSlot collection="posts" id={post.data.id} />
 ```
 
-Do the same in the page template (`src/pages/pages/[slug].astro`) if you want polls on pages. The slot shows nothing at all when no poll applies, so it is safe to add everywhere.
+Use `post.data.id`, the entry's own id. `post.id` is the address (slug) on the EmDash blog template, and a poll attached from the post editor would not find it.
+
+Do the same in the page template (`src/pages/pages/[slug].astro`) with `collection="pages" id={page.data.id}` if you want polls on pages. The slot shows nothing at all when no poll applies, so it is safe to add everywhere.
 
 To let each poll choose above or below the content, place two slots instead. See [Where a poll shows](../features/where-polls-show.md#above-or-below-the-content).
 

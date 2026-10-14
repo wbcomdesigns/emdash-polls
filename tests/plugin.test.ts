@@ -346,7 +346,7 @@ describe("editing-screen panel", () => {
 
 		const empty = await site.rt.admin.loadEditorPanel("poll", "posts", posts.live);
 		expect(empty.blocks).toEqual(
-			expect.arrayContaining([expect.objectContaining({ type: "empty", title: "No poll here" })]),
+			expect.arrayContaining([expect.objectContaining({ type: "section", text: expect.stringContaining("No poll on this page") })]),
 		);
 		expect(JSON.stringify(empty.blocks)).not.toContain('"text":"Poll"');
 
@@ -372,7 +372,7 @@ describe("editing-screen panel", () => {
 		const removed = await site.rt.admin.actEditorPanel("poll", "posts", posts.live, "remove");
 		expect(removed.toast).toMatchObject({ type: "success" });
 		expect(removed.blocks).toEqual(
-			expect.arrayContaining([expect.objectContaining({ type: "empty", title: "No poll here" })]),
+			expect.arrayContaining([expect.objectContaining({ type: "section", text: expect.stringContaining("No poll on this page") })]),
 		);
 		expect((await site.rt.inspect.storage.get<{ attach: string }>(POLLS, stored[0]?.id ?? ""))?.attach).toBe("none");
 	});
@@ -387,13 +387,13 @@ describe("editing-screen panel", () => {
 			samplePoll({ status: "open", attach: "collection", attach_key: "posts" }),
 		);
 		const panel = JSON.stringify((await site.rt.admin.loadEditorPanel("poll", "posts", posts.live)).blocks);
-		expect(panel).toContain("Visitors see a shared poll");
+		expect(panel).toContain("Visitors see \\\"Which colour should we ship?\\\" here");
 		expect(panel).toContain("every entry of this content type");
-		expect(panel).not.toContain("No poll here");
+		expect(panel).not.toContain("No poll on this page");
 
 		await site.rt.fixtures.plugin.storage(POLLS, "poll_type", samplePoll({ status: "draft", attach: "collection", attach_key: "posts" }));
 		const quiet = JSON.stringify((await site.rt.admin.loadEditorPanel("poll", "posts", posts.live)).blocks);
-		expect(quiet).toContain("No poll here");
+		expect(quiet).toContain("No poll on this page");
 	});
 
 	it("attaches an existing poll by question, not by a typed id", async () => {
@@ -513,6 +513,14 @@ describe("public get", () => {
 			},
 		});
 		expect(got.results).toBeUndefined();
+	});
+
+	it("shows results of a closed after_vote poll to someone who never voted", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await site.rt.fixtures.plugin.storage(POLLS, "poll_done", samplePoll({ status: "closed", results: "after_vote" }));
+		const got = (await site.call("get", { id: "poll_done" }, { method: "GET" })) as { results?: { total: number } };
+		expect(got.results).toBeDefined();
 	});
 
 	it("hides after_close results while open, then closes on read and shows them", async () => {

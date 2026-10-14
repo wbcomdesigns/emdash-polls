@@ -19,7 +19,7 @@ You see:
 
 If **Show each member's choice to the site owner** is on, the Results screen also lists each signed-in member and what they chose. Guests are never named, even on a named poll.
 
-Each member row has **Erase**, which removes that member's votes from this poll. Use it when a member asks you to remove their data. If the poll is still open, they can vote again.
+Each member row has **Remove votes**, which removes that member's votes from this poll. Use it when a member asks you to remove their data. If the poll is still open, they can vote again.
 
 A poll that already has votes cannot be switched from anonymous to named, because the people who voted were told their choice was private.
 
@@ -30,7 +30,7 @@ A poll that already has votes cannot be switched from anonymous to named, becaus
 | Setting | Before voting | After voting | After the poll closes |
 | --- | --- | --- | --- |
 | Always | Answers and the Vote button | Results with bars | Results with bars |
-| After voting | Answers, and "Results will show after you vote." | Results with bars | Results with bars |
+| After voting | Answers, and "Results will show after you vote." | Results with bars | Results with bars, for everyone |
 | After the poll closes | Answers, and "Results will show after the poll closes." | "You voted." | Results with bars |
 
 ![The same poll on a phone in dark mode](../images/poll-results-phone-dark.webp)
