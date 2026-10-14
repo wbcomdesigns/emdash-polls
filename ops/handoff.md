@@ -1,15 +1,15 @@
 # Handoff: WB Polls (2026-10-14)
 
-Live: **0.2.0** on the EmDash registry as `@vapvarun.bsky.social/polls`. Tag `v0.2.0`.
+Live: **0.2.1** on the EmDash registry as `@vapvarun.bsky.social/polls`. Tag `v0.2.1`. GitHub release: https://github.com/wbcomdesigns/emdash-polls/releases/tag/v0.2.1
 
-0.2.1 is the next patch (team issues #30-#36). Do not republish 0.2.0.
+Public page: https://plugins.emdashcms.com/plugins/@vapvarun.bsky.social/polls
 
 Lab is `../emdash-lab-polls` on port 4332.
 
 ## Next
 
 - #16 trusted in-text block: still waiting. No typed-id picker.
-- Do not republish 0.1.0, 0.1.1, or 0.2.0. A registry release cannot be changed.
+- Do not republish 0.1.0, 0.1.1, 0.2.0, or 0.2.1. A registry release cannot be changed.
 
 ## How to work
 
