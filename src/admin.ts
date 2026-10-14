@@ -642,12 +642,6 @@ async function moderate(ctx: Ctx, value: unknown): Promise<BlockResponse> {
 							action_id: "delete_confirm",
 							style: "danger",
 							value: stamped("delete_confirm", poll.id, poll.rev),
-							confirm: {
-								title: "Delete this poll?",
-								text: "The poll and its votes will be removed.",
-								confirm: "Delete",
-								deny: "Keep it",
-							},
 						},
 						link("Keep it", "/polls"),
 					],
