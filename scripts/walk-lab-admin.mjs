@@ -96,8 +96,9 @@ await page.goto(`${BASE}/_emdash/admin/plugins/polls/edit`, { waitUntil: "domcon
 await page.waitForTimeout(900);
 const form = await page.innerText("body");
 notes.push(`form attach=${/Where it shows/.test(form)} named=${/member's choice/.test(form)}`);
-notes.push(`form ISO example=${/2026-10-20T09:00/.test(form)} close example=${/2026-10-21T18:00/.test(form)}`);
-if (!/2026-10-20T09:00/.test(form)) notes.push("FAIL open time missing ISO example");
+const datePickers = await page.locator('input[type="date"]').count();
+notes.push(`form date pickers=${datePickers} utc label=${/Opens at \(UTC\)/.test(form)}`);
+if (datePickers !== 2) notes.push("FAIL open and close days are not date pickers");
 await page.screenshot({ path: `${OUT}/admin-1440-light-form.png`, fullPage: true });
 
 await page.goto(`${BASE}/_emdash/admin/plugins/polls/polls`, { waitUntil: "domcontentloaded" });

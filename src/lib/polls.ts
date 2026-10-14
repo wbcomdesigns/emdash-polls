@@ -304,6 +304,29 @@ export function parseTimeField(value: unknown): { ok: true; value: string } | { 
 	return { ok: true, value: new Date(ms).toISOString() };
 }
 
+/** Times of day offered next to the date picker, every 30 minutes. */
+export const TIME_OPTIONS: Array<{ label: string; value: string }> = Array.from({ length: 48 }, (_, i) => {
+	const value = `${String(Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`;
+	return { label: value, value };
+});
+
+/** A stored ISO time as the date picker's day and the time dropdown's value (UTC). */
+export function splitTime(iso: string): { date: string; time: string } {
+	const ms = Date.parse(iso);
+	if (!iso || Number.isNaN(ms)) return { date: "", time: "00:00" };
+	const text = new Date(ms).toISOString();
+	const minutes = Number(text.slice(14, 16)) < 30 ? "00" : "30";
+	return { date: text.slice(0, 10), time: `${text.slice(11, 13)}:${minutes}` };
+}
+
+/** The date picker's day plus the time dropdown, read as UTC. No day means no time set. */
+export function joinTime(date: unknown, time: unknown): string {
+	const day = asString(date);
+	if (!day) return "";
+	const clock = /^\d{2}:\d{2}$/.test(asString(time)) ? asString(time) : "00:00";
+	return `${day}T${clock}:00Z`;
+}
+
 export function statusLabel(poll: Poll, now = Date.now()): string {
 	const status = effectiveStatus(poll, now);
 	if (status === "closed") return "Closed";

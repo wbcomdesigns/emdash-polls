@@ -17,7 +17,10 @@ import {
 	newRev,
 	optionsToText,
 	parsePoll,
+	joinTime,
 	parseTimeField,
+	splitTime,
+	TIME_OPTIONS,
 	putPoll,
 	statusLabel,
 	tally,
@@ -203,6 +206,8 @@ export async function renderForm(
 	const voted = existing ? await hasVotes(ctx, existing.id) : false;
 	const values = extra?.values ?? {};
 	const question = asString(values.question) || poll.question;
+	const opensAt = splitTime(poll.opens_at);
+	const closesAt = splitTime(poll.closes_at);
 	const optionsText = asString(values.options) || optionsToText(poll.options);
 	const lockedNote = voted
 		? "This poll has votes. You can correct the question and the wording of an answer. You cannot add, remove or reorder answers, and you cannot switch between one choice and several."
@@ -267,17 +272,19 @@ export async function renderForm(
 						initial_value: asBoolean(values.allow_change ?? poll.allow_change),
 					},
 					{
-						type: "text_input",
-						action_id: "opens_at",
-						label: "Open time (optional). Example 2026-10-20T09:00. A draft with a future time shows as Scheduled.",
-						initial_value: asString(values.opens_at) || poll.opens_at,
+						type: "date_input",
+						action_id: "opens_date",
+						label: "Opens on (optional). A draft with a future day shows as Scheduled.",
+						initial_value: "opens_date" in values ? asString(values.opens_date) : opensAt.date,
 					},
+					select("opens_time", "Opens at (UTC)", asString(values.opens_time) || opensAt.time, TIME_OPTIONS),
 					{
-						type: "text_input",
-						action_id: "closes_at",
-						label: "Close time (optional). Example 2026-10-21T18:00.",
-						initial_value: asString(values.closes_at) || poll.closes_at,
+						type: "date_input",
+						action_id: "closes_date",
+						label: "Closes on (optional)",
+						initial_value: "closes_date" in values ? asString(values.closes_date) : closesAt.date,
 					},
+					select("closes_time", "Closes at (UTC)", asString(values.closes_time) || closesAt.time, TIME_OPTIONS),
 					{
 						type: "text_input",
 						action_id: "thanks",
@@ -465,8 +472,8 @@ async function savePoll(ctx: Ctx, values: Record<string, unknown>): Promise<Bloc
 		return renderForm(ctx, existing?.id ?? "", { toast: { message: options.error, type: "error" }, values });
 	}
 
-	const opens = parseTimeField(values.opens_at);
-	const closes = parseTimeField(values.closes_at);
+	const opens = parseTimeField(joinTime(values.opens_date, values.opens_time));
+	const closes = parseTimeField(joinTime(values.closes_date, values.closes_time));
 	if (!opens.ok) return renderForm(ctx, existing?.id ?? "", { toast: { message: opens.error, type: "error" }, values });
 	if (!closes.ok) return renderForm(ctx, existing?.id ?? "", { toast: { message: closes.error, type: "error" }, values });
 

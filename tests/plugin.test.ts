@@ -986,3 +986,17 @@ describe("named lock, copy, results, erase", () => {
 		expect(JSON.stringify(results.blocks)).toContain("Anonymous");
 	});
 });
+
+describe("poll times from the date picker", () => {
+	it("joins a day and a time as UTC, and splits it back", async () => {
+		const { joinTime, splitTime, parseTimeField } = await import("../src/lib/polls");
+		expect(joinTime("", "09:00")).toBe("");
+		expect(joinTime("2026-10-20", "09:30")).toBe("2026-10-20T09:30:00Z");
+		expect(joinTime("2026-10-20", "junk")).toBe("2026-10-20T00:00:00Z");
+		const parsed = parseTimeField(joinTime("2026-10-20", "09:30"));
+		expect(parsed).toEqual({ ok: true, value: "2026-10-20T09:30:00.000Z" });
+		expect(splitTime("2026-10-20T09:30:00.000Z")).toEqual({ date: "2026-10-20", time: "09:30" });
+		expect(splitTime("2026-10-20T09:44:00.000Z").time).toBe("09:30");
+		expect(splitTime("")).toEqual({ date: "", time: "00:00" });
+	});
+});

@@ -64,6 +64,7 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | A-10 | Open results of a named poll and of an anonymous one | Named: members and choices listed. Anonymous: totals only, no names anywhere |
 | A-11 | Try to switch a poll with votes from anonymous to named | Refused |
 | A-12 | New poll, Where it shows: one content type | The next field lists content types by name. Nothing is typed |
+| A-13 | New poll: pick an open day in the date picker and 09:30 in the time list, save, edit again | Day and 09:30 come back. The list shows Scheduled. Clearing the day and saving shows Draft. Nothing is typed |
 
 ## Presentation, every screen
 

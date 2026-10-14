@@ -62,7 +62,7 @@ Settled. Do not reopen these in code review. Dated 2026-10-13 unless noted.
 | Attaching a poll | From a Poll panel on the post or page editing screen (to be proven first), and from the poll form for a whole content type or the whole site. No block inside article text: this kind of plugin cannot add one. |
 | Editing after votes | Wording only. Answers cannot be added, removed or reordered, and the choice type is locked. |
 | Several polls for one place | Most specific wins (page, then content type, then site), then newest. The list warns when a poll is hidden. |
-| Open time | Optional. A poll can open by itself. |
+| Open time | Optional. A poll can open by itself. Picked with a date picker and a time list, in UTC (a plugin cannot read the site time zone). |
 | Position | Per poll: above or below the content. |
 | Numbers | Per poll: percent and count, or percent only. |
 | Copy a poll | In 0.1.0. |
