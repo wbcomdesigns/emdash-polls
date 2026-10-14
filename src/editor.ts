@@ -3,8 +3,10 @@ import type { PluginContext } from "emdash/plugin";
 import type { BlockResponse } from "./admin";
 import {
 	applyOptionEdits,
+	applySchedule,
 	attachLabel,
 	countVotes,
+	effectiveStatus,
 	entryAttachKey,
 	getPoll,
 	listPolls,
@@ -12,6 +14,7 @@ import {
 	newRev,
 	parsePoll,
 	pollForEntry,
+	pollForSlot,
 	putPoll,
 	statusLabel,
 } from "./lib/polls";
@@ -44,13 +47,23 @@ async function renderPanel(
 		}));
 
 	if (!attached) {
+		// Nothing on this page itself, but a poll attached to the content type or the whole site may still show here.
+		const shared = await pollForSlot(ctx, entry.collection, entry.id);
+		const showing = shared && effectiveStatus(await applySchedule(ctx, shared)) !== "draft" ? shared : null;
+		const where = showing?.attach === "site" ? "the whole site" : "every entry of this content type";
 		return {
 			blocks: [
-				{
-					type: "empty",
-					title: "No poll here",
-					description: "Attach one, or create it below. Visitors see it after it is open.",
-				},
+				showing
+					? {
+							type: "empty",
+							title: "Visitors see a shared poll",
+							description: `"${showing.question}" shows here because it is attached to ${where}. Attach a poll below to show a different one on this page only.`,
+						}
+					: {
+							type: "empty",
+							title: "No poll here",
+							description: "Attach one, or create it below. Visitors see it after it is open.",
+						},
 				...(pickOptions.length
 					? [
 							{
@@ -61,7 +74,7 @@ async function renderPanel(
 										type: "select",
 										action_id: "poll_id",
 										label: "Use an existing poll",
-										placeholder: "Choose a poll",
+										initial_value: "",
 										options: [{ label: "Choose a poll", value: "" }, ...pickOptions],
 									},
 								],

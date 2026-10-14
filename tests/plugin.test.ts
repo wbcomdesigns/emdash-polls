@@ -377,6 +377,25 @@ describe("editing-screen panel", () => {
 		expect((await site.rt.inspect.storage.get<{ attach: string }>(POLLS, stored[0]?.id ?? ""))?.attach).toBe("none");
 	});
 
+	it("names a shared poll that shows on this page instead of saying there is none", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		const posts = await withPosts(site.rt);
+		await site.rt.fixtures.plugin.storage(
+			POLLS,
+			"poll_type",
+			samplePoll({ status: "open", attach: "collection", attach_key: "posts" }),
+		);
+		const panel = JSON.stringify((await site.rt.admin.loadEditorPanel("poll", "posts", posts.live)).blocks);
+		expect(panel).toContain("Visitors see a shared poll");
+		expect(panel).toContain("every entry of this content type");
+		expect(panel).not.toContain("No poll here");
+
+		await site.rt.fixtures.plugin.storage(POLLS, "poll_type", samplePoll({ status: "draft", attach: "collection", attach_key: "posts" }));
+		const quiet = JSON.stringify((await site.rt.admin.loadEditorPanel("poll", "posts", posts.live)).blocks);
+		expect(quiet).toContain("No poll here");
+	});
+
 	it("attaches an existing poll by question, not by a typed id", async () => {
 		const site = await openSite();
 		dispose = site.dispose;
