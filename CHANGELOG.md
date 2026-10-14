@@ -2,6 +2,11 @@
 
 Versions match `package.json`, the git tag and the registry release. Newest first.
 
+## [0.2.4]
+
+- The poll follows the site's light or dark choice (shared kit styles 3), so it stays readable when a visitor picks light mode on a device set to dark, and on themes that switch dark mode with a class.
+- Guides: use cases, and how to use polls on blog posts and pages.
+
 ## [0.2.3]
 
 - Open and close times use a date picker and a time list (UTC) instead of typed dates.
