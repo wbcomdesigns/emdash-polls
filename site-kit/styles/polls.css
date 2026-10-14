@@ -11,6 +11,16 @@
 	border-radius: var(--wb-radius);
 }
 
+/* Inside article text the theme gives every h2 a large top margin and the empty live
+   region still keeps its own margin: together they left a tall blank band above the question. */
+.wb[data-wbp] [data-wbp-body] > h2:first-child {
+	margin-top: 0;
+}
+
+.wb[data-wbp] [data-wbp-live]:empty {
+	margin: 0;
+}
+
 .wb[data-wbp] ul,
 .wb[data-wbp] .wb-list,
 .wb[data-wbp] .wbp-results,
@@ -98,8 +108,7 @@
 .wbp-bar > i {
 	display: block;
 	height: 100%;
-	background: var(--wb-fg);
-	opacity: 0.35;
+	background: var(--wb-brand);
 }
 
 .wbp-actions {

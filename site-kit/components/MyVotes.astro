@@ -44,7 +44,8 @@ import { polls as S } from "../lib/polls-strings";
 	}
 
 	function signInHtml() {
-		return `<p class="wb-status" data-tone="error">${esc(S.signInVotes)} <a href="${esc(signInUrl())}">${esc(S.signInLink)}</a></p>`;
+		// Not signed in is not an error: a plain prompt, not a red box.
+		return `<p class="wb-status">${esc(S.signInVotes)} <a href="${esc(signInUrl())}">${esc(S.signInLink)}</a></p>`;
 	}
 
 	function paint(root: HTMLElement, data: Payload) {
