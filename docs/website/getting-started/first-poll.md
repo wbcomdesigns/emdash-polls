@@ -35,7 +35,7 @@ After voting, the visitor sees the results.
 
 ## 4. Read the results
 
-Back in admin, choose **Actions**, then **Results**. You see the total, each answer's count and share, and the status.
+Back in admin, choose **Actions**, then **Results**. You see a bar chart, the total, each answer's count and share, and the status.
 
 ## What next
 

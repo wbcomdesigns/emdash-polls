@@ -2,7 +2,7 @@
 
 **Included in Free.** WB Polls has no paid version.
 
-Every field on the **New poll** and **Edit poll** form, in the order it appears.
+Every field on the **New poll** and **Edit poll** form, in the order it appears. One **Save** stores the whole form. Block Kit cannot put an accordion inside a form, so the groups stay together.
 
 ![The New poll form with a question, three answers and the next empty answer field](../images/admin-new-poll.webp)
 
