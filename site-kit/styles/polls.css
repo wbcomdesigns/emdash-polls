@@ -17,8 +17,20 @@
 	margin-top: 0;
 }
 
-.wb[data-wbp] [data-wbp-live]:empty {
+/* An empty live region takes no room (the card's gap would still count it) but stays in
+   the accessibility tree, so text written into it later is still announced. */
+.wb[data-wbp] [data-wbp-live]:empty,
+.wb[data-wbp-mine] [data-wbp-mine-live]:empty {
+	position: absolute;
+	width: 1px;
+	height: 1px;
 	margin: 0;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+}
+
+.wb[data-wbp-mine] > h2:first-child {
+	margin-top: 0;
 }
 
 .wb[data-wbp] ul,
@@ -121,6 +133,7 @@
 .wbp-erase {
 	display: grid;
 	gap: 0.75rem;
+	margin-top: var(--wb-gap);
 }
 
 .wbp-hp {
