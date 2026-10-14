@@ -453,6 +453,30 @@ export async function deleteVotesForMember(ctx: Ctx, pollId: string, memberId: s
 	return ids.length;
 }
 
+export async function listVotesForMember(ctx: Ctx, memberId: string): Promise<Array<Vote & { id: string }>> {
+	if (!memberId) return [];
+	const rows: Array<Vote & { id: string }> = [];
+	let cursor: string | undefined;
+	for (let step = 0; step < 50; step += 1) {
+		const found = await ctx.storage[VOTES].query({
+			where: { member_id: memberId },
+			limit: 100,
+			cursor,
+		});
+		for (const item of found.items) rows.push({ id: item.id, ...parseVote(item.data) });
+		if (!found.hasMore || !found.cursor) break;
+		cursor = found.cursor;
+	}
+	return rows;
+}
+
+export async function deleteAllVotesForMember(ctx: Ctx, memberId: string): Promise<number> {
+	const votes = await listVotesForMember(ctx, memberId);
+	const ids = votes.map((vote) => vote.id);
+	if (ids.length) await ctx.storage[VOTES].deleteMany(ids);
+	return ids.length;
+}
+
 export function copyPoll(poll: Poll, now = nowIso()): Poll {
 	const suffix = " (copy)";
 	const base = poll.question || "Untitled poll";

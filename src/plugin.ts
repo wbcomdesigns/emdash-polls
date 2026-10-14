@@ -4,9 +4,7 @@ import { handleAdmin } from "./admin";
 import { MEMBER } from "./core";
 import { handleEditorPanel } from "./editor";
 import { countOpenPolls, readPublicPoll, readSlot } from "./lib/polls";
-import { handleBallot, handleBallotGuest, handleVote, handleVoteGuest } from "./vote";
-
-const later = async () => ({ ok: false, error: { code: "UNAVAILABLE" } });
+import { handleBallot, handleBallotGuest, handleMine, handleVote, handleVoteGuest } from "./vote";
 
 const plugin: SandboxedPlugin = {
 	routes: {
@@ -49,7 +47,7 @@ const plugin: SandboxedPlugin = {
 			methods: ["GET"],
 			handler: async (routeCtx, ctx) => handleBallotGuest(routeCtx, ctx),
 		},
-		mine: { permission: MEMBER, methods: ["GET", "DELETE"], handler: later },
+		mine: { permission: MEMBER, methods: ["GET", "DELETE"], handler: handleMine },
 		admin: {
 			handler: async (routeCtx, ctx) => handleAdmin(routeCtx.input, ctx),
 		},

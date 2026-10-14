@@ -2,7 +2,7 @@
 
 One living list of flow-level cases. Walk all of it before every release. When you add or fix behaviour, add or change its case in the same pull request. There are no per-release QA files.
 
-**Last walk:** 2026-10-14, 0.1.1 `7ce245a`, lab http://127.0.0.1:4332. Isolated Chromium. Guest presentation bar at 1440 / 390 light and dark (P-1 P-2 P-3 P-4 P-5 P-6 P-7): kit canvas, empty title+help, option row tap, four unique demo questions. Route/HTTP: prove-lab.sh (health, wording file, guest 401s, missing, latest, slot, seed). Fixtures: `bin/qa-fixtures.sh` (dev admin + qa-rft-member row). Not walked this pass: G-1 members-only, G-7 change-vote, M-2/M-3 as a second signed-in account, M-7/M-8 (0.2.0), in-text block (#16). Subscriber is still the lab bypass account flipped with `lab-role.sh`.
+**Last walk:** 2026-10-14, 0.2.0, lab http://127.0.0.1:4332. Isolated Chromium. Browser: extras before vote is one list (no 0% chart), colour after vote shows bars, missing empty title+help, Vote 44px, dark 17.03, My votes guest sign-in / member list / two-click erase, admin Actions at 390 right=354, copy (copy), form attach+named. Route: prove-lab.sh all pass. Tests: 41 passed (kit registry id `r_4dk64cimgjxrz74v`, content type names, mine erase). Bundle 42.8 KB. Not walked: G-1 dedicated members-only poll, G-7 same-visitor change, M-2/M-3 as a second account, in-text block (#16 stopped), a second-site registry install (kit-fetch tests cover the id). Developer walk, not a second-person QA PASS.
 
 When you walk it, replace that line with the date, the version, and three lists: cases walked in the browser, cases checked at route level only, cases not walked. Do not claim a case you did not run.
 
@@ -31,6 +31,8 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | G-8 | Poll set to members: call `vote_guest` directly | Refused |
 | G-9 | Open a post with a poll attached to it, then one without | The first shows the poll. The second shows nothing, with no empty box |
 | G-91 | Change three phrases in the wording file (a button, an empty state, an error), rebuild | Each change shows everywhere that phrase is used. No English left on screen that is not in the file |
+| G-92 | Open poll, results Always, before voting | One list of answers. No empty 0% chart above the same answers |
+| G-93 | Page with a poll slot and no matching poll | Nothing. No empty bordered box |
 
 ## Member (subscriber role)
 
@@ -61,6 +63,7 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | A-9 | Attach one poll to a post, one to all posts, one site-wide | The post shows its own poll. Other posts show the collection poll. Pages show the site-wide poll |
 | A-10 | Open results of a named poll and of an anonymous one | Named: members and choices listed. Anonymous: totals only, no names anywhere |
 | A-11 | Try to switch a poll with votes from anonymous to named | Refused |
+| A-12 | New poll, Where it shows: one content type | The next field lists content types by name. Nothing is typed |
 
 ## Presentation, every screen
 
@@ -80,7 +83,7 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 - QA owner files are in `docs/qa/` and `audit/ROLE_MATRIX.md`. EmDash plugins use GitHub issues, not Basecamp.
 - The lab has one bypass account (`dev@emdash.local`). Subscriber vs admin is `scripts/lab-role.sh`. `bin/qa-fixtures.sh` inserts a second subscriber row for named data; that account has no login bypass.
 - Closed polls have no Open in the row menu. That matches the current admin rules.
-- My votes (`<MyVotes>`) is 0.2.0 (#6).
+- My votes (`<MyVotes>`) is implemented on the 0.2.0 branch and walked (M-7 M-8). Not committed or published. Not an independent QA PASS.
 - In-text Poll block (#16): trusted companion activates (`polls-block` in plugin state). Registry install is unchanged. A live list of polls cannot be filled from static Block Kit fields. The post editor was not proven to show Poll in the slash menu. Reported on #16.
 - Admin Actions control is about 36px tall (EmDash table chrome). Kit vote buttons meet 40px.
 - Registry screenshots are taken from a reset lab after `prove-lab.sh` seeds the ordinary demo polls (colour, extras, name, layout).

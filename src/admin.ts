@@ -31,6 +31,18 @@ export type BlockResponse = { blocks: BlockMap[]; toast?: Toast };
 
 type Ctx = PluginContext;
 type Extra = Pick<BlockResponse, "toast">;
+type SiteCollection = { slug: string; label: string };
+
+/** Content types on the site, by their normal names. Hidden types stay out. */
+async function siteCollections(ctx: Ctx): Promise<SiteCollection[]> {
+	const found = (await ctx.schema?.listCollections()) ?? [];
+	return found
+		.filter((item) => !item.hidden)
+		.map((item) => ({
+			slug: item.slug,
+			label: item.label || item.labelSingular || item.slug,
+		}));
+}
 
 const PAGE = 25;
 
@@ -193,6 +205,16 @@ export async function renderForm(
 	const lockedNote = voted
 		? "This poll has votes. You can correct the question and the wording of an answer. You cannot add, remove or reorder answers, and you cannot switch between one choice and several."
 		: `Write one answer per line. Use ${OPTIONS_MIN} to ${OPTIONS_MAX} answers.`;
+	const types = await siteCollections(ctx);
+	const currentType =
+		asString(values.attach_key) || (poll.attach === "collection" ? poll.attach_key : "");
+	const typeOptions = [
+		{ label: "Choose a content type", value: "" },
+		...types.map((item) => ({ label: item.label, value: item.slug })),
+	];
+	if (currentType && !typeOptions.some((item) => item.value === currentType)) {
+		typeOptions.push({ label: currentType, value: currentType });
+	}
 
 	return {
 		blocks: [
@@ -200,7 +222,7 @@ export async function renderForm(
 			{ type: "context", text: lockedNote },
 			{
 				type: "context",
-				text: "Whole site shows on every page that has a poll slot. One content type shows on every entry of that type. A poll on a single page, set from the page editor, hides those. Put the content type slug in the next field when you choose one content type.",
+				text: "Whole site shows on every page that has a poll slot. One content type shows on every entry of that type. A poll on a single page, set from the page editor, hides those. Pick the content type by name when you choose one content type.",
 			},
 			{
 				type: "form",
@@ -272,13 +294,7 @@ export async function renderForm(
 							? [{ label: "One page (set from the page editor)", value: "entry" }]
 							: []),
 					]),
-					{
-						type: "text_input",
-						action_id: "attach_key",
-						label: "Content type slug (for example posts). Needed for one content type.",
-						initial_value:
-							asString(values.attach_key) || (poll.attach === "collection" ? poll.attach_key : ""),
-					},
+					select("attach_key", "Content type. Needed for one content type.", currentType, typeOptions),
 					select("position", "Position on the page", asString(values.position) || poll.position, [
 						{ label: "Below the content", value: "below" },
 						{ label: "Above the content", value: "above" },
@@ -479,9 +495,16 @@ async function savePoll(ctx: Ctx, values: Record<string, unknown>): Promise<Bloc
 	let attach_key = "";
 	if (attach === "collection") {
 		attach_key = asString(values.attach_key);
+		const known = new Set((await siteCollections(ctx)).map((item) => item.slug));
 		if (!attach_key) {
 			return renderForm(ctx, existing?.id ?? "", {
-				toast: { message: "Write the content type this poll belongs to, for example posts.", type: "error" },
+				toast: { message: "Pick a content type.", type: "error" },
+				values,
+			});
+		}
+		if (known.size && !known.has(attach_key) && existing?.attach_key !== attach_key) {
+			return renderForm(ctx, existing?.id ?? "", {
+				toast: { message: "Pick a content type from the list.", type: "error" },
 				values,
 			});
 		}

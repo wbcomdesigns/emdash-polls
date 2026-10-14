@@ -1,0 +1,106 @@
+---
+/**
+ * Polls this member voted in, and a two-click erase of their own votes.
+ *   <MyVotes />
+ */
+import "../styles/wbcom-base.css";
+import "../styles/polls.css";
+import { polls as S } from "../lib/polls-strings";
+---
+
+<section class="wb" data-wbp-mine aria-busy="true">
+	<h2>{S.myVotes}</h2>
+	<p class="wb-muted">{S.myVotesHelp}</p>
+	<p class="wb-muted" data-wbp-mine-live aria-live="polite">{S.loading}</p>
+	<div data-wbp-mine-body></div>
+	<p class="wb-status" data-wbp-mine-status role="status" hidden></p>
+</section>
+
+<script>
+	import { api, esc, signInUrl } from "../lib/wbcom-kit";
+	import { phrase, polls as S } from "../lib/polls-strings";
+
+	type Item = { id: string; question: string; status: string; labels: string[] };
+	type Payload = { ok?: boolean; items?: Item[]; erased?: number; error?: { code?: string } };
+
+	function statusLabel(status: string): string {
+		if (status === "closed") return S.statusClosed;
+		if (status === "draft") return S.statusDraft;
+		return S.statusOpen;
+	}
+
+	function emptyHtml() {
+		return `<div class="wb-empty"><p><strong>${esc(S.myVotesEmpty)}</strong></p><p class="wb-muted">${esc(S.myVotesEmptyHelp)}</p></div>`;
+	}
+
+	function listHtml(items: Item[]) {
+		const rows = items
+			.map(
+				(item) =>
+					`<li class="wb-item"><p><strong>${esc(item.question)}</strong></p><p class="wb-muted">${esc(statusLabel(item.status))}</p><p>${esc(S.chose(item.labels))}</p></li>`,
+			)
+			.join("");
+		return `<ul class="wb-list">${rows}</ul><div class="wbp-erase"><p class="wb-muted">${esc(S.eraseHelp)}</p><div class="wbp-actions"><button class="wb-btn wb-btn--quiet" type="button" data-wbp-erase>${esc(S.erase)}</button></div></div>`;
+	}
+
+	function signInHtml() {
+		return `<p class="wb-status" data-tone="error">${esc(S.signInVotes)} <a href="${esc(signInUrl())}">${esc(S.signInLink)}</a></p>`;
+	}
+
+	function paint(root: HTMLElement, data: Payload) {
+		const body = root.querySelector<HTMLElement>("[data-wbp-mine-body]");
+		const live = root.querySelector<HTMLElement>("[data-wbp-mine-live]");
+		if (!body || !live) return;
+		live.textContent = "";
+		if (!data.ok) {
+			if (data.error?.code === "SIGN_IN_REQUIRED") {
+				body.innerHTML = signInHtml();
+				return;
+			}
+			body.innerHTML = `<p class="wb-status" data-tone="error">${esc(phrase(data.error?.code))}</p>`;
+			return;
+		}
+		body.innerHTML = data.items?.length ? listHtml(data.items) : emptyHtml();
+		bind(root);
+	}
+
+	function bind(root: HTMLElement) {
+		const button = root.querySelector<HTMLButtonElement>("[data-wbp-erase]");
+		const status = root.querySelector<HTMLElement>("[data-wbp-mine-status]");
+		button?.addEventListener("click", async () => {
+			if (!status) return;
+			if (button.dataset.armed !== "1") {
+				button.dataset.armed = "1";
+				button.textContent = S.eraseArm;
+				return;
+			}
+			button.setAttribute("aria-busy", "true");
+			root.setAttribute("aria-busy", "true");
+			const result = (await api("polls", "mine", undefined, "DELETE")) as Payload;
+			button.removeAttribute("aria-busy");
+			root.removeAttribute("aria-busy");
+			if (!result.ok) {
+				button.dataset.armed = "";
+				button.textContent = S.erase;
+				status.hidden = false;
+				status.dataset.tone = "error";
+				status.textContent = phrase(result.error?.code);
+				return;
+			}
+			status.hidden = false;
+			status.dataset.tone = "success";
+			status.textContent = S.erased;
+			paint(root, { ok: true, items: [] });
+		});
+	}
+
+	async function load(root: HTMLElement) {
+		const data = (await api("polls", "mine")) as Payload;
+		paint(root, data);
+		root.removeAttribute("aria-busy");
+	}
+
+	document.querySelectorAll<HTMLElement>("[data-wbp-mine]").forEach((root) => {
+		void load(root);
+	});
+</script>

@@ -4,10 +4,12 @@ import { RATE_LIMITED, SIGN_IN, rateLimited, type Member } from "./core";
 import {
 	NOT_FOUND,
 	applySchedule,
+	deleteAllVotesForMember,
 	effectiveStatus,
 	getPoll,
 	getVote,
 	guestSeesResults,
+	listVotesForMember,
 	pollOptionKey,
 	publicPoll,
 	tally,
@@ -20,7 +22,7 @@ import { VOTES } from "./lib/types";
 import { asRecord, asString, asStringArray, nowIso } from "./util";
 
 type Ctx = PluginContext;
-type RouteCtx = { input: unknown; user?: Member; requestMeta?: unknown };
+type RouteCtx = { input: unknown; user?: Member; requestMeta?: unknown; request?: { method?: string } };
 
 const NOT_OPEN = { ok: false as const, error: { code: "NOT_OPEN" } };
 const INVALID_CHOICE = { ok: false as const, error: { code: "INVALID_CHOICE" } };
@@ -169,4 +171,49 @@ async function saveChoices(
 		),
 	);
 	return reply(ctx, poll, opts.choices);
+}
+
+export async function handleMine(routeCtx: RouteCtx, ctx: Ctx) {
+	const user = memberOf(routeCtx);
+	if (!user) return SIGN_IN;
+	const method = asString(routeCtx.request?.method) || "GET";
+	return method === "DELETE" ? eraseMine(routeCtx, ctx, user.id) : listMine(ctx, user.id);
+}
+
+async function listMine(ctx: Ctx, memberId: string) {
+	const votes = await listVotesForMember(ctx, memberId);
+	const byPoll = new Map<string, string[]>();
+	for (const vote of votes) {
+		const optionId = vote.poll_option.includes(":")
+			? vote.poll_option.slice(vote.poll_option.indexOf(":") + 1)
+			: vote.poll_option;
+		const list = byPoll.get(vote.poll) ?? [];
+		list.push(optionId);
+		byPoll.set(vote.poll, list);
+	}
+	const items = [];
+	for (const [pollId, optionIds] of byPoll) {
+		const poll = await getPoll(ctx, pollId);
+		if (!poll) continue;
+		const unique = [...new Set(optionIds)];
+		items.push({
+			id: poll.id,
+			question: poll.question,
+			status: effectiveStatus(poll),
+			labels: unique
+				.map((id) => poll.options.find((option) => option.id === id)?.label ?? "")
+				.filter(Boolean),
+		});
+	}
+	return { ok: true as const, items };
+}
+
+async function eraseMine(routeCtx: RouteCtx, ctx: Ctx, memberId: string) {
+	if (await rateLimited(ctx, `erase:${memberId}`)) return RATE_LIMITED;
+	const raw = asRecord(routeCtx.input);
+	if (asString(raw.member_id) && asString(raw.member_id) !== memberId) {
+		/* A typed id is ignored. Only the signed-in caller is erased. */
+	}
+	const erased = await deleteAllVotesForMember(ctx, memberId);
+	return { ok: true as const, erased };
 }

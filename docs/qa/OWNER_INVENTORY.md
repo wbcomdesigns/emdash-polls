@@ -2,7 +2,7 @@
 
 What a site owner can see and set. Re-read before a card walk. EmDash has no `owner-inventory.py`; this list is from the admin form, kit, and public routes.
 
-Last updated: 2026-10-14 (0.1.1)
+Last updated: 2026-10-14 (0.2.0 in progress)
 
 ## Admin pages
 
@@ -29,7 +29,7 @@ Last updated: 2026-10-14 (0.1.1)
 | Close time | empty | Closes on read when past |
 | Thank-you line | empty | After vote |
 | Where it shows | Not attached | none / site / collection / entry |
-| Content type slug | empty | Required when attach is a content type |
+| Content type | empty | Pick by name when attach is a content type |
 | Position | Below the content | Kit / slot |
 | Numbers | Percent and count | or percent only |
 
@@ -39,6 +39,7 @@ Last updated: 2026-10-14 (0.1.1)
 | --- | --- | --- |
 | Poll | `site-kit/components/Poll.astro` | Owner drops it on a page with `id` or `latest` |
 | Poll slot | `site-kit/components/PollSlot.astro` | Page / content type / site ladder |
+| My votes | `site-kit/components/MyVotes.astro` | Owner drops it on an account page |
 | Visitor wording | `site-kit/lib/polls-strings.ts` | Every visitor phrase |
 
 ## Emails
@@ -47,7 +48,7 @@ None. The plugin does not send mail.
 
 ## Public routes
 
-`health`, `get`, `slot`, `vote_guest`, `ballot_guest`. Member: `vote`, `ballot`. Admin: `admin`, `editor_poll`. `mine` is 0.2.0 (#6).
+`health`, `get`, `slot`, `vote_guest`, `ballot_guest`. Member: `vote`, `ballot`, `mine` (GET list, DELETE erase own). Admin: `admin`, `editor_poll`.
 
 ## Activation artifacts
 

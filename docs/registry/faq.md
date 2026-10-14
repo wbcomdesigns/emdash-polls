@@ -1,3 +1,6 @@
+**I updated the plugin and voting stopped.**
+Copy the site kit again. A registry install answers at an id, not at `/polls/`. The current kit finds that id.
+
 **Why is there no poll on the page after I create one?**
 Create is a draft. Open the poll from the list. Then attach it to a page, a content type or the whole site, and put a poll slot on that template.
 

@@ -17,6 +17,7 @@ Behaviour rows for the 0.1.0 walk. Re-verify with the grep in the last column.
 | Admin results | n/a | n/a | n/a | Results action | n/a | n/a | none | `renderResults` bars + named table |
 | Copy | n/a | n/a | n/a | Copy action | n/a | n/a | none | `copyPoll` new draft, `(copy)` in the question |
 | Wording | `site-kit/lib/polls-strings.ts` only | error codes | error codes | admin English is not in the file | same | same | none | `phrase()` |
+| My votes | `MyVotes.astro` | n/a | `GET/DELETE mine` | n/a | n/a | n/a | none | `handleMine` lists and erases only the caller |
 
 Grep to re-verify:
 

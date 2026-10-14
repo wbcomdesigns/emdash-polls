@@ -1,5 +1,5 @@
-1. Install WB Polls from the registry. It asks for no extra permissions.
-2. Copy the site kit into your site. On a lab, `./scripts/apply-kit.sh` does this. By hand, copy `site-kit/lib/`, `site-kit/styles/` and `site-kit/components/` into your `src/` folders of the same names.
+1. Install WB Polls from the registry. Confirm `schema:read` so the poll form can list your content types by name. An update from 0.1.x asks for this once.
+2. Copy the site kit into your site. On a lab, `./scripts/apply-kit.sh` does this. By hand, copy `site-kit/lib/`, `site-kit/styles/` and `site-kit/components/` into your `src/` folders of the same names. After an update, copy the kit again so visitor pages can reach the plugin on a registry install.
 3. Put `<PollSlot collection={entry.collection} id={entry.id} />` once in the template that wraps posts and pages, above or below the content. Or put `<Poll id="..." />` on one page.
 4. Open Admin, then Polls. Create a poll, attach it, and open it.
 
