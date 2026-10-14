@@ -93,7 +93,7 @@ export async function renderList(
 		listed.items.map(async (poll) => {
 			const votes = await countVotes(ctx, poll.id);
 			const items: Array<{ label: string; value: string }> = [{ label: "Edit", value: stamped("edit", poll.id, poll.rev) }];
-			if (displayStatus(poll) !== "Open" && displayStatus(poll) !== "Closed") {
+			if (displayStatus(poll) !== "Open") {
 				items.push({ label: "Open", value: stamped("open", poll.id, poll.rev) });
 			}
 			if (displayStatus(poll) !== "Closed") {
@@ -103,7 +103,7 @@ export async function renderList(
 			items.push({ label: "Copy", value: stamped("copy", poll.id, poll.rev) });
 			items.push({ label: "Delete", value: stamped("delete", poll.id, poll.rev) });
 			const hidden =
-				poll.attach === "site" || poll.attach === "collection"
+				displayStatus(poll) === "Open" && (poll.attach === "site" || poll.attach === "collection")
 					? " A more specific poll can hide this one."
 					: "";
 			return {
@@ -271,13 +271,13 @@ export async function renderForm(
 					{
 						type: "text_input",
 						action_id: "opens_at",
-						label: "Open time (optional). A draft with a future time shows as Scheduled.",
+						label: "Open time (optional). Example 2026-10-20T09:00. A draft with a future time shows as Scheduled.",
 						initial_value: asString(values.opens_at) || poll.opens_at,
 					},
 					{
 						type: "text_input",
 						action_id: "closes_at",
-						label: "Close time (optional)",
+						label: "Close time (optional). Example 2026-10-21T18:00.",
 						initial_value: asString(values.closes_at) || poll.closes_at,
 					},
 					{
@@ -569,7 +569,9 @@ async function moderate(ctx: Ctx, value: unknown): Promise<BlockResponse> {
 	if (action === "copy") {
 		const copyId = newId("p");
 		await putPoll(ctx, copyId, copyPoll(poll));
-		return renderList(ctx, {}, { toast: { message: "Poll copied. It is a draft.", type: "success" } });
+		return renderForm(ctx, copyId, {
+			toast: { message: "Rename this copy, then open it.", type: "success" },
+		});
 	}
 	if (action === "erase") {
 		const memberId = extraOf(value);

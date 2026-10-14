@@ -88,7 +88,7 @@ await page.waitForTimeout(300);
 if (await pick("Copy")) {
 	await page.waitForTimeout(900);
 	const text = await page.innerText("body");
-	notes.push(`copy saw (copy)=${text.includes("(copy)")} toast=${/copied|draft/i.test(text)}`);
+	notes.push(`copy saw (copy)=${text.includes("(copy)")} toast=${/Rename this copy/.test(text)}`);
 	await page.screenshot({ path: `${OUT}/admin-1440-light-copied.png`, fullPage: true });
 } else notes.push("FAIL Copy menu item");
 
@@ -96,7 +96,24 @@ await page.goto(`${BASE}/_emdash/admin/plugins/polls/edit`, { waitUntil: "domcon
 await page.waitForTimeout(900);
 const form = await page.innerText("body");
 notes.push(`form attach=${/Where it shows/.test(form)} named=${/member's choice/.test(form)}`);
+notes.push(`form ISO example=${/2026-10-20T09:00/.test(form)} close example=${/2026-10-21T18:00/.test(form)}`);
+if (!/2026-10-20T09:00/.test(form)) notes.push("FAIL open time missing ISO example");
 await page.screenshot({ path: `${OUT}/admin-1440-light-form.png`, fullPage: true });
+
+await page.goto(`${BASE}/_emdash/admin/plugins/polls/polls`, { waitUntil: "domcontentloaded" });
+await page.waitForTimeout(900);
+const closedOpen = await page.evaluate(() => {
+	const rows = [...document.querySelectorAll("tr, [class*=row], li")];
+	const closed = rows.find((n) => /Closed/.test(n.textContent || "") && /Actions/.test(n.textContent || ""));
+	if (!closed) return { found: false, open: false };
+	const btn = [...closed.querySelectorAll("button")].find((n) => (n.textContent || "").trim() === "Actions");
+	btn?.click();
+	const items = [...document.querySelectorAll("button, [role=menuitem]")].map((n) => (n.textContent || "").trim());
+	return { found: true, open: items.includes("Open"), items: items.slice(0, 12) };
+});
+notes.push(`closed row Open ${JSON.stringify(closedOpen)}`);
+if (!closedOpen.open) notes.push("FAIL closed row missing Open");
+await page.screenshot({ path: `${OUT}/admin-1440-light-closed-menu.png`, fullPage: true });
 
 await ctx.close();
 

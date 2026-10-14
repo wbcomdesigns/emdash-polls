@@ -2,7 +2,7 @@
 
 What a site owner can see and set. Re-read before a card walk. EmDash has no `owner-inventory.py`; this list is from the admin form, kit, and public routes.
 
-Last updated: 2026-10-14 (0.2.0 in progress)
+Last updated: 2026-10-14 (0.2.1)
 
 ## Admin pages
 
@@ -39,7 +39,7 @@ Last updated: 2026-10-14 (0.2.0 in progress)
 | --- | --- | --- |
 | Poll | `site-kit/components/Poll.astro` | Owner drops it on a page with `id` or `latest` |
 | Poll slot | `site-kit/components/PollSlot.astro` | Page / content type / site ladder |
-| My votes | `site-kit/components/MyVotes.astro` | Owner drops it on an account page |
+| My votes | `/account/votes` (`site-kit/pages/account/votes.astro`) | Signed-in members see and erase their votes |
 | Visitor wording | `site-kit/lib/polls-strings.ts` | Every visitor phrase |
 
 ## Emails

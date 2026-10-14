@@ -41,6 +41,8 @@ curl -sf "$BASE/polls-demo" | grep -q "data-wbp" || fail "polls demo page"
 ok "polls demo page"
 curl -sf "$BASE/polls-mine" | grep -q "data-wbp-mine" || fail "polls mine page"
 ok "polls mine page"
+curl -sf "$BASE/account/votes" | grep -q "data-wbp-mine" || fail "account votes page"
+ok "account votes page"
 json -b "$JAR" "$API/mine" | grep -q '"ok":true' || fail "mine get"
 ok "mine get as member"
 

@@ -1,3 +1,10 @@
+## 0.2.1
+
+- Fix: a closed poll stays visible with results, and can be opened again.
+- Fix: copy keeps the attachment and opens rename.
+- Fix: the vote error clears after a successful vote. Answer rows stay flush.
+- New: copy `pages/account/votes.astro` and link My votes in the header.
+
 ## 0.2.0
 
 - New: My votes lists the polls you voted in. Two clicks erase them.

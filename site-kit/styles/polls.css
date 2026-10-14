@@ -11,6 +11,15 @@
 	border-radius: var(--wb-radius);
 }
 
+.wb[data-wbp] ul,
+.wb[data-wbp] .wb-list,
+.wb[data-wbp] .wbp-results,
+.wb[data-wbp] .wbp-options {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
 .wbp-options {
 	display: grid;
 	gap: 0.5rem;

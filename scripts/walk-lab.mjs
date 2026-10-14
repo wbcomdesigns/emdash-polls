@@ -47,18 +47,54 @@ if (!/Which extras do you want/.test(await page.content())) notes.push("FAIL gue
 if (/0% · 0 votes/.test(guestText) && /Vote/.test(guestText)) notes.push("FAIL answers shown twice before vote");
 if (!/This poll is closed/.test(await page.content())) notes.push("FAIL guest missing closed copy");
 if (!/This poll is not available/.test(await page.content())) notes.push("FAIL guest missing not-found");
+const closedBox = page.locator("[data-wbp]").filter({ hasText: "This poll is closed" }).first();
+if (await closedBox.count()) {
+	const closedText = await closedBox.innerText();
+	notes.push(`closed poll: ${closedText.slice(0, 160).replace(/\n/g, " | ")}`);
+	if (/Vote/.test(closedText) && !/You voted/.test(closedText)) notes.push("FAIL closed poll still has Vote");
+} else notes.push("FAIL closed poll box missing");
+const flush = await page.evaluate(() => {
+	const opt = document.querySelector(".wbp-option");
+	const field = document.querySelector(".wbp-options");
+	if (!opt || !field) return null;
+	const o = opt.getBoundingClientRect();
+	const f = field.getBoundingClientRect();
+	return { leftGap: Math.round(o.left - f.left), pad: getComputedStyle(field).paddingLeft };
+});
+notes.push(`option flush ${JSON.stringify(flush)}`);
+if (flush && flush.leftGap > 8) notes.push("FAIL option rows inset");
+await page.goto(`${BASE}/account/votes`, { waitUntil: "domcontentloaded" });
+await page.waitForTimeout(800);
+const guestVotes = await page.locator("[data-wbp-mine]").innerText();
+notes.push(`guest account/votes: ${guestVotes.slice(0, 160).replace(/\n/g, " | ")}`);
+if (!/Sign in to see your votes/.test(guestVotes)) notes.push("FAIL /account/votes guest missing sign-in");
+await shot(page, "guest-1440-light-account-votes");
+await page.goto(`${BASE}/polls-demo`, { waitUntil: "domcontentloaded" });
+await page.waitForTimeout(800);
 await shot(page, "guest-1440-light-demo");
 
 const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 2);
 if (overflow) notes.push("FAIL sideways scroll 1440 guest");
 
 const single = page.locator("[data-wbp]").first();
+await single.getByRole("button", { name: "Vote" }).click();
+await page.waitForTimeout(400);
+const emptyVote = await page.locator("[data-wbp-status]").first().innerText();
+notes.push(`empty vote status: ${emptyVote}`);
+if (!/Pick an answer/.test(emptyVote)) notes.push("FAIL empty vote did not show pick error");
 await single.locator("label", { hasText: "Blue" }).click();
 await single.getByRole("button", { name: "Vote" }).click();
 await page.waitForTimeout(800);
 const afterVote = await single.innerText();
+const afterStatus = await page.locator("[data-wbp-status]").first().evaluate((el) => ({
+	hidden: el.hidden,
+	text: el.textContent,
+	tone: el.dataset.tone || "",
+}));
 notes.push(`guest voted: ${afterVote.slice(0, 160).replace(/\n/g, " | ")}`);
+notes.push(`status after vote: ${JSON.stringify(afterStatus)}`);
 if (!/You voted|vote/.test(afterVote)) notes.push("FAIL guest vote did not confirm");
+if (!afterStatus.hidden && /Pick an answer/.test(afterStatus.text || "")) notes.push("FAIL pick error stayed after vote");
 await shot(page, "guest-1440-light-voted");
 
 await page.setViewportSize({ width: 768, height: 900 });
@@ -133,12 +169,18 @@ if (await admin.evaluate(() => document.documentElement.scrollWidth > document.d
 await shot(admin, "admin-390-light-list");
 
 await admin.setViewportSize({ width: 1440, height: 900 });
-const firstActions = admin.getByRole("button", { name: "Actions" }).first();
-await firstActions.click({ timeout: 4000 }).catch(() => notes.push("WARN Actions click blocked"));
-await admin.waitForTimeout(300);
-const resultsItem = admin.getByText("Results", { exact: true }).first();
-if (await resultsItem.count()) {
-	await resultsItem.click();
+const clickMenu = async (label) =>
+	admin.evaluate((name) => {
+		const btn = [...document.querySelectorAll("button")].find((n) => (n.textContent || "").trim() === "Actions");
+		btn?.click();
+		const item = [...document.querySelectorAll("button, [role=menuitem], a")].find(
+			(n) => (n.textContent || "").trim() === name,
+		);
+		if (!item) return false;
+		item.click();
+		return true;
+	}, label);
+if (await clickMenu("Results")) {
 	await admin.waitForTimeout(800);
 	const resultsText = await admin.locator("body").innerText();
 	notes.push(`results: ${resultsText.slice(0, 220).replace(/\n/g, " | ")}`);
@@ -150,14 +192,11 @@ if (await resultsItem.count()) {
 
 await admin.goto(`${BASE}/_emdash/admin/plugins/polls/polls`, { waitUntil: "domcontentloaded" });
 await admin.waitForTimeout(800);
-await admin.getByRole("button", { name: "Actions" }).first().click();
-await admin.waitForTimeout(200);
-const copyItem = admin.getByText("Copy", { exact: true }).first();
-if (await copyItem.count()) {
-	await copyItem.click();
+if (await clickMenu("Copy")) {
 	await admin.waitForTimeout(800);
 	const copied = await admin.locator("body").innerText();
-	notes.push(`copy: ${/copy/i.test(copied) ? "saw copy" : "no copy text"} ${copied.includes("(copy)")}`);
+	notes.push(`copy form=${/Edit poll/.test(copied)} suffix=${copied.includes("(copy)")} toast=${/Rename this copy/.test(copied)}`);
+	if (!/Edit poll/.test(copied) || !copied.includes("(copy)")) notes.push("FAIL copy did not open edit with (copy)");
 	await shot(admin, "admin-1440-light-copied");
 } else notes.push("FAIL Copy menu missing");
 
@@ -189,11 +228,14 @@ if (await voteBtn.count()) {
 }
 await shot(member, "member-1440-light-demo");
 
-await member.goto(`${BASE}/polls-mine`, { waitUntil: "domcontentloaded" });
+await member.goto(`${BASE}/account/votes`, { waitUntil: "domcontentloaded" });
 await member.waitForTimeout(1000);
 const mineText = await member.locator("[data-wbp-mine]").innerText();
-notes.push(`member mine: ${mineText.slice(0, 240).replace(/\n/g, " | ")}`);
-if (!/You chose |You have not voted/.test(mineText)) notes.push("FAIL member mine missing list or empty");
+notes.push(`member account/votes: ${mineText.slice(0, 240).replace(/\n/g, " | ")}`);
+if (!/You chose |You have not voted/.test(mineText)) notes.push("FAIL member /account/votes missing list or empty");
+await shot(member, "member-1440-light-account-votes");
+await member.goto(`${BASE}/polls-mine`, { waitUntil: "domcontentloaded" });
+await member.waitForTimeout(800);
 await shot(member, "member-1440-light-mine");
 await member.setViewportSize({ width: 390, height: 844 });
 await member.waitForTimeout(300);
@@ -235,7 +277,8 @@ if (await erase.count()) {
 		const extras = member.locator("[data-wbp]").nth(1);
 		const extrasText = await extras.innerText();
 		notes.push(`extras after erase: ${extrasText.slice(0, 160).replace(/\n/g, " | ")}`);
-		if (!/0 votes/.test(extrasText)) notes.push("FAIL extras total did not drop after erase");
+		if (/You voted/.test(extrasText) || /1 vote/.test(extrasText)) notes.push("FAIL extras vote still present after erase");
+		if (!/Vote/.test(extrasText)) notes.push("FAIL extras did not return to the vote form");
 	} else notes.push("FAIL erase did not arm");
 } else notes.push("WARN no erase button (empty list)");
 await memberCtx.close();
