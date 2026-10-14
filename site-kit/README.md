@@ -14,13 +14,18 @@ On the lab, prefer `./scripts/apply-kit.sh` (or `./scripts/setup-lab.sh` the fir
 K=path/to/emdash-polls/site-kit
 
 mkdir -p src/lib src/styles src/components
-cp $K/lib/wbcom-kit.ts src/lib/wbcom-kit.ts
 cp $K/lib/polls-strings.ts src/lib/polls-strings.ts
-cp $K/styles/wbcom-base.css src/styles/wbcom-base.css
 cp $K/styles/polls.css src/styles/polls.css
 cp $K/components/Poll.astro src/components/Poll.astro
 cp $K/components/PollSlot.astro src/components/PollSlot.astro
 cp $K/components/MyVotes.astro src/components/MyVotes.astro
+
+# The two shared files are used by every Wbcom plugin. Line 1 carries a number
+# (wbcom-shared: N). Copy only when the site has no copy yet or an older one,
+# so another plugin's newer copy is never replaced.
+newer() { [ ! -f "$2" ] || [ "$(head -1 "$1" | grep -o '[0-9]\+')" -gt "$(head -1 "$2" | grep -o '[0-9]\+' || echo 0)" ]; }
+newer $K/lib/wbcom-kit.ts src/lib/wbcom-kit.ts && cp $K/lib/wbcom-kit.ts src/lib/wbcom-kit.ts
+newer $K/styles/wbcom-base.css src/styles/wbcom-base.css && cp $K/styles/wbcom-base.css src/styles/wbcom-base.css
 ```
 
 Then add one slot to the layout that wraps posts and pages:
