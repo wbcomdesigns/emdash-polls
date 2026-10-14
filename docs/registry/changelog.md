@@ -1,3 +1,8 @@
+## 0.2.2
+
+- Fix: the page editor Poll panel can open a poll, and new polls open so visitors can vote.
+- Fix: the existing-poll list starts with "Choose a poll".
+
 ## 0.2.1
 
 - Fix: a closed poll stays visible with results, and can be opened again.

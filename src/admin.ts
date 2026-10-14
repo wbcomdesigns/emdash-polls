@@ -107,11 +107,12 @@ export async function renderList(
 					? " A more specific poll can hide this one."
 					: "";
 			return {
-				poll: `${poll.question || "Untitled poll"}\n${displayStatus(poll)} · ${
+				poll: `${poll.question || "Untitled poll"}\n${
 					poll.who === "members" ? "Members" : "Anyone"
 				} · ${poll.named ? "Named" : "Anonymous"} · ${attachLabel(poll)} · ${votes} ${
 					votes === 1 ? "vote" : "votes"
 				}.${hidden}`,
+				status: displayStatus(poll),
 				action: { type: "menu", action_id: "poll_mod", label: "Actions", items },
 			};
 		}),
@@ -157,6 +158,7 @@ export async function renderList(
 						page_action_id: "polls_page",
 						columns: [
 							{ key: "poll", label: "Poll" },
+							{ key: "status", label: "Status" },
 							{ key: "action", label: "Actions", format: "element" },
 						],
 						rows,
@@ -220,10 +222,6 @@ export async function renderForm(
 		blocks: [
 			{ type: "header", text: existing ? "Edit poll" : "New poll" },
 			{ type: "context", text: lockedNote },
-			{
-				type: "context",
-				text: "Whole site shows on every page that has a poll slot. One content type shows on every entry of that type. A poll on a single page, set from the page editor, hides those. Pick the content type by name when you choose one content type.",
-			},
 			{
 				type: "form",
 				block_id: "poll",
@@ -384,6 +382,14 @@ async function renderResults(ctx: Ctx, poll: Poll & { id: string }, extra?: Extr
 		blocks: [
 			{ type: "header", text: "Results" },
 			{ type: "section", text: poll.question || "Untitled poll" },
+			{
+				type: "stats",
+				items: [
+					{ label: "Votes", value: String(results.total) },
+					{ label: "Answers", value: String(results.options.length) },
+					{ label: "Status", value: displayStatus(poll) },
+				],
+			},
 			{
 				type: "context",
 				text: poll.named

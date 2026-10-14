@@ -2,6 +2,12 @@
 
 Versions match `package.json`, the git tag and the registry release. Newest first.
 
+## [0.2.2]
+
+- The page editor Poll panel can open a poll. New polls from the panel open so visitors can vote.
+- The existing-poll list starts with "Choose a poll". The empty state is one short line.
+- Polls list shows a Status column. Results open with vote totals as stats.
+
 ## [0.2.1]
 
 - A closed poll stays on the page with its results. The owner can open it again.
