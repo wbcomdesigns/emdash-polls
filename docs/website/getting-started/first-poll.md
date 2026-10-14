@@ -21,7 +21,7 @@ This walks through one poll from start to finish: a question at the end of every
 5. **Where it shows:** One content type. Then pick **Posts** in the next field.
 6. Choose **Create poll**.
 
-![The New poll form with a question, four answers and an optional close date](../images/admin-new-poll.webp)
+![The New poll form with a question and three answers, and the options below them](../images/admin-new-poll.webp)
 
 A new poll starts as a **Draft**. Visitors do not see it yet.
 
@@ -35,7 +35,7 @@ On the **Polls** screen, choose **Actions** on your poll, then **Open**. The sta
 
 Open any post on your site in a private window. The poll sits where your developer placed the slot.
 
-![A poll at the end of a blog post, asking what to write about next](../images/poll-vote.webp)
+![A poll at the end of a blog post, asking what to write about next, above the post's reviews](../images/poll-vote.webp)
 
 After voting, the visitor sees the results.
 

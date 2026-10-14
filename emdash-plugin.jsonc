@@ -82,10 +82,11 @@
 				"file": "./images/banner.png"
 			},
 			"screenshots": [
-				{ "file": "./images/screenshot-1-poll.png" },
-				{ "file": "./images/screenshot-2-admin-list.png" },
-				{ "file": "./images/screenshot-3-admin-form.png" },
-				{ "file": "./images/screenshot-4-admin-results.png" }
+				{ "file": "./images/screenshot-1-poll-on-post.png" },
+				{ "file": "./images/screenshot-2-results.png" },
+				{ "file": "./images/screenshot-3-poll-on-page.png" },
+				{ "file": "./images/screenshot-4-admin-list.png" },
+				{ "file": "./images/screenshot-5-admin-form.png" }
 			]
 		}
 	}
