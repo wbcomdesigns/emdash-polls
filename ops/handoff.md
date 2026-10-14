@@ -2,6 +2,8 @@
 
 Live: **0.2.1** on the EmDash registry as `@vapvarun.bsky.social/polls`. Tag `v0.2.1`. GitHub release: https://github.com/wbcomdesigns/emdash-polls/releases/tag/v0.2.1
 
+0.2.2 is the next patch (#37 panel Open, #38 list status and results stats). Do not republish 0.2.1.
+
 Public page: https://plugins.emdashcms.com/plugins/@vapvarun.bsky.social/polls
 
 Lab is `../emdash-lab-polls` on port 4332.

@@ -346,11 +346,9 @@ describe("editing-screen panel", () => {
 
 		const empty = await site.rt.admin.loadEditorPanel("poll", "posts", posts.live);
 		expect(empty.blocks).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({ type: "header", text: "Poll" }),
-				expect.objectContaining({ type: "empty", title: "No poll on this page" }),
-			]),
+			expect.arrayContaining([expect.objectContaining({ type: "empty", title: "No poll here" })]),
 		);
+		expect(JSON.stringify(empty.blocks)).not.toContain('"text":"Poll"');
 
 		const created = await site.rt.admin.submitEditorPanel("poll", "posts", posts.live, "create", {
 			question: "Soup or salad?",
@@ -367,12 +365,14 @@ describe("editing-screen panel", () => {
 			question: "Soup or salad?",
 			attach: "entry",
 			attach_key: `posts:${posts.live}`,
+			status: "open",
 		});
+		expect(JSON.stringify(created.blocks)).not.toMatch(/"label":"Open"/);
 
 		const removed = await site.rt.admin.actEditorPanel("poll", "posts", posts.live, "remove");
 		expect(removed.toast).toMatchObject({ type: "success" });
 		expect(removed.blocks).toEqual(
-			expect.arrayContaining([expect.objectContaining({ type: "empty", title: "No poll on this page" })]),
+			expect.arrayContaining([expect.objectContaining({ type: "empty", title: "No poll here" })]),
 		);
 		expect((await site.rt.inspect.storage.get<{ attach: string }>(POLLS, stored[0]?.id ?? ""))?.attach).toBe("none");
 	});
@@ -392,6 +392,27 @@ describe("editing-screen panel", () => {
 			attach: "entry",
 			attach_key: `posts:${posts.live}`,
 		});
+	});
+
+	it("creates a draft from the panel and can open it there", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		const posts = await withPosts(site.rt);
+		const created = await site.rt.admin.submitEditorPanel("poll", "posts", posts.live, "create", {
+			question: "Draft here?",
+			options: "Yes\nNo",
+			who: "anyone",
+			position: "below",
+			open_now: false,
+		});
+		expect(JSON.stringify(created.blocks)).toContain("Draft");
+		expect(JSON.stringify(created.blocks)).toContain("Open");
+		const opened = await site.rt.admin.actEditorPanel("poll", "posts", posts.live, "open");
+		expect(opened.toast?.message).toBe("Poll opened.");
+		expect(JSON.stringify(opened.blocks)).toContain('"value":"Open"');
+		expect(JSON.stringify(opened.blocks)).not.toMatch(/"label":"Open"/);
+		const stored = await site.rt.inspect.storage.list<{ status: string }>(POLLS);
+		expect(stored[0]?.data.status).toBe("open");
 	});
 
 	it("refuses guests and members on the panel route", async () => {
