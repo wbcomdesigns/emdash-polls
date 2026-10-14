@@ -2,6 +2,15 @@
 
 Versions match `package.json`, the git tag and the registry release. Newest first.
 
+## [0.2.3]
+
+- Open and close times use a date picker and a time list (UTC) instead of typed dates.
+- Position on the page works: a slot marked above or below shows only polls set to that side. One slot without a position shows every poll, as before.
+- The post editor's Poll panel names the shared poll a post already shows, instead of saying there is none. Its poll list reads "Choose a poll".
+- Delete asks once. The Polls screen intro is one plain line.
+- Kit: no blank band above the question, brand-colour result bars, a plain sign-in note on My votes, even spacing.
+- Install guide: the shared kit files are copied only when the site's copy is older.
+
 ## [0.2.2]
 
 - The page editor Poll panel can open a poll. New polls from the panel open so visitors can vote.

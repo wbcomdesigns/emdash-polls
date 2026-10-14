@@ -1,3 +1,10 @@
+## 0.2.3
+
+- New: pick open and close times from a date picker and a time list (UTC).
+- Fix: Position on the page now places the poll above or below the content.
+- Fix: the post editor's Poll panel names the shared poll visitors see.
+- Fix: delete asks once. Cleaner poll card, brand-colour bars, plain sign-in note.
+
 ## 0.2.2
 
 - Fix: the page editor Poll panel can open a poll, and new polls open so visitors can vote.
