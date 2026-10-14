@@ -1,3 +1,7 @@
+## 0.2.4
+
+- Fix: polls stay readable when a visitor picks the site's light mode on a device set to dark. New guides for use cases and posts and pages.
+
 ## 0.2.3
 
 - New: one field per answer on the poll form, and the next appears as you type. Fields show only when they apply.

@@ -68,6 +68,7 @@
       "folder": "whats-new",
       "description": "What changed in each release, newest first.",
       "pages": [
+        { "slug": "0-2-4", "title": "What's new in 0.2.4" },
         { "slug": "0-2-3", "title": "What's new in 0.2.3" },
         { "slug": "0-2-2", "title": "What's new in 0.2.2" }
       ]
