@@ -41,7 +41,9 @@ import Poll from "../components/Poll.astro";
 <Poll id="p_..." />
 ```
 
-On an account page, show the member their votes:
+Copy `site-kit/pages/account/votes.astro` to `src/pages/account/votes.astro` (change the layout import if your site uses a different layout). Link **My votes** in the site header to `/account/votes`.
+
+On that page:
 
 ```astro
 ---

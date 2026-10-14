@@ -23,7 +23,7 @@ Last confirmed: 2026-10-14 by the 0.1.1 fix session (needs a human tick)
 | --- | --- | --- | --- |
 | Change vote while open | Subscriber | kit | Optional setting |
 | Scheduled open / close times | Guest | kit | Empty by default |
-| My votes / erase own votes | Subscriber | kit `/polls-mine` | 0.2.0 #6 |
+| My votes / erase own votes | Subscriber | kit `/account/votes` | 0.2.0 #6, page in 0.2.1 #35 |
 | In-text Poll block | Editor | trusted companion | #16 waiting |
 
 ## Zero-config check (C-2)

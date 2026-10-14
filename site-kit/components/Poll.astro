@@ -141,7 +141,14 @@ const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}` : latest
 		}
 		body.innerHTML = html;
 		live.textContent = "";
-		if (status && data.thanks) tell(status, { ok: true }, data.thanks);
+		if (status) {
+			if (data.thanks) tell(status, { ok: true }, data.thanks);
+			else {
+				status.hidden = true;
+				status.textContent = "";
+				delete status.dataset.tone;
+			}
+		}
 		bind(root, poll, signedIn);
 	}
 

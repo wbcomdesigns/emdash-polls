@@ -2,6 +2,15 @@
 
 Versions match `package.json`, the git tag and the registry release. Newest first.
 
+## [0.2.1]
+
+- A closed poll stays on the page with its results. The owner can open it again.
+- Copy keeps the attachment and opens the edit form so the heading can be renamed.
+- The red "Pick an answer" line clears after a successful vote.
+- Answer rows no longer pick up the theme's list indent.
+- The kit includes `/account/votes` for My votes. Link it from the site header.
+- Open and close time labels now show an example date. Block Kit has no date picker.
+
 ## [0.2.0]
 
 - Members can open My votes, see the polls they voted in, and erase their own votes in two clicks.

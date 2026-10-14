@@ -353,18 +353,22 @@ export function entryAttachKey(collection: string, entryId: string): string {
 }
 
 export async function pollForEntry(ctx: Ctx, collection: string, entryId: string): Promise<PollRow | null> {
-	return firstAttached(ctx, "entry", entryAttachKey(collection, entryId), false);
+	return firstAttached(ctx, "entry", entryAttachKey(collection, entryId), "any");
 }
 
-/** Open poll for this page: one page, then its content type, then the whole site. Newest at each step. */
+/** Poll for this page: newest open at page, then type, then site. If none are open, the newest closed. */
 export async function pollForSlot(ctx: Ctx, collection: string, entryId: string): Promise<PollRow | null> {
-	const page = await firstAttached(ctx, "entry", entryAttachKey(collection, entryId), true);
-	if (page) return page;
-	if (collection) {
-		const type = await firstAttached(ctx, "collection", collection, true);
-		if (type) return type;
-	}
-	return firstAttached(ctx, "site", "", true);
+	const entry = entryAttachKey(collection, entryId);
+	const open =
+		(await firstAttached(ctx, "entry", entry, "open")) ||
+		(collection ? await firstAttached(ctx, "collection", collection, "open") : null) ||
+		(await firstAttached(ctx, "site", "", "open"));
+	if (open) return open;
+	return (
+		(await firstAttached(ctx, "entry", entry, "closed")) ||
+		(collection ? await firstAttached(ctx, "collection", collection, "closed") : null) ||
+		(await firstAttached(ctx, "site", "", "closed"))
+	);
 }
 
 export async function readSlot(
@@ -375,8 +379,8 @@ export async function readSlot(
 	const row = await pollForSlot(ctx, asString(raw.collection), asString(raw.id));
 	if (!row) return { ok: true };
 	const live = await applySchedule(ctx, row);
-	if (effectiveStatus(live) !== "open") return { ok: true };
 	const status = effectiveStatus(live);
+	if (status === "draft") return { ok: true };
 	const poll = publicPoll(live, status);
 	if (!guestSeesResults(live, status)) return { ok: true, poll };
 	return { ok: true, poll, results: await tally(ctx, live) };
@@ -386,7 +390,7 @@ async function firstAttached(
 	ctx: Ctx,
 	attach: Poll["attach"],
 	key: string,
-	openOnly: boolean,
+	want: "open" | "closed" | "any",
 ): Promise<PollRow | null> {
 	if (attach === "entry" && (!key || key.endsWith(":"))) return null;
 	const found = await ctx.storage[POLLS].query({
@@ -397,9 +401,9 @@ async function firstAttached(
 	for (const item of found.items) {
 		let poll: PollRow = { id: item.id, ...parsePoll(item.data) };
 		if (poll.attach !== attach) continue;
-		if (openOnly) {
+		if (want !== "any") {
 			poll = await applySchedule(ctx, poll);
-			if (effectiveStatus(poll) !== "open") continue;
+			if (effectiveStatus(poll) !== want) continue;
 		}
 		return poll;
 	}
@@ -485,8 +489,6 @@ export function copyPoll(poll: Poll, now = nowIso()): Poll {
 		...poll,
 		question,
 		status: "draft",
-		attach: "none",
-		attach_key: "",
 		createdAt: now,
 		rev: newRev(),
 		options: poll.options.map((option) => ({ id: newId("o"), label: option.label })),

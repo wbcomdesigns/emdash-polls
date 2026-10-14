@@ -2,7 +2,7 @@
 
 Create polls, let visitors or members vote once, and show live results anywhere on your site.
 
-Status: 0.2.0. Live on the EmDash registry as `@vapvarun.bsky.social/polls`.
+Status: 0.2.1. Live on the EmDash registry as `@vapvarun.bsky.social/polls`.
 
 - Scope and schema: [SCOPE.md](SCOPE.md)
 - Plan and decisions: [PLAN.md](PLAN.md)
@@ -12,6 +12,13 @@ Status: 0.2.0. Live on the EmDash registry as `@vapvarun.bsky.social/polls`.
 - Registry listing copy: [docs/registry](docs/registry)
 
 The plugin is the engine. An EmDash plugin cannot add pages to a site, so the visible parts ship as a site kit in `site-kit/` that the owner copies in once. See [site-kit/README.md](site-kit/README.md).
+
+## What 0.2.1 fixes
+
+- A closed poll stays on the page with its results. The owner can open it again.
+- Copy keeps the attachment and opens the edit form so the heading can be renamed.
+- The red "Pick an answer" line clears after a successful vote.
+- The kit includes `/account/votes` for My votes.
 
 ## What 0.2.0 does
 

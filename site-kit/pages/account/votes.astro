@@ -1,0 +1,15 @@
+---
+/**
+ * Member votes. Copy this file to src/pages/account/votes.astro.
+ * Change the layout import if your site uses a different layout.
+ * Link to /account/votes from the site header as My votes.
+ */
+import Base from "../../layouts/Base.astro";
+import MyVotes from "../../components/MyVotes.astro";
+---
+
+<Base title="My votes" description="Polls you have voted in on this site.">
+	<div style="max-width: 40rem; margin-inline: auto; padding: 2rem 1rem;">
+		<MyVotes />
+	</div>
+</Base>

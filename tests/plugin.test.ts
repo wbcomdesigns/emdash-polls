@@ -245,6 +245,20 @@ describe("admin", () => {
 		expect(closed.toast?.message).toBe("Poll closed.");
 		expect((await site.rt.inspect.storage.get<{ status: string }>(POLLS, row.id))?.status).toBe("closed");
 
+		const closedList = (await site.call("admin", { type: "block_action", action_id: "polls_list" }, site.as(admin))) as {
+			blocks?: Array<Record<string, unknown>>;
+		};
+		expect(JSON.stringify(closedList.blocks)).toContain('"label":"Open"');
+
+		const afterClose = await site.rt.inspect.storage.get<{ rev: string }>(POLLS, row.id);
+		const reopened = (await site.call(
+			"admin",
+			{ type: "block_action", action_id: "poll_mod", value: `open|${afterClose?.rev}|${row.id}` },
+			site.as(admin),
+		)) as { toast?: { message: string } };
+		expect(reopened.toast?.message).toBe("Poll opened.");
+		expect((await site.rt.inspect.storage.get<{ status: string }>(POLLS, row.id))?.status).toBe("open");
+
 		const latest = await site.rt.inspect.storage.get<{ rev: string }>(POLLS, row.id);
 		const asking = (await site.call(
 			"admin",
@@ -787,7 +801,7 @@ describe("guest vote", () => {
 });
 
 describe("slot", () => {
-	it("returns the page poll, then the content-type poll, then the site poll, and skips closed", async () => {
+	it("returns the page poll, then the content-type poll, then the site poll, and keeps a closed site poll", async () => {
 		const site = await openSite();
 		dispose = site.dispose;
 		const posts = await withPosts(site.rt);
@@ -851,10 +865,12 @@ describe("slot", () => {
 		);
 		const afterClose = (await site.call("slot", { collection: "pages", id: "home" }, { method: "GET" })) as {
 			ok: boolean;
-			poll?: unknown;
+			poll?: { question: string; status: string };
 		};
-		expect(afterClose.ok).toBe(true);
-		expect(afterClose.poll).toBeUndefined();
+		expect(afterClose).toMatchObject({
+			ok: true,
+			poll: { question: "Site?", status: "closed" },
+		});
 	});
 });
 
@@ -880,23 +896,30 @@ describe("named lock, copy, results, erase", () => {
 	it("copies a poll as a draft with new option ids and no votes", async () => {
 		const site = await openSite();
 		dispose = site.dispose;
-		await site.rt.fixtures.plugin.storage(POLLS, "poll_src", samplePoll({ rev: "r-src", named: true }));
+		await site.rt.fixtures.plugin.storage(
+			POLLS,
+			"poll_src",
+			samplePoll({ rev: "r-src", named: true, attach: "site", attach_key: "" }),
+		);
 		await site.call("vote", { id: "poll_src", choices: ["blue"] }, site.as(ana));
 		const copied = (await site.call(
 			"admin",
 			{ type: "block_action", action_id: "poll_mod", value: "copy|r-src|poll_src" },
 			site.as(admin),
-		)) as { toast?: { message: string } };
-		expect(copied.toast?.message).toBe("Poll copied. It is a draft.");
+		)) as { toast?: { message: string }; blocks?: Array<Record<string, unknown>> };
+		expect(copied.toast?.message).toBe("Rename this copy, then open it.");
+		expect(JSON.stringify(copied.blocks)).toContain("Edit poll");
 		const rows = await site.rt.inspect.storage.list<{
 			question: string;
 			status: string;
 			named: boolean;
+			attach: string;
 			options: Array<{ id: string }>;
 		}>(POLLS);
 		const copy = rows.find((row) => row.id !== "poll_src");
 		expect(copy?.data.status).toBe("draft");
 		expect(copy?.data.named).toBe(true);
+		expect(copy?.data.attach).toBe("site");
 		expect(copy?.data.question).toBe("Which colour should we ship? (copy)");
 		expect(copy?.data.options[0]?.id).not.toBe("blue");
 		const votes = await site.rt.inspect.storage.list(VOTES);

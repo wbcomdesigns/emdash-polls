@@ -2,7 +2,7 @@
 
 One living list of flow-level cases. Walk all of it before every release. When you add or fix behaviour, add or change its case in the same pull request. There are no per-release QA files.
 
-**Last walk:** 2026-10-14, 0.2.0, lab http://127.0.0.1:4332. Isolated Chromium. Browser: extras before vote is one list (no 0% chart), colour after vote shows bars, missing empty title+help, Vote 44px, dark 17.03, My votes guest sign-in / member list / two-click erase, admin Actions at 390 right=354, copy (copy), form attach+named. Route: prove-lab.sh all pass. Tests: 41 passed (kit registry id `r_4dk64cimgjxrz74v`, content type names, mine erase). Bundle 42.8 KB. Not walked: G-1 dedicated members-only poll, G-7 same-visitor change, M-2/M-3 as a second account, in-text block (#16 stopped), a second-site registry install (kit-fetch tests cover the id). Developer walk, not a second-person QA PASS.
+**Last walk:** 2026-10-14, 0.2.1, lab http://127.0.0.1:4332. Isolated Chromium. Browser: empty Vote shows "Pick an answer from the list." then clears after a real vote (status hidden); closed poll stays with "This poll is closed." and bars; option leftGap 0; `/account/votes` guest sign-in and member list + two-click erase; extras return to the vote form after erase; Vote 44px; dark h2 17.03; admin 390 Actions right=354; form ISO examples 2026-10-20T09:00 / 2026-10-21T18:00. Route: prove-lab.sh all pass including `/account/votes`. Admin API: closed row Actions include Open (no Close); copy opens Edit poll with "(copy)", toast "Rename this copy, then open it.", collection attach kept as posts. Tests: 41 passed (reopen after close, copy toast, closed slot). editor_poll 200. Not walked: G-1 dedicated members-only poll, G-7 same-visitor change, M-2/M-3 as a second account, in-text block (#16 stopped), a second-site registry install. Developer walk, not a second-person QA PASS.
 
 When you walk it, replace that line with the date, the version, and three lists: cases walked in the browser, cases checked at route level only, cases not walked. Do not claim a case you did not run.
 
@@ -55,7 +55,7 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | A-1 | Create a poll with one option | Refused: at least two options |
 | A-2 | Create, then open a poll | It appears on the site |
 | A-3 | Edit options on a poll that has votes | Labels can change. Removing an option is refused |
-| A-4 | Close a poll | Voting stops. Results follow the visibility rule |
+| A-4 | Close a poll | Voting stops. Results follow the visibility rule. The slot still shows the poll. Actions still has Open |
 | A-5 | Delete a poll (two steps) | Poll and its votes are gone |
 | A-6 | Open results | Bars, counts and totals match the ballots |
 | A-7 | Set a close time in the past, load the poll | It shows as closed |
@@ -82,8 +82,8 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 
 - QA owner files are in `docs/qa/` and `audit/ROLE_MATRIX.md`. EmDash plugins use GitHub issues, not Basecamp.
 - The lab has one bypass account (`dev@emdash.local`). Subscriber vs admin is `scripts/lab-role.sh`. `bin/qa-fixtures.sh` inserts a second subscriber row for named data; that account has no login bypass.
-- Closed polls have no Open in the row menu. That matches the current admin rules.
-- My votes (`<MyVotes>`) is implemented on the 0.2.0 branch and walked (M-7 M-8). Not committed or published. Not an independent QA PASS.
+- Closed polls can be opened again from the row menu.
+- My votes ships as `<MyVotes>` plus `/account/votes`. Walked as guest (sign-in) and member (list + two-click erase). Not an independent QA PASS.
 - In-text Poll block (#16): trusted companion activates (`polls-block` in plugin state). Registry install is unchanged. A live list of polls cannot be filled from static Block Kit fields. The post editor was not proven to show Poll in the slash menu. Reported on #16.
 - Admin Actions control is about 36px tall (EmDash table chrome). Kit vote buttons meet 40px.
 - Registry screenshots are taken from a reset lab after `prove-lab.sh` seeds the ordinary demo polls (colour, extras, name, layout).
