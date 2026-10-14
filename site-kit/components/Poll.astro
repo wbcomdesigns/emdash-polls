@@ -196,7 +196,8 @@ const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}${position
 		const got = (await api("polls", path)) as Payload;
 		// A slot placed for one position stays empty when the poll is set to the other one.
 		const wanted = root.dataset.position;
-		if (collection && wanted && got.poll?.position && got.poll.position !== wanted) {
+		// A plugin older than 0.2.3 sends no position: treat it as the default, below, so a poll never shows twice.
+		if (collection && wanted && got.poll && (got.poll.position || "below") !== wanted) {
 			paint(root, { ok: false }, false);
 			root.removeAttribute("aria-busy");
 			return;

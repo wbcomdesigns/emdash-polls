@@ -311,21 +311,35 @@ export const TIME_OPTIONS: Array<{ label: string; value: string }> = Array.from(
 	return { label: value, value };
 });
 
-/** A stored ISO time as the date picker's day and the time dropdown's value (UTC). */
+/** The time list for a poll, plus its stored time when that is not on a half hour (set before 0.2.3). */
+export function timeOptions(current: string): Array<{ label: string; value: string }> {
+	if (!current || TIME_OPTIONS.some((item) => item.value === current)) return TIME_OPTIONS;
+	return [...TIME_OPTIONS, { label: current, value: current }].sort((a, b) => a.value.localeCompare(b.value));
+}
+
+/** A stored ISO time as the date picker's day and the time list's value (UTC), minutes kept as stored. */
 export function splitTime(iso: string): { date: string; time: string } {
 	const ms = Date.parse(iso);
 	if (!iso || Number.isNaN(ms)) return { date: "", time: "00:00" };
 	const text = new Date(ms).toISOString();
-	const minutes = Number(text.slice(14, 16)) < 30 ? "00" : "30";
-	return { date: text.slice(0, 10), time: `${text.slice(11, 13)}:${minutes}` };
+	return { date: text.slice(0, 10), time: text.slice(11, 16) };
 }
 
-/** The date picker's day plus the time dropdown, read as UTC. No day means no time set. */
+/** The date picker's day plus the time list, read as UTC. No day means no time set; a day that is not a real calendar day fails parseTimeField. */
 export function joinTime(date: unknown, time: unknown): string {
 	const day = asString(date);
 	if (!day) return "";
-	const clock = /^\d{2}:\d{2}$/.test(asString(time)) ? asString(time) : "00:00";
+	const real = /^\d{4}-\d{2}-\d{2}$/.test(day) && new Date(`${day}T00:00:00Z`).toISOString().slice(0, 10) === day;
+	if (!real) return "invalid";
+	const clock = /^([01]\d|2[0-3]):[0-5]\d$/.test(asString(time)) ? asString(time) : "00:00";
 	return `${day}T${clock}:00Z`;
+}
+
+/** Keep the stored time exactly (seconds included) when the owner left the day and time as they were. */
+export function formTime(stored: string, date: unknown, time: unknown): string {
+	const was = splitTime(stored);
+	if (stored && was.date === asString(date) && was.time === asString(time)) return stored;
+	return joinTime(date, time);
 }
 
 export function statusLabel(poll: Poll, now = Date.now()): string {

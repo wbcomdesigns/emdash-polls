@@ -17,10 +17,10 @@ import {
 	newRev,
 	optionsToText,
 	parsePoll,
-	joinTime,
+	formTime,
 	parseTimeField,
 	splitTime,
-	TIME_OPTIONS,
+	timeOptions,
 	putPoll,
 	statusLabel,
 	tally,
@@ -277,14 +277,14 @@ export async function renderForm(
 						label: "Opens on (optional). A draft with a future day shows as Scheduled.",
 						initial_value: "opens_date" in values ? asString(values.opens_date) : opensAt.date,
 					},
-					select("opens_time", "Opens at (UTC)", asString(values.opens_time) || opensAt.time, TIME_OPTIONS),
+					select("opens_time", "Opens at (UTC)", asString(values.opens_time) || opensAt.time, timeOptions(opensAt.time)),
 					{
 						type: "date_input",
 						action_id: "closes_date",
 						label: "Closes on (optional)",
 						initial_value: "closes_date" in values ? asString(values.closes_date) : closesAt.date,
 					},
-					select("closes_time", "Closes at (UTC)", asString(values.closes_time) || closesAt.time, TIME_OPTIONS),
+					select("closes_time", "Closes at (UTC)", asString(values.closes_time) || closesAt.time, timeOptions(closesAt.time)),
 					{
 						type: "text_input",
 						action_id: "thanks",
@@ -472,8 +472,8 @@ async function savePoll(ctx: Ctx, values: Record<string, unknown>): Promise<Bloc
 		return renderForm(ctx, existing?.id ?? "", { toast: { message: options.error, type: "error" }, values });
 	}
 
-	const opens = parseTimeField(joinTime(values.opens_date, values.opens_time));
-	const closes = parseTimeField(joinTime(values.closes_date, values.closes_time));
+	const opens = parseTimeField(formTime(existing?.opens_at ?? "", values.opens_date, values.opens_time));
+	const closes = parseTimeField(formTime(existing?.closes_at ?? "", values.closes_date, values.closes_time));
 	if (!opens.ok) return renderForm(ctx, existing?.id ?? "", { toast: { message: opens.error, type: "error" }, values });
 	if (!closes.ok) return renderForm(ctx, existing?.id ?? "", { toast: { message: closes.error, type: "error" }, values });
 
