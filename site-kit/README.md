@@ -37,6 +37,14 @@ import PollSlot from "../components/PollSlot.astro";
 <PollSlot collection={entry.collection} id={entry.id} />
 ```
 
+To honour each poll's **Position on the page** setting, place two slots instead, one on each side of the content. Each shows only the polls set to its side:
+
+```astro
+<PollSlot collection={entry.collection} id={entry.id} position="above" />
+<!-- the content -->
+<PollSlot collection={entry.collection} id={entry.id} position="below" />
+```
+
 Or place a specific poll:
 
 ```astro

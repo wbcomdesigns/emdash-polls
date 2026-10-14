@@ -884,9 +884,11 @@ describe("slot", () => {
 
 		const page = (await site.call("slot", { collection: "posts", id: posts.live }, { method: "GET" })) as {
 			ok: boolean;
-			poll?: { question: string };
+			poll?: { question: string; position?: string };
 		};
 		expect(page.poll?.question).toBe("This page?");
+		// The kit needs the position to fill only the matching above or below slot.
+		expect(page.poll?.position).toBe("below");
 
 		const other = (await site.call("slot", { collection: "posts", id: "no-such" }, { method: "GET" })) as {
 			poll?: { question: string };

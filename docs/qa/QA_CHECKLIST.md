@@ -66,6 +66,7 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | A-12 | New poll, Where it shows: one content type | The next field lists content types by name. Nothing is typed |
 | A-13 | New poll: pick an open day in the date picker and 09:30 in the time list, save, edit again | Day and 09:30 come back. The list shows Scheduled. Clearing the day and saving shows Draft. Nothing is typed |
 | A-14 | Attach an open poll to all posts, then open a post in the editor and expand the Poll panel | The panel says "Visitors see a shared poll" and names it, not "No poll here". The existing-poll list reads "Choose a poll" |
+| A-15 | Template has `<PollSlot position="above">` before the content and `position="below"` after. Set a poll to Above, then to Below | Only the matching slot shows the poll; the other renders nothing. A template with one slot and no position shows the poll either way |
 
 ## Presentation, every screen
 

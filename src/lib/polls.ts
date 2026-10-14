@@ -198,6 +198,7 @@ export function publicPoll(poll: PollRow, status: PollStatus) {
 		named: poll.named,
 		results: poll.results,
 		numbers: poll.numbers,
+		position: poll.position,
 	};
 }
 
