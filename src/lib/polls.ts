@@ -280,25 +280,24 @@ export function answerFields(labels: string[], locked: boolean) {
 }
 
 /**
- * The answers a form sent, one per line. A field counts only when the form showed it (the same
- * rule as answerFields), so text left in a field that was hidden again is not saved. Empty
- * fields are dropped.
+ * The answers a form sent, in field order. On a poll with votes (lockedCount) every answer field
+ * shows, so all of them are read as they are, empty ones included, and the save can say which
+ * needs text. Otherwise a field counts only when the form showed it (the rule in answerFields),
+ * so text left in a field that was hidden again is not saved, and empty fields are dropped.
  */
-export function answersFromForm(values: Record<string, unknown>): string {
+export function answersFromForm(values: Record<string, unknown>, lockedCount = 0): string[] {
 	const raw = Array.from({ length: OPTIONS_MAX }, (_, index) => asString(values[`answer_${index + 1}`]).trim());
-	return raw.filter((text, index) => text && (index < OPTIONS_MIN || raw[index - 1])).join("\n");
+	if (lockedCount) return raw.slice(0, lockedCount);
+	return raw.filter((text, index) => text && (index < OPTIONS_MIN || raw[index - 1]));
 }
 
 export function applyOptionEdits(
 	previous: PollOption[],
-	text: string,
+	answers: string[],
 	locked: boolean,
 ): { ok: true; options: PollOption[] } | { ok: false; error: string } {
-	const labels = text
-		.split(/\r?\n/)
-		.map((line) => line.trim())
-		.filter(Boolean)
-		.map((label) => label.slice(0, QUESTION_MAX));
+	const trimmed = answers.map((answer) => answer.trim().slice(0, QUESTION_MAX));
+	const labels = locked ? trimmed : trimmed.filter(Boolean);
 	if (locked) {
 		if (labels.length !== previous.length) {
 			return { ok: false, error: "This poll has votes, so answers cannot be added or removed." };

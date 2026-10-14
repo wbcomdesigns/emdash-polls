@@ -79,16 +79,17 @@ describe("manifest", () => {
 
 describe("schema helpers", () => {
 	it("reads only the answer fields the form showed", () => {
-		expect(answersFromForm({ answer_1: " Blue ", answer_2: "Green", answer_3: "Red" })).toBe("Blue\nGreen\nRed");
+		expect(answersFromForm({ answer_1: " Blue ", answer_2: "Green", answer_3: "Red" })).toEqual(["Blue", "Green", "Red"]);
 		// Answer 2 cleared: answer 3 is hidden again, so its leftover text is not saved.
-		expect(answersFromForm({ answer_1: "Blue", answer_2: "", answer_3: "Red" })).toBe("Blue");
+		expect(answersFromForm({ answer_1: "Blue", answer_2: "", answer_3: "Red" })).toEqual(["Blue"]);
+		// A poll with votes shows every answer field, so a cleared one stays in place and is reported.
+		expect(answersFromForm({ answer_1: "Blue", answer_2: "", answer_3: "Red" }, 3)).toEqual(["Blue", "", "Red"]);
 		const fields = answerFields(["Blue", "Green"], false);
 		expect(fields).toHaveLength(10);
 		expect(fields[1]).not.toHaveProperty("condition");
 		expect(fields[2]).toMatchObject({ action_id: "answer_3", condition: { field: "answer_2", neq: "" } });
 		expect(answerFields(["Blue", "Green", "Red"], true)).toHaveLength(3);
 	});
-
 
 	it("keeps option ids stable and fills missing ones", () => {
 		const poll = parsePoll({
@@ -306,7 +307,22 @@ describe("admin", () => {
 			member_name: "",
 		});
 
-		const refused = (await site.call(
+		// A cleared answer is refused, and the form comes back with every answer field still there.
+		const cleared = (await site.call(
+			"admin",
+			{
+				type: "form_submit",
+				action_id: "save|r1|poll_lock",
+				values: { question: "Which colour should we ship?", answer_1: "Blue", answer_2: "" },
+			},
+			site.as(admin),
+		)) as { toast?: { message: string; type: string }; blocks: Array<{ type: string; fields?: Array<{ action_id: string; initial_value?: unknown }> }> };
+		expect(cleared.toast).toMatchObject({ type: "error", message: "Every answer needs text." });
+		const form = cleared.blocks.find((block) => block.type === "form");
+		expect(form?.fields?.filter((field) => field.action_id.startsWith("answer_")).map((field) => field.initial_value)).toEqual(["Blue", ""]);
+
+		// The form shows no slot for a new answer on a poll with votes; a third answer sent anyway is not added.
+		const extra = (await site.call(
 			"admin",
 			{
 				type: "form_submit",
@@ -314,17 +330,16 @@ describe("admin", () => {
 				values: { question: "Which colour should we ship?", answer_1: "Blue", answer_2: "Green", answer_3: "Red" },
 			},
 			site.as(admin),
-		)) as { toast?: { message: string; type: string } };
-		expect(refused.toast).toMatchObject({
-			type: "error",
-			message: "This poll has votes, so answers cannot be added or removed.",
-		});
+		)) as { toast?: { message: string } };
+		expect(extra.toast?.message).toBe("Poll saved.");
+		expect((await site.rt.inspect.storage.get<{ options: unknown[] }>(POLLS, "poll_lock"))?.options).toHaveLength(2);
 
+		const rev = (await site.rt.inspect.storage.get<{ rev: string }>(POLLS, "poll_lock"))?.rev;
 		const saved = (await site.call(
 			"admin",
 			{
 				type: "form_submit",
-				action_id: "save|r1|poll_lock",
+				action_id: `save|${rev}|poll_lock`,
 				values: { question: "Which colour should we make?", answer_1: "Navy", answer_2: "Forest" },
 			},
 			site.as(admin),

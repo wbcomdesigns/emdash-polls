@@ -207,7 +207,10 @@ export async function renderForm(
 	const question = asString(values.question) || poll.question;
 	const opensAt = splitTime(poll.opens_at);
 	const closesAt = splitTime(poll.closes_at);
-	const answerLabels = "answer_1" in values ? answersFromForm(values).split("\n") : poll.options.map((option) => option.label);
+	const answerLabels =
+		"answer_1" in values
+			? answersFromForm(values, voted ? poll.options.length : 0)
+			: poll.options.map((option) => option.label);
 	const lockedNote =
 		"This poll has votes. You can correct the question and the wording of an answer. You cannot add, remove or reorder answers, and you cannot switch between one choice and several.";
 	const types = await siteCollections(ctx);
@@ -475,7 +478,7 @@ async function savePoll(ctx: Ctx, values: Record<string, unknown>): Promise<Bloc
 	}
 
 	const voted = existing ? await hasVotes(ctx, existing.id) : false;
-	const options = applyOptionEdits(existing?.options ?? [], answersFromForm(values), voted);
+	const options = applyOptionEdits(existing?.options ?? [], answersFromForm(values, voted ? existing?.options.length : 0), voted);
 	if (!options.ok) {
 		return renderForm(ctx, existing?.id ?? "", { toast: { message: options.error, type: "error" }, values });
 	}
