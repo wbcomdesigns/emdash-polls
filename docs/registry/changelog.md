@@ -1,5 +1,6 @@
 ## 0.2.3
 
+- New: one field per answer on the poll form, and the next appears as you type. Fields show only when they apply.
 - New: pick open and close times from a date picker and a time list (UTC).
 - Fix: Position on the page now places the poll above or below the content.
 - Fix: the post editor's Poll panel names the shared poll visitors see.
