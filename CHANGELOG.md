@@ -2,13 +2,15 @@
 
 Versions match `package.json`, the git tag and the registry release. Newest first.
 
-## [Unreleased]
+## [0.3.0]
 
-- Polls opens with how many polls are open and how many votes came in this week. The week's count is one lookup, not a scan of every vote.
-- Results opens with a bar chart, then the totals and the answer table. Long answers are shortened on the chart. The table keeps the full wording. A named poll lists members 25 at a time.
-- The poll form stays one Save. Block Kit cannot put an accordion inside a form, so the question, who can vote, where it shows, and when results appear stay in that one form.
-- Optional block, This page's poll, for post text. It is trusted site code. It shows the poll attached to that page. You attach the poll by its question in the post editor's Poll panel. The block inserts with one fixed choice and does not call out to an address.
-- Security: the shared kit file is updated so server-side plugin calls run inside EmDash with no web request.
+Copy the kit again after you update.
+
+- New      - The Polls list opens with how many polls are open and how many votes came in this week. Each status is a badge.
+- New      - Results open with a bar chart above the totals and the answer table. A named poll lists voters 25 at a time.
+- New      - Optional block, This page's poll, for post text. It is trusted site code and shows the poll attached to the page. If the post template also has the poll slot, the poll shows once, inside the article.
+- Improve  - At phone width the polls list scrolls sideways and the results chart uses horizontal bars with short labels.
+- Security - Shared kit 5: server-side plugin calls run inside EmDash with no web request.
 
 ## [0.2.4]
 
