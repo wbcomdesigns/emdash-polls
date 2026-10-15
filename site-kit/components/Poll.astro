@@ -223,7 +223,19 @@ const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}${position
 		root.removeAttribute("aria-busy");
 	}
 
-	document.querySelectorAll<HTMLElement>("[data-wbp]").forEach((root) => {
-		void load(root);
-	});
+	// The in-text block and the theme's slot can both ask for the same page's poll. The block has
+	// no position, so it shows the poll wherever it sits: keep it and drop the other slots for that
+	// page, so the poll shows once. A pair of above/below slots alone still splits by position.
+	const roots = [...document.querySelectorAll<HTMLElement>("[data-wbp]")];
+	const keep = new Map<string, HTMLElement>();
+	for (const root of roots) {
+		const page = root.dataset.collection ? `${root.dataset.collection}|${root.dataset.entry ?? ""}` : "";
+		if (page && !root.dataset.position && !keep.has(page)) keep.set(page, root);
+	}
+	for (const root of roots) {
+		const page = root.dataset.collection ? `${root.dataset.collection}|${root.dataset.entry ?? ""}` : "";
+		const winner = page ? keep.get(page) : undefined;
+		if (winner && winner !== root) root.remove();
+		else void load(root);
+	}
 </script>

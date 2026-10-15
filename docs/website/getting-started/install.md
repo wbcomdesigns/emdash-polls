@@ -72,7 +72,7 @@ emdash({
 });
 ```
 
-Restart the site. In a post or page, type `/poll` and choose **This page's poll**. The choice is already filled in, so you insert it without typing. It shows the poll you attached to that page from the post editor's Poll panel. Leave this out and the registry plugin works the same.
+Restart the site. In a post or page, type `/poll` and choose **This page's poll**. The choice is already filled in, so you insert it without typing. It shows the poll you attached to that page from the post editor's Poll panel. If your post template also has the poll slot, the poll moves into the article and shows once. Leave this out and the registry plugin works the same.
 
 ## Step 4: link My votes (optional)
 
