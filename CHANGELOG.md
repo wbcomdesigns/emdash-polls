@@ -4,10 +4,11 @@ Versions match `package.json`, the git tag and the registry release. Newest firs
 
 ## [Unreleased]
 
-- Polls opens with how many polls are open and how many votes came in this week. Each status shows as a badge.
-- Results opens with a bar chart, then the totals and the answer table. A named poll lists members 25 at a time.
+- Polls opens with how many polls are open and how many votes came in this week. The week's count is one lookup, not a scan of every vote.
+- Results opens with a bar chart, then the totals and the answer table. Long answers are shortened on the chart. The table keeps the full wording. A named poll lists members 25 at a time.
 - The poll form stays one Save. Block Kit cannot put an accordion inside a form, so the question, who can vote, where it shows, and when results appear stay in that one form.
-- Optional Poll block for post text. It is trusted site code. You pick the poll by its question. The registry plugin is unchanged.
+- Optional Poll block for post text. It is trusted site code. You pick a poll from the list, and the page stores that poll, so renaming the question does not remove it. The page does not call out to an address, and it does not send your login cookie. The list is the first 100 polls.
+- Security: the shared kit file is updated so server-side plugin calls run inside EmDash with no web request.
 
 ## [0.2.4]
 

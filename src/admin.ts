@@ -87,17 +87,7 @@ function statusError(row: Poll | null, rev: string): string | null {
 async function listStats(ctx: Ctx): Promise<BlockMap> {
 	const open = await ctx.storage[POLLS].count({ status: "open" });
 	const since = new Date(Date.now() - WEEK_MS).toISOString();
-	let votes = 0;
-	let cursor: string | undefined;
-	for (let step = 0; step < 40; step += 1) {
-		const found = await ctx.storage[VOTES].query({ limit: 100, cursor });
-		for (const item of found.items) {
-			const created = asString((item.data as { createdAt?: string } | undefined)?.createdAt);
-			if (created >= since) votes += 1;
-		}
-		if (!found.hasMore || !found.cursor) break;
-		cursor = found.cursor;
-	}
+	const votes = await ctx.storage[VOTES].count({ createdAt: { gte: since } });
 	return {
 		type: "stats",
 		items: [
@@ -472,9 +462,15 @@ async function renderResults(
 					chart_type: "custom",
 					height: 240,
 					options: {
-						grid: { left: 12, right: 12, top: 16, bottom: 24, containLabel: true },
-						xAxis: { type: "category", data: results.options.map((row) => row.label) },
-						yAxis: { type: "value", minInterval: 1 },
+						grid: { left: 8, right: 16, top: 8, bottom: 8, containLabel: true },
+						tooltip: { trigger: "item" },
+						xAxis: { type: "value", minInterval: 1 },
+						yAxis: {
+							type: "category",
+							data: results.options.map((row) =>
+								row.label.length > 24 ? `${row.label.slice(0, 24)}...` : row.label,
+							),
+						},
 						series: [{ type: "bar", data: results.options.map((row) => row.count) }],
 					},
 				},

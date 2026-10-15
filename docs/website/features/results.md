@@ -11,7 +11,7 @@ On the **Polls** screen, choose **Actions** on a poll, then **Results**.
 You see:
 
 - **Votes**, **Answers** and **Status** at the top.
-- A bar chart of the answers.
+- A bar chart of the answers. A long answer is shortened on the chart. The table below keeps the full wording.
 - A table with each answer's votes and share.
 
 ### Named polls

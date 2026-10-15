@@ -84,7 +84,7 @@ Every phrase a visitor can see lives in `src/lib/polls-strings.ts`. Change that 
 
 ## For the in-text block
 
-Copy `site-kit/blocks/` to `src/polls-block/` and add `pollsBlock()` under `plugins` in `astro.config.mjs`. The install guide has the lines. You pick the poll by its question. The registry plugin does not need this.
+Copy `site-kit/blocks/` to `src/polls-block/` and add `pollsBlock()` under `plugins` in `astro.config.mjs`. The install guide has the lines. You pick the poll from a list of the first 100. The page stores that poll, so renaming the question does not remove it. The registry plugin does not need this.
 
 ## What you should see
 

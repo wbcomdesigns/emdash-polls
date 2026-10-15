@@ -59,7 +59,7 @@ describe("manifest", () => {
 		dispose = () => host.dispose();
 		expect(host.manifest.storage).toMatchObject({
 			polls: { indexes: expect.arrayContaining(["status", "createdAt", "attach_key"]) },
-			votes: { indexes: expect.arrayContaining(["poll", "poll_option", "member_id"]) },
+			votes: { indexes: expect.arrayContaining(["poll", "poll_option", "member_id", "createdAt"]) },
 		});
 		expect(host.manifest.admin?.pages).toEqual(
 			expect.arrayContaining([
@@ -205,7 +205,7 @@ describe("admin", () => {
 			items: Array<{ id: string; name: string }>;
 		};
 		expect(result.items).toContainEqual({
-			id: "Which colour should we ship?",
+			id: "poll_q",
 			name: "Which colour should we ship?",
 		});
 	});

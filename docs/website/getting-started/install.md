@@ -72,7 +72,7 @@ emdash({
 });
 ```
 
-Restart the site. In a post or page, type `/poll` and choose **Poll**, then pick the poll by its question. Leave this out and the registry plugin works the same.
+Restart the site. In a post or page, type `/poll` and choose **Poll**, then pick the poll from the list. The list shows the question and stores the poll, so a later rename does not remove the block. It lists the first 100 polls. Leave this out and the registry plugin works the same.
 
 ## Step 4: link My votes (optional)
 
