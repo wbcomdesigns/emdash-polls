@@ -3,7 +3,7 @@ import type { SandboxedPlugin } from "emdash/plugin";
 import { handleAdmin } from "./admin";
 import { MEMBER } from "./core";
 import { handleEditorPanel } from "./editor";
-import { countOpenPolls, listPolls, readPublicPoll, readSlot } from "./lib/polls";
+import { countOpenPolls, readPublicPoll, readSlot } from "./lib/polls";
 import { handleBallot, handleBallotGuest, handleMine, handleVote, handleVoteGuest } from "./vote";
 
 const plugin: SandboxedPlugin = {
@@ -50,19 +50,6 @@ const plugin: SandboxedPlugin = {
 		mine: { permission: MEMBER, methods: ["GET", "DELETE"], handler: handleMine },
 		admin: {
 			handler: async (routeCtx, ctx) => handleAdmin(routeCtx.input, ctx),
-		},
-		questions: {
-			public: true,
-			methods: ["POST"],
-			handler: async (_routeCtx, ctx) => {
-				const listed = await listPolls(ctx, { limit: 100 });
-				return {
-					items: listed.items.map((poll) => ({
-						id: poll.id,
-						name: poll.question || "Untitled poll",
-					})),
-				};
-			},
 		},
 		editor_poll: {
 			handler: async (routeCtx, ctx) => handleEditorPanel(routeCtx, ctx),

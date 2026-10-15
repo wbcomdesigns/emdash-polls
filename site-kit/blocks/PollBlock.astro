@@ -1,9 +1,11 @@
 ---
+import { resolveEmDashPath } from "emdash";
 import Poll from "../components/Poll.astro";
 
-const node = (Astro.props.node ?? {}) as { poll?: string };
-const id = String(node.poll || "").trim();
-const stored = /^p_[0-9a-f]{16}$/.test(id);
+// Collection patterns do not include a trailing slash. The page address sometimes does.
+const path = Astro.url.pathname.length > 1 ? Astro.url.pathname.replace(/\/$/, "") : Astro.url.pathname;
+const resolved = await resolveEmDashPath(path);
+const id = resolved?.entry?.data?.id ? String(resolved.entry.data.id) : "";
 ---
 
-{stored ? <Poll id={id} /> : null}
+{resolved && id ? <Poll collection={resolved.collection} entry={id} /> : null}

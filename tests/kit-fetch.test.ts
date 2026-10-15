@@ -103,13 +103,13 @@ describe("server-side calls", () => {
 				: { success: false, error: { code: "NOT_FOUND", message: "Plugin route not found" } }
 		);
 		expect(
-			await kit.callPluginRoute({ emdash: { handlePublicPluginApiRoute: handler("polls") } }, "polls", "questions", {}),
+			await kit.callPluginRoute({ emdash: { handlePublicPluginApiRoute: handler("polls") } }, "polls", "health", {}),
 		).toMatchObject({ ok: true });
-		expect(routed).toEqual([`${id}/questions`, "polls/questions"]);
+		expect(routed).toEqual([`${id}/health`, "polls/health"]);
 		expect(
-			await kit.callPluginRoute({ emdash: { handlePublicPluginApiRoute: handler("other") } }, "polls", "questions", {}),
+			await kit.callPluginRoute({ emdash: { handlePublicPluginApiRoute: handler("other") } }, "polls", "health", {}),
 		).toMatchObject({ ok: false, error: { code: "NOT_FOUND" } });
-		expect(await kit.callPluginRoute({}, "polls", "questions", {})).toMatchObject({
+		expect(await kit.callPluginRoute({}, "polls", "health", {})).toMatchObject({
 			ok: false,
 			error: { code: "UNAVAILABLE" },
 		});
