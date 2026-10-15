@@ -8,8 +8,8 @@ Lab is `../emdash-lab-polls` on port 4332.
 
 ## Next
 
-- #38 and #16 are on branch 0.3.0, not merged. The list has open-poll and votes-this-week stats, a status badge, and a bar chart on Results. The form stays one Save: Block Kit cannot put an accordion inside a form. The in-text block is This page's poll. It reads the current page and shows the poll attached there. There is no poll list route.
-- Do not republish 0.1.0, 0.1.1, 0.2.0, 0.2.1, or 0.2.2. A registry release cannot be changed.
+- 0.3.0 is live (2026-10-15): poll stats and status badges, results bar chart, optional This page's poll block (trusted install, shows once next to the theme slot), shared kit 5.
+- No open issues. Do not republish an existing version: a registry release cannot be changed.
 
 ## How to work
 
