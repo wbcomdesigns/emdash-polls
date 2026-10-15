@@ -1,3 +1,8 @@
+## 0.3.0
+
+- New: poll stats on the list, a results bar chart, and an optional This page's poll block for post text (trusted install).
+- Security: server-side calls run inside EmDash with no web request. Copy the kit again after updating.
+
 ## 0.2.4
 
 - Fix: polls stay readable when a visitor picks the site's light mode on a device set to dark. New guides for use cases and posts and pages.
@@ -35,11 +40,4 @@
 - A missing poll explains what to do next.
 - Tapping anywhere on an answer selects it.
 
-## 0.1.0
-
-- New: create, edit, open, close and delete polls from admin.
-- New: guests and signed-in members can vote once, with an optional change while the poll is open.
-- New: attach a poll to one page, a content type or the whole site.
-- New: anonymous or named results. The owner can erase one member's votes.
-- New: copy a poll into a new draft with no votes.
-- New: site kit poll and slot components, with one wording file for visitor text.
+Older versions: https://github.com/wbcomdesigns/emdash-polls/blob/main/CHANGELOG.md

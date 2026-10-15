@@ -6,7 +6,7 @@
   "tagline": "Ask your visitors a question and show live results on any EmDash page.",
   "note": "GitHub-only documentation. Metadata only. No publish or sync target.",
   "images_dir": "images",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "sections": [
     {
       "name": "Getting Started",
@@ -68,6 +68,7 @@
       "folder": "whats-new",
       "description": "What changed in each release, newest first.",
       "pages": [
+        { "slug": "0-3-0", "title": "What's new in 0.3.0" },
         { "slug": "0-2-4", "title": "What's new in 0.2.4" },
         { "slug": "0-2-3", "title": "What's new in 0.2.3" },
         { "slug": "0-2-2", "title": "What's new in 0.2.2" }
