@@ -1,0 +1,11 @@
+---
+import { resolveEmDashPath } from "emdash";
+import Poll from "../components/Poll.astro";
+
+// Collection patterns do not include a trailing slash. The page address sometimes does.
+const path = Astro.url.pathname.length > 1 ? Astro.url.pathname.replace(/\/$/, "") : Astro.url.pathname;
+const resolved = await resolveEmDashPath(path);
+const id = resolved?.entry?.data?.id ? String(resolved.entry.data.id) : "";
+---
+
+{resolved && id ? <Poll collection={resolved.collection} entry={id} /> : null}

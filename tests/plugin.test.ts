@@ -59,7 +59,7 @@ describe("manifest", () => {
 		dispose = () => host.dispose();
 		expect(host.manifest.storage).toMatchObject({
 			polls: { indexes: expect.arrayContaining(["status", "createdAt", "attach_key"]) },
-			votes: { indexes: expect.arrayContaining(["poll", "poll_option", "member_id"]) },
+			votes: { indexes: expect.arrayContaining(["poll", "poll_option", "member_id", "createdAt"]) },
 		});
 		expect(host.manifest.admin?.pages).toEqual(
 			expect.arrayContaining([
@@ -190,6 +190,48 @@ describe("admin", () => {
 		expect(form.blocks).toEqual(
 			expect.arrayContaining([expect.objectContaining({ type: "header", text: "New poll" })]),
 		);
+		expect(JSON.stringify(form.blocks)).toContain("One Save stores the question");
+	});
+
+	it("counts open polls and votes this week, and pages a long list", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		const recent = new Date().toISOString();
+		await site.rt.fixtures.plugin.storage(VOTES, "week-vote", {
+			poll: "poll_0",
+			poll_option: "poll_0:blue",
+			member_id: "ana",
+			createdAt: recent,
+			visitor: "",
+			member_name: "Ana",
+		});
+		for (let i = 0; i < 30; i += 1) {
+			await site.rt.fixtures.plugin.storage(
+				POLLS,
+				`poll_${i}`,
+				samplePoll({
+					question: i === 7 ? "Find me later" : `Question ${i}`,
+					createdAt: new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString(),
+					status: i < 3 ? "open" : "draft",
+					rev: `r-${i}`,
+				}),
+			);
+		}
+		const page = (await site.rt.admin.loadPage("/polls")) as unknown as { blocks: Array<Record<string, unknown>> };
+		const text = JSON.stringify(page.blocks);
+		expect(text).toContain("Open polls");
+		expect(text).toContain("Votes this week");
+		const table = page.blocks.find((block) => block.type === "table") as { rows: unknown[] };
+		expect(table.rows).toHaveLength(25);
+		expect(text).toContain("Next");
+		const found = (await site.call(
+			"admin",
+			{ type: "form_submit", action_id: "find", values: { q: "Find me" } },
+			site.as(admin),
+		)) as { blocks: unknown[] };
+		const foundText = JSON.stringify(found.blocks);
+		expect(foundText).toContain("Find me later");
+		expect(foundText).not.toContain("Question 1");
 	});
 
 	it("offers content types by name, not a typed slug", async () => {
@@ -1018,6 +1060,7 @@ describe("named lock, copy, results, erase", () => {
 		const text = JSON.stringify(results.blocks);
 		expect(text).toContain("ana");
 		expect(text).toContain("Green");
+		expect(text).toContain('"type":"chart"');
 		expect(text).not.toMatch(/p_named|poll_named:ana/);
 
 		const live = await site.rt.inspect.storage.get<{ rev: string }>(POLLS, "poll_named");

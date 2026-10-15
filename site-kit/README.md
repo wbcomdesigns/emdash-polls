@@ -84,7 +84,7 @@ Every phrase a visitor can see lives in `src/lib/polls-strings.ts`. Change that 
 
 ## For the in-text block
 
-A registry install cannot put a poll inside article text. The slot and `<Poll id />` are the product. A trusted (native) companion can add a Poll block to the editor; that is optional, and the registry install stays complete without it. See GitHub issue #16.
+Copy `site-kit/blocks/` to `src/polls-block/` and add `pollsBlock()` under `plugins` in `astro.config.mjs`. The install guide has the lines. The block is **This page's poll**. It shows the poll attached to that page. Attach the poll by its question in the post editor's Poll panel. The registry plugin does not need this.
 
 ## What you should see
 

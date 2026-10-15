@@ -41,7 +41,8 @@
 			"indexes": [
 				"poll",
 				"poll_option",
-				"member_id"
+				"member_id",
+				"createdAt"
 			]
 		}
 	},

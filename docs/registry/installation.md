@@ -3,6 +3,8 @@
 3. Put `<PollSlot collection="posts" id={post.data.id} />` in the post template (use `post.data.id`, not `post.id`), and with `collection="pages" id={page.data.id}` in the page template. To let each poll choose above or below, place two slots with `position="above"` and `position="below"`. Or put `<Poll id="..." />` on one page.
 4. Open Admin, then Polls. Create a poll, attach it, and open it.
 
+Optional: copy `site-kit/blocks/` to `src/polls-block/` and add `pollsBlock()` under `plugins` to insert This page's poll inside a post. It shows the poll you attached to that page. The registry plugin works without that.
+
 Your site needs a sandbox runner in `astro.config.mjs`. Without one, EmDash skips sandboxed plugins at startup.
 
 EmDash 1.2 or later.

@@ -8,8 +8,7 @@ Lab is `../emdash-lab-polls` on port 4332.
 
 ## Next
 
-- #38 Admin standard rebuild (tabs, chart, date_input prove): 0.3.0. Do not ship a half-tab form.
-- #16 trusted in-text block: still waiting. No typed-id picker.
+- #38 and #16 are on branch 0.3.0, not merged. The list has open-poll and votes-this-week stats, a status badge, and a bar chart on Results. The form stays one Save: Block Kit cannot put an accordion inside a form. The in-text block is This page's poll. It reads the current page and shows the poll attached there. There is no poll list route.
 - Do not republish 0.1.0, 0.1.1, 0.2.0, 0.2.1, or 0.2.2. A registry release cannot be changed.
 
 ## How to work

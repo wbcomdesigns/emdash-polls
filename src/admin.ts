@@ -26,7 +26,7 @@ import {
 	statusLabel,
 	tally,
 } from "./lib/polls";
-import { QUESTION_MAX, THANKS_MAX, type Poll } from "./lib/types";
+import { POLLS, QUESTION_MAX, THANKS_MAX, VOTES, type Poll } from "./lib/types";
 import { asBoolean, asRecord, asString } from "./util";
 
 type Toast = { message: string; type: "success" | "error" | "info" };
@@ -49,6 +49,8 @@ async function siteCollections(ctx: Ctx): Promise<SiteCollection[]> {
 }
 
 const PAGE = 25;
+const NAMED_PAGE = 25;
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 function link(label: string, path: string) {
 	return { type: "link", label, target: { kind: "plugin-page", path } };
@@ -80,6 +82,19 @@ function statusError(row: Poll | null, rev: string): string | null {
 	if (!row) return "That poll is gone.";
 	if (row.rev !== rev) return "Someone else changed this poll. Open it again.";
 	return null;
+}
+
+async function listStats(ctx: Ctx): Promise<BlockMap> {
+	const open = await ctx.storage[POLLS].count({ status: "open" });
+	const since = new Date(Date.now() - WEEK_MS).toISOString();
+	const votes = await ctx.storage[VOTES].count({ createdAt: { gte: since } });
+	return {
+		type: "stats",
+		items: [
+			{ label: "Open polls", value: String(open) },
+			{ label: "Votes this week", value: String(votes) },
+		],
+	};
 }
 
 function displayStatus(poll: Poll): string {
@@ -160,7 +175,7 @@ export async function renderList(
 							{ key: "who", label: "Who can vote" },
 							{ key: "where", label: "Shows on" },
 							{ key: "votes", label: "Votes" },
-							{ key: "status", label: "Status" },
+							{ key: "status", label: "Status", format: "badge" },
 							{ key: "action", label: "Actions", format: "element" },
 						],
 						rows,
@@ -171,6 +186,7 @@ export async function renderList(
 	return {
 		blocks: [
 			{ type: "header", text: "Polls" },
+			await listStats(ctx),
 			{
 				type: "section",
 				text: "Create a poll, open it when you are ready, then close it when voting should stop.",
@@ -228,6 +244,10 @@ export async function renderForm(
 		blocks: [
 			{ type: "header", text: existing ? "Edit poll" : "New poll" },
 			...(voted ? [{ type: "banner" as const, variant: "default" as const, title: lockedNote }] : []),
+			{
+				type: "context",
+				text: "One Save stores the question, who can vote, where it shows, and when results appear.",
+			},
 			{
 				type: "form",
 				block_id: "poll",
@@ -370,7 +390,12 @@ export async function renderOpenWidget(ctx: Ctx): Promise<BlockResponse> {
 	};
 }
 
-async function renderResults(ctx: Ctx, poll: Poll & { id: string }, extra?: Extra): Promise<BlockResponse> {
+async function renderResults(
+	ctx: Ctx,
+	poll: Poll & { id: string },
+	extra?: Extra,
+	namedOffset = 0,
+): Promise<BlockResponse> {
 	const results = await tally(ctx, poll);
 	const votes = await listVotesForPoll(ctx, poll.id);
 	const ballots = ballotsFromVotes(poll, votes);
@@ -395,6 +420,29 @@ async function renderResults(ctx: Ctx, poll: Poll & { id: string }, extra?: Extr
 					},
 				}))
 		: [];
+	const start = namedOffset > 0 ? namedOffset : 0;
+	const namedPage = namedRows.slice(start, start + NAMED_PAGE);
+	const namedNav: BlockMap[] = [];
+	if (namedRows.length > NAMED_PAGE) {
+		const elements: Array<Record<string, unknown>> = [];
+		if (start > 0) {
+			elements.push({
+				type: "button",
+				label: "Previous",
+				action_id: "poll_mod",
+				value: stamped("results", poll.id, poll.rev, String(Math.max(0, start - NAMED_PAGE))),
+			});
+		}
+		if (start + NAMED_PAGE < namedRows.length) {
+			elements.push({
+				type: "button",
+				label: "Next",
+				action_id: "poll_mod",
+				value: stamped("results", poll.id, poll.rev, String(start + NAMED_PAGE)),
+			});
+		}
+		if (elements.length) namedNav.push({ type: "actions", elements });
+	}
 
 	return {
 		blocks: [
@@ -407,6 +455,25 @@ async function renderResults(ctx: Ctx, poll: Poll & { id: string }, extra?: Extr
 					{ label: "Answers", value: String(results.options.length) },
 					{ label: "Status", value: displayStatus(poll) },
 				],
+			},
+			{
+				type: "chart",
+				config: {
+					chart_type: "custom",
+					height: 240,
+					options: {
+						grid: { left: 8, right: 16, top: 8, bottom: 8, containLabel: true },
+						tooltip: { trigger: "item" },
+						xAxis: { type: "value", minInterval: 1 },
+						yAxis: {
+							type: "category",
+							data: results.options.map((row) =>
+								row.label.length > 24 ? `${row.label.slice(0, 24)}...` : row.label,
+							),
+						},
+						series: [{ type: "bar", data: results.options.map((row) => row.count) }],
+					},
+				},
 			},
 			{
 				type: "context",
@@ -428,7 +495,6 @@ async function renderResults(ctx: Ctx, poll: Poll & { id: string }, extra?: Extr
 					percent: `${row.percent}%`,
 				})),
 			},
-			{ type: "context", text: `${results.total} ${results.total === 1 ? "vote" : "votes"} in total.` },
 			...(poll.named
 				? namedRows.length
 					? [
@@ -440,8 +506,9 @@ async function renderResults(ctx: Ctx, poll: Poll & { id: string }, extra?: Extr
 									{ key: "choice", label: "Choice" },
 									{ key: "action", label: "Erase", format: "element" },
 								],
-								rows: namedRows,
+								rows: namedPage,
 							} as BlockMap,
+							...namedNav,
 						]
 					: [{ type: "empty", title: "No named votes yet", description: "Totals above still count guest votes." } as BlockMap]
 				: []),
@@ -589,7 +656,10 @@ async function moderate(ctx: Ctx, value: unknown): Promise<BlockResponse> {
 	if (!poll) return renderList(ctx, {}, { toast: { message: "That poll is gone.", type: "error" } });
 
 	if (action === "edit") return renderForm(ctx, poll.id);
-	if (action === "results") return renderResults(ctx, poll);
+	if (action === "results") {
+		const offset = Number(extraOf(value));
+		return renderResults(ctx, poll, undefined, Number.isFinite(offset) ? offset : 0);
+	}
 	if (action === "copy") {
 		const copyId = newId("p");
 		await putPoll(ctx, copyId, copyPoll(poll));

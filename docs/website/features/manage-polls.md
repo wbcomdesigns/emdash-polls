@@ -2,7 +2,7 @@
 
 **Included in Free.** WB Polls has no paid version.
 
-Everything happens on the **Polls** screen. Each row shows the question, who can vote and whether it is named, where it shows, the vote count and the status. **Find by question** narrows a long list.
+Everything happens on the **Polls** screen. The top shows how many polls are open and how many votes came in this week. Each row shows the question, who can vote and whether it is named, where it shows, the vote count and a status badge. **Find by question** narrows a long list. A long list shows 25 polls at a time.
 
 ![The Polls screen listing three polls with their status and an Actions menu](../images/admin-poll-list.webp)
 
@@ -20,7 +20,7 @@ Everything happens on the **Polls** screen. Each row shows the question, who can
 - **Edit:** change the poll. See below for what is locked once people have voted.
 - **Open:** start taking votes now.
 - **Close:** stop voting now (offered on open polls). A poll can also close by itself on its **Closes on** day.
-- **Results:** totals, shares and, on a named poll, each member's choice.
+- **Results:** a bar chart, totals, shares and, on a named poll, each member's choice.
 - **Copy:** makes a new draft with the same question, answers and settings, and no votes. The copy opens for editing with "(copy)" after the question so you can rename it. Use it to run the same question again later.
 - **Delete:** removes the poll and all its votes. You confirm once on the next screen. This cannot be undone.
 

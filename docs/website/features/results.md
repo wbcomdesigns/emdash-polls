@@ -10,14 +10,13 @@ On the **Polls** screen, choose **Actions** on a poll, then **Results**.
 
 You see:
 
-- **Votes:** the number of answers picked. On a poll that allows several answers, each answer a person picks counts, so the total can be higher than the number of people.
-- **Answers:** how many answers the poll has.
-- **Status:** Draft, Scheduled, Open or Closed.
+- **Votes**, **Answers** and **Status** at the top.
+- A bar chart of the answers. A long answer is shortened on the chart. The table below keeps the full wording.
 - A table with each answer's votes and share.
 
 ### Named polls
 
-If **Show each member's choice to the site owner** is on, the Results screen also lists each signed-in member and what they chose. Guests are never named, even on a named poll.
+If **Show each member's choice to the site owner** is on, the Results screen also lists each signed-in member and what they chose, 25 at a time. Guests are never named, even on a named poll.
 
 Each member row has **Remove votes**, which removes that member's votes from this poll. Use it when a member asks you to remove their data. If the poll is still open, they can vote again.
 

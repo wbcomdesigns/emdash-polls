@@ -2,6 +2,14 @@
 
 Versions match `package.json`, the git tag and the registry release. Newest first.
 
+## [Unreleased]
+
+- Polls opens with how many polls are open and how many votes came in this week. The week's count is one lookup, not a scan of every vote.
+- Results opens with a bar chart, then the totals and the answer table. Long answers are shortened on the chart. The table keeps the full wording. A named poll lists members 25 at a time.
+- The poll form stays one Save. Block Kit cannot put an accordion inside a form, so the question, who can vote, where it shows, and when results appear stay in that one form.
+- Optional block, This page's poll, for post text. It is trusted site code. It shows the poll attached to that page. You attach the poll by its question in the post editor's Poll panel. The block inserts with one fixed choice and does not call out to an address.
+- Security: the shared kit file is updated so server-side plugin calls run inside EmDash with no web request.
+
 ## [0.2.4]
 
 - The poll follows the site's light or dark choice (shared kit styles 3), so it stays readable when a visitor picks light mode on a device set to dark, and on themes that switch dark mode with a class.
