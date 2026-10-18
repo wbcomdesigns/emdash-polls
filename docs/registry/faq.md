@@ -5,7 +5,10 @@ Copy the site kit again. A registry install answers at an id, not at `/polls/`. 
 Create is a draft. Open the poll from the list. Then attach it to a page, a content type or the whole site, and put a poll slot on that template.
 
 **Can guests vote?**
-Yes, when you set Who can vote to Anyone. One vote per visitor. Signed-in members still vote as themselves.
+Yes, when you set Who can vote to Anyone and the host gives EmDash the visitor's address: on Cloudflare, or with `trustedProxyHeaders` in `astro.config.mjs`. Without it, guests are asked to sign in, and the Polls screen says so. One vote per visitor. Signed-in members vote as themselves.
+
+**Is a 401 in the browser console a problem?**
+No. A guest gets one 401 per poll from the member ballot check, and one on My votes. That is how the poll learns the visitor is not signed in. It then shows the guest view.
 
 **Who sees voter names?**
 Only you, and only on a named poll. Guests stay anonymous. Anonymous polls never store a name.

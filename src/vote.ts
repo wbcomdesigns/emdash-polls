@@ -17,7 +17,7 @@ import {
 	voteRowId,
 	type PollRow,
 } from "./lib/polls";
-import { requestIp, visitorHash } from "./lib/visitor";
+import { requestAddress, visitorHash } from "./lib/visitor";
 import { VOTES } from "./lib/types";
 import { asRecord, asString, asStringArray, nowIso } from "./util";
 
@@ -29,7 +29,10 @@ const INVALID_CHOICE = { ok: false as const, error: { code: "INVALID_CHOICE" } }
 const ALREADY_VOTED = { ok: false as const, error: { code: "ALREADY_VOTED" } };
 const MEMBERS_ONLY = { ok: false as const, error: { code: "MEMBERS_ONLY" } };
 const SPAM = { ok: false as const, error: { code: "SPAM" } };
-const NO_VISITOR = { ok: false as const, error: { code: "NO_VISITOR" } };
+// No visitor address from the host: guests are members only here (owner decision 2026-10-16).
+export const GUEST_UNAVAILABLE = { ok: false as const, error: { code: "GUEST_UNAVAILABLE" } };
+const BUSY = { ok: false as const, error: { code: "BUSY" } };
+const LOCK_MS = 30_000;
 
 function memberOf(routeCtx: RouteCtx): Member | null {
 	const user = routeCtx.user;
@@ -107,19 +110,18 @@ export async function handleVote(routeCtx: RouteCtx, ctx: Ctx) {
 
 export async function handleBallotGuest(routeCtx: RouteCtx, ctx: Ctx) {
 	const raw = asRecord(routeCtx.input);
-	const who = await guestWho(ctx, routeCtx, raw);
-	if ("error" in who) return who;
 	const loaded = await loadForMember(ctx, asString(raw.id));
 	if ("error" in loaded) return loaded;
-	if (loaded.who === "members") return { ok: true, poll: publicPoll(loaded, effectiveStatus(loaded)), choices: [] as string[] };
+	const who = await guestWho(ctx, routeCtx);
+	if (loaded.who === "members" || !who) return { ok: true, poll: publicPoll(loaded, effectiveStatus(loaded)), choices: [] as string[] };
 	return reply(ctx, loaded, await ownChoices(ctx, loaded, who.who));
 }
 
 export async function handleVoteGuest(routeCtx: RouteCtx, ctx: Ctx) {
 	const raw = asRecord(routeCtx.input);
 	if (asString(raw.website) || asString(raw.honeypot)) return SPAM;
-	const who = await guestWho(ctx, routeCtx, raw);
-	if ("error" in who) return who;
+	const who = await guestWho(ctx, routeCtx);
+	if (!who) return GUEST_UNAVAILABLE;
 	if (await rateLimited(ctx, `vote:${who.who}`)) return RATE_LIMITED;
 
 	const loaded = await loadForMember(ctx, asString(raw.id));
@@ -141,10 +143,29 @@ export async function handleVoteGuest(routeCtx: RouteCtx, ctx: Ctx) {
 	});
 }
 
-async function guestWho(ctx: Ctx, routeCtx: RouteCtx, raw: Record<string, unknown>) {
-	const hash = await visitorHash(ctx, requestIp(routeCtx), asString(raw.visitor));
-	if (!hash) return NO_VISITOR;
+/** One guest per host-given address. A browser-sent visitor id is never trusted. */
+async function guestWho(ctx: Ctx, routeCtx: RouteCtx) {
+	const address = requestAddress(routeCtx);
+	if (!address) return null;
+	const hash = await visitorHash(ctx, address);
 	return { who: visitorWho(hash), hash };
+}
+
+/**
+ * Check-then-write is not one step, so votes sent together would each see no earlier vote.
+ * One compare-and-set lock per poll and voter makes them take turns; the loser gets BUSY.
+ * A lock older than LOCK_MS is left over from a request that died, and is taken over.
+ */
+async function withBallotLock<T>(ctx: Ctx, key: string, run: () => Promise<T>): Promise<T | typeof BUSY> {
+	const seen = await ctx.kv.getVersioned<string>(key);
+	if (seen?.value && Date.now() - Number(seen.value) < LOCK_MS) return BUSY;
+	const claimed = await ctx.kv.compareAndSet(key, seen?.revision ?? null, String(Date.now()));
+	if (!claimed.applied) return BUSY;
+	try {
+		return await run();
+	} finally {
+		await ctx.kv.compareAndDelete(key, claimed.revision).catch(() => undefined);
+	}
 }
 
 async function saveChoices(
@@ -152,6 +173,15 @@ async function saveChoices(
 	poll: PollRow,
 	opts: { who: string; memberId: string; visitor: string; name: string; choices: string[] },
 ) {
+	return withBallotLock(ctx, `ballot:${poll.id}:${opts.who}`, () => writeChoices(ctx, poll, opts));
+}
+
+async function writeChoices(
+	ctx: Ctx,
+	poll: PollRow,
+	opts: { who: string; memberId: string; visitor: string; name: string; choices: string[] },
+) {
+	// Read again under the lock: this is the read the write depends on.
 	const previous = await ownChoices(ctx, poll, opts.who);
 	if (previous.length && !poll.allow_change) return ALREADY_VOTED;
 	if (previous.length) {

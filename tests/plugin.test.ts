@@ -862,13 +862,14 @@ describe("member vote", () => {
 });
 
 describe("guest vote", () => {
-	const visitor = "a".repeat(32);
+	// A guest is counted by the address the host gives, never by a browser-sent id.
+	const guest = { method: "POST", meta: { ip: "198.51.100.4", userAgent: null, referer: null, geo: null } };
 
 	it("saves one ballot per visitor and never stores an IP", async () => {
 		const site = await openSite();
 		dispose = site.dispose;
 		await site.rt.fixtures.plugin.storage(POLLS, "poll_guest", samplePoll({ who: "anyone" }));
-		const saved = (await site.call("vote_guest", { id: "poll_guest", choices: ["blue"], visitor })) as {
+		const saved = (await site.call("vote_guest", { id: "poll_guest", choices: ["blue"] }, guest)) as {
 			ok: boolean;
 			choices: string[];
 		};
@@ -884,27 +885,27 @@ describe("guest vote", () => {
 		expect(rows[0]?.data.visitor).toMatch(/^[a-f0-9]{64}$/);
 		expect(rows[0]?.id.startsWith("poll_guest:v-")).toBe(true);
 
-		expect(await site.call("vote_guest", { id: "poll_guest", choices: ["green"], visitor })).toMatchObject({
+		expect(await site.call("vote_guest", { id: "poll_guest", choices: ["green"] }, guest)).toMatchObject({
 			ok: false,
 			error: { code: "ALREADY_VOTED" },
 		});
 	});
 
-	it("refuses a members-only poll, a honeypot, and a missing visitor", async () => {
+	it("refuses a members-only poll, a honeypot, and a guest with no visitor address", async () => {
 		const site = await openSite();
 		dispose = site.dispose;
 		await site.rt.fixtures.plugin.storage(POLLS, "poll_members", samplePoll({ who: "members" }));
 		await site.rt.fixtures.plugin.storage(POLLS, "poll_open", samplePoll({ who: "anyone" }));
-		expect(await site.call("vote_guest", { id: "poll_members", choices: ["blue"], visitor })).toMatchObject({
+		expect(await site.call("vote_guest", { id: "poll_members", choices: ["blue"] }, guest)).toMatchObject({
 			ok: false,
 			error: { code: "MEMBERS_ONLY" },
 		});
 		expect(
-			await site.call("vote_guest", { id: "poll_open", choices: ["blue"], visitor, website: "https://spam.example" }),
+			await site.call("vote_guest", { id: "poll_open", choices: ["blue"], website: "https://spam.example" }, guest),
 		).toMatchObject({ ok: false, error: { code: "SPAM" } });
 		expect(await site.call("vote_guest", { id: "poll_open", choices: ["blue"] })).toMatchObject({
 			ok: false,
-			error: { code: "NO_VISITOR" },
+			error: { code: "GUEST_UNAVAILABLE" },
 		});
 	});
 
@@ -912,7 +913,7 @@ describe("guest vote", () => {
 		const site = await openSite();
 		dispose = site.dispose;
 		await site.rt.fixtures.plugin.storage(POLLS, "poll_named_guest", samplePoll({ named: true, who: "anyone" }));
-		await site.call("vote_guest", { id: "poll_named_guest", choices: ["blue"], visitor });
+		await site.call("vote_guest", { id: "poll_named_guest", choices: ["blue"] }, guest);
 		const rows = await site.rt.inspect.storage.list<{ member_name: string; visitor: string }>(VOTES);
 		expect(rows[0]?.data.member_name).toBe("");
 		expect(rows[0]?.data.visitor).toMatch(/^[a-f0-9]{64}$/);

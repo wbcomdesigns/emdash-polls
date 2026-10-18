@@ -1,14 +1,31 @@
-1. Install WB Polls from the registry. Confirm `schema:read` so the poll form can list your content types by name. An update from 0.1.x asks for this once.
-2. Copy the site kit into your site. On a lab, `./scripts/apply-kit.sh` does this. By hand, copy `site-kit/lib/`, `site-kit/styles/` and `site-kit/components/` into your `src/` folders of the same names. After an update, copy the kit again so visitor pages can reach the plugin on a registry install.
-3. Put `<PollSlot collection="posts" id={post.data.id} />` in the post template (use `post.data.id`, not `post.id`), and with `collection="pages" id={page.data.id}` in the page template. To let each poll choose above or below, place two slots with `position="above"` and `position="below"`. Or put `<Poll id="..." />` on one page.
-4. Open Admin, then Polls. Create a poll, attach it, and open it.
+## Before you install
 
-Optional: copy `site-kit/blocks/` to `src/polls-block/` and add `pollsBlock()` under `plugins` to insert This page's poll inside a post. It shows the poll you attached to that page. The registry plugin works without that.
+**1. Your site needs a sandbox runner.** Registry plugins run in a sandbox. Until the site has one, Admin, Plugins shows "No plugins configured" and there is no Registry in the menu.
 
-Your site needs a sandbox runner in `astro.config.mjs`. Without one, EmDash skips sandboxed plugins at startup.
+- **Node:** in your site, run `npm install @emdash-cms/sandbox-workerd workerd`, then add `sandboxRunner: "@emdash-cms/sandbox-workerd/sandbox",` inside `emdash({ ... })` in `astro.config.mjs`.
+- **Cloudflare:** add `import { sandbox } from "@emdash-cms/cloudflare";` and `sandboxRunner: sandbox(),`. It needs the Workers Paid plan and a `worker_loaders` binding named `LOADER` in your Wrangler config. The EmDash Cloudflare templates ship that binding commented out. EmDash's guide: https://docs.emdashcms.com/deployment/plugin-sandbox/#cloudflare-workers
 
-EmDash 1.2 or later.
+Stop the dev server and start it again. **Registry** now shows in the admin menu.
 
-Full steps: https://github.com/wbcomdesigns/emdash-polls/blob/main/site-kit/README.md
+**2. The plugin is the engine. Visitor pages come from its site kit.** A registry plugin cannot add pages to your site. Until you copy the kit, its addresses (for example `/account/votes`) show your site's 404 page. That is expected. The kit copy below takes one command.
 
-Guides: https://github.com/wbcomdesigns/emdash-polls/tree/main/docs/website
+**3. You need Node 22.16 or later** for the `npx emdash seed` step. WB Polls has no seed step.
+
+Checked on EmDash 1.3.0 with the `blog` template, Node and Cloudflare.
+
+## Install
+
+1. Admin, Registry, search **WB Polls**, Install, then accept the permissions.
+2. From your site's root folder:
+
+   ```bash
+   kit="$(mktemp -d)" && git clone --branch v0.3.1 --depth 1 https://github.com/wbcomdesigns/emdash-polls "$kit/emdash-polls" && "$kit/emdash-polls/scripts/add-to-site.sh" .
+   ```
+
+3. Paste the PollSlot lines it printed into the post and page templates it names. Restart the dev server.
+4. Add the My votes link it printed in Admin, Menus.
+5. Open Polls in the admin and follow its first screen.
+
+After every update, run step 2 with the new tag.
+
+Full guide: https://github.com/wbcomdesigns/emdash-polls/blob/v0.3.1/docs/website/getting-started/install.md

@@ -748,10 +748,98 @@ async function moderate(ctx: Ctx, value: unknown): Promise<BlockResponse> {
 	return renderList(ctx, {}, { toast: { message: "Unknown action.", type: "error" } });
 }
 
-export async function handleAdmin(input: unknown, ctx: Ctx): Promise<BlockResponse> {
+const KIT_DONE = "kit_pages_done";
+const REPO_URL = "https://github.com/wbcomdesigns/emdash-polls";
+
+/**
+ * The "Set up visitor pages" card. A registry plugin cannot add pages or put a poll on one, so until
+ * the site kit is copied no poll shows anywhere and /account/votes is the site's 404. The card gives
+ * the command for the version that is installed (never main), until the owner says the pages are
+ * set up; then one line to the guide.
+ */
+export async function kitBlocks(ctx: Ctx): Promise<BlockMap[]> {
+	const tag = `v${ctx.plugin.version}`;
+	const guide = {
+		type: "link",
+		label: "Install guide",
+		target: { kind: "external", url: `${REPO_URL}/blob/${tag}/docs/website/getting-started/install.md` },
+	};
+	if ((await ctx.kv.get<string>(KIT_DONE)) === "1") {
+		return [
+			{ type: "context", text: `Polls show on your site through the WB Polls site kit. After each plugin update, copy the kit for ${tag} again.` },
+			{ type: "actions", elements: [guide] },
+		];
+	}
+	return [
+		{
+			type: "banner",
+			title: "Set up visitor pages",
+			description:
+				"Installing WB Polls adds this admin, not pages on your site. Polls show on your posts and pages through the WB Polls site kit. Until you copy it, no poll shows and the address below is your site's 404 page.",
+			variant: "default",
+		},
+		{ type: "context", text: `From your site's root folder, run this command. It copies the kit for the version you have installed (${tag}) through a fresh private folder, and runs the script only if the download worked.` },
+		{
+			type: "code",
+			language: "bash",
+			code: `kit="$(mktemp -d)" && git clone --branch ${tag} --depth 1 ${REPO_URL} "$kit/emdash-polls" && "$kit/emdash-polls/scripts/add-to-site.sh" .`,
+		},
+		{
+			type: "fields",
+			fields: [
+				{ label: "My votes", value: "/account/votes" },
+				{ label: "Polls on posts", value: "/posts/<post>/, above or below the text" },
+				{ label: "Polls on pages", value: "/pages/<page>/, above or below the text" },
+			],
+		},
+		{
+			type: "actions",
+			elements: [guide, { type: "button", action_id: "kit_done", label: "Visitor pages are set up", style: "primary" }],
+		},
+	];
+}
+
+/** One plain line when this host gives EmDash no visitor address, so guests cannot vote. */
+function guestsOffBlocks(ctx: Ctx): BlockMap[] {
+	const tag = `v${ctx.plugin.version}`;
+	return [
+		{
+			type: "context",
+			text: "Guests cannot vote on this site: your host does not tell EmDash the visitor's address. Members can still vote. To let guests vote, host on Cloudflare or set trustedProxyHeaders in astro.config.mjs.",
+		},
+		{
+			type: "actions",
+			elements: [
+				{
+					type: "link",
+					label: "Guest voting in the install guide",
+					target: { kind: "external", url: `${REPO_URL}/blob/${tag}/docs/website/getting-started/install.md#guest-voting` },
+				},
+			],
+		},
+	];
+}
+
+/** The polls list is the first admin screen: it carries the visitor pages card and the guest line. */
+async function withSetup(ctx: Ctx, res: BlockResponse, guestsOff: boolean): Promise<BlockResponse> {
+	const [first, ...rest] = res.blocks;
+	if (first?.type !== "header" || first.text !== "Polls") return res;
+	return { ...res, blocks: [first, ...(await kitBlocks(ctx)), ...(guestsOff ? guestsOffBlocks(ctx) : []), ...rest] };
+}
+
+export async function handleAdmin(input: unknown, ctx: Ctx, opts: { guestsOff?: boolean } = {}): Promise<BlockResponse> {
+	return withSetup(ctx, await routeAdmin(input, ctx), opts.guestsOff === true);
+}
+
+async function routeAdmin(input: unknown, ctx: Ctx): Promise<BlockResponse> {
 	const raw = asRecord(input);
 	const type = asString(raw.type);
 	const page = asString(raw.page);
+
+	if (type === "block_action" && asString(raw.action_id) === "kit_done") {
+		await ctx.kv.set(KIT_DONE, "1");
+		return renderList(ctx, {}, { toast: { message: "Noted. The install guide link stays on this page.", type: "success" } });
+	}
 
 	if (type === "form_submit" && asString(raw.action_id).startsWith("save|")) {
 		const { rev, id } = parseStamped(raw.action_id);

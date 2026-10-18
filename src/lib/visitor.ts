@@ -19,21 +19,35 @@ async function salt(ctx: Ctx): Promise<string> {
 	return crypto.randomUUID();
 }
 
-export function requestIp(routeCtx: { requestMeta?: unknown }): string | null {
-	const meta = routeCtx.requestMeta as { ip?: string | null } | undefined;
-	const ip = typeof meta?.ip === "string" ? meta.ip.trim() : "";
-	return ip || null;
+/**
+ * The address a guest is counted by, or null when the host gave none. An IPv6 visitor counts by
+ * its /64 network, so rotating addresses inside one network is still one guest.
+ */
+export function guestAddress(value: unknown): string | null {
+	const ip = (typeof value === "string" ? value.trim() : "").toLowerCase().replace(/%.*$/, "");
+	if (!ip || ip === "unknown") return null;
+	if (!ip.includes(":")) return ip;
+	const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/.exec(ip);
+	if (mapped) return mapped[1] ?? null;
+	const [head = "", tail = ""] = ip.split("::");
+	const left = head ? head.split(":") : [];
+	const right = ip.includes("::") && tail ? tail.split(":") : [];
+	const groups = ip.includes("::") ? [...left, ...Array(Math.max(0, 8 - left.length - right.length)).fill("0"), ...right] : left;
+	return `${groups
+		.slice(0, 4)
+		.map((group) => (Number.parseInt(group, 16) || 0).toString(16))
+		.join(":")}::/64`;
 }
 
-/** Hash of the IP, or of a kit cookie token when the host gives no IP. Never the IP itself. */
-export async function visitorHash(
-	ctx: Ctx,
-	ip: string | null,
-	token: string,
-): Promise<string | null> {
-	const secret = await salt(ctx);
-	if (ip) return sha256(`${secret}|ip|${ip}`);
-	const clean = token.replace(/[^a-zA-Z0-9]/g, "");
-	if (clean.length < 32) return null;
-	return sha256(`${secret}|cookie|${clean}`);
+/**
+ * The visitor address EmDash passed in, reduced to one guest, or null. EmDash passes one only on
+ * Cloudflare, or on a site that sets trustedProxyHeaders. With none, guests cannot write.
+ */
+export function requestAddress(routeCtx: { requestMeta?: unknown }): string | null {
+	return guestAddress((routeCtx.requestMeta as { ip?: unknown } | undefined)?.ip);
+}
+
+/** Salted hash of the guest's address. Never the address itself. */
+export async function visitorHash(ctx: Ctx, address: string): Promise<string> {
+	return sha256(`${await salt(ctx)}|ip|${address}`);
 }

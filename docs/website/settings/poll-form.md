@@ -31,4 +31,4 @@ Every field on the **New poll** and **Edit poll** form, in the order it appears.
 
 ## How guest votes are counted
 
-A guest can vote once per poll. WB Polls remembers the vote using the visitor's internet address when your hosting passes it on, and a random code saved in the visitor's browser when it does not. The browser code is easier to get around (a private window clears it), so for polls where one-vote-per-person matters, choose **Signed-in members only**.
+A guest can vote once per poll, counted by the visitor's internet address (an IPv6 visitor by their /64 network), stored only as a scrambled code. Your hosting has to pass that address to EmDash: Cloudflare does, other hosts need `trustedProxyHeaders` (see [Guest voting](../getting-started/install.md#guest-voting)). Without it, guests are asked to sign in. For polls where one-vote-per-person matters, choose **Signed-in members only**.

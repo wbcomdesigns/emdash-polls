@@ -41,7 +41,8 @@ export const polls = {
 	membersOnly: "Sign in to vote in this poll.",
 	rateLimited: "Too many requests. Try again in an hour.",
 	spam: "That vote was not saved.",
-	noVisitor: "This site cannot record a guest vote right now.",
+	guestUnavailable: "Sign in to vote in this poll.",
+	inProgress: "Your vote is still being saved. Try again in a moment.",
 };
 
 const CODES: Record<string, string> = {
@@ -53,7 +54,8 @@ const CODES: Record<string, string> = {
 	SIGN_IN_REQUIRED: polls.signIn,
 	RATE_LIMITED: polls.rateLimited,
 	SPAM: polls.spam,
-	NO_VISITOR: polls.noVisitor,
+	GUEST_UNAVAILABLE: polls.guestUnavailable,
+	BUSY: polls.inProgress,
 	OFFLINE: polls.offline,
 	FAILED: polls.fallback,
 };

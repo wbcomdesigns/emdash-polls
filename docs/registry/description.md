@@ -14,4 +14,4 @@ WB Polls lets a site owner ask a question and show live results on any EmDash pa
 
 The plugin is the engine: storage, voting routes and the admin screens. An EmDash plugin cannot add pages, so the visible poll ships as a site kit you copy in once. See Installation.
 
-Guests can vote when you allow anyone. Members vote as their signed-in account. Only you create and manage polls.
+Guests can vote when you allow anyone and your host gives EmDash the visitor's address (Cloudflare, or `trustedProxyHeaders`). Members vote as their signed-in account. Only you create and manage polls.

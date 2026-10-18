@@ -1,74 +1,57 @@
 # WB Polls site kit
 
-The plugin is the engine. This folder is what an EmDash site owner copies so visitors can see a poll and vote.
+The plugin is the engine. This folder is what a site developer copies into an EmDash site so visitors can see a poll and vote. The plugin alone does not draw a poll on the site.
 
-Install WB Polls first (or the local package). Then apply this kit. The plugin alone does not draw a poll on the site.
+Checked on EmDash 1.3.0 with the `blog` template.
 
-## Apply on a site
+## Add it to your site
 
-On the lab, prefer `./scripts/apply-kit.sh` (or `./scripts/setup-lab.sh` the first time). That script never replaces a newer shared `wbcom-kit.ts` or `wbcom-base.css` another plugin already copied. Manual copy from the site root (`src/` is the Astro app):
+Install WB Polls from the registry first (Admin, Registry, search **WB Polls**). Your site needs a sandbox runner for that; the [install guide](../docs/website/getting-started/install.md#before-you-install) has the lines for Node and Cloudflare.
 
-`wbcom-kit.ts` finds the plugin on a registry install (EmDash gives it an id, not the name `polls`) and on a local install. After you update the plugin, copy the kit again.
+Then, from your site's root folder, get the kit at the tag of the version you installed and copy it in:
 
 ```bash
-K=path/to/emdash-polls/site-kit
-
-mkdir -p src/lib src/styles src/components
-cp $K/lib/polls-strings.ts src/lib/polls-strings.ts
-cp $K/styles/polls.css src/styles/polls.css
-cp $K/components/Poll.astro src/components/Poll.astro
-cp $K/components/PollSlot.astro src/components/PollSlot.astro
-cp $K/components/MyVotes.astro src/components/MyVotes.astro
-
-# The two shared files are used by every Wbcom plugin. Line 1 carries a number
-# (wbcom-shared: N). Copy only when the site has no copy yet or an older one,
-# so another plugin's newer copy is never replaced.
-shared() { v="$(sed -n '1s/.*wbcom-shared: *\([0-9]*\).*/\1/p' "$1" 2>/dev/null)"; echo "${v:-0}"; }
-newer() { [ ! -f "$2" ] || [ "$(shared "$1")" -ge "$(shared "$2")" ]; }
-newer "$K/lib/wbcom-kit.ts" src/lib/wbcom-kit.ts && cp "$K/lib/wbcom-kit.ts" src/lib/wbcom-kit.ts
-newer "$K/styles/wbcom-base.css" src/styles/wbcom-base.css && cp "$K/styles/wbcom-base.css" src/styles/wbcom-base.css
+kit="$(mktemp -d)" && git clone --branch v0.3.1 --depth 1 https://github.com/wbcomdesigns/emdash-polls "$kit/emdash-polls" && "$kit/emdash-polls/scripts/add-to-site.sh" .
 ```
 
-Then add one slot to the layout that wraps posts and pages:
+(`mktemp -d` makes a fresh folder only you can write to, and `&&` runs the script only when the clone worked. Never clone into a fixed `/tmp/<name>`: on a shared machine someone else can create it first.)
+
+The script refuses a folder that is not an EmDash site, copies the components, the My votes page, the styles and the wording file, copies the two shared Wbcom files only when your site has no copy or an older one (`wbcom-shared: N` on line 1), and saves a changed `polls-strings.ts` as `polls-strings.ts.bak-YYYYMMDD` before it copies the new one. WB Polls needs no content types, so there is nothing to seed.
+
+It then prints the lines to paste. On the blog template they are:
+
+In `src/pages/posts/[slug].astro`, inside the `---` block at the top:
 
 ```astro
----
-import PollSlot from "../components/PollSlot.astro";
----
-<PollSlot collection="posts" id={post.data.id} />
+import PollSlot from "../../components/PollSlot.astro";
 ```
 
-Pass the entry's own id (`post.data.id`), not `post.id`: on the EmDash blog template `post.id` is the slug, and polls attached from the post editor are stored against the entry id. On the page template use `collection="pages" id={page.data.id}`.
-
-To honour each poll's **Position on the page** setting, place two slots instead, one on each side of the content. Each shows only the polls set to its side:
+and around the post text:
 
 ```astro
 <PollSlot collection="posts" id={post.data.id} position="above" />
-<!-- the content -->
+<PortableText value={post.data.content} />
 <PollSlot collection="posts" id={post.data.id} position="below" />
 ```
 
-Or place a specific poll:
+The same in `src/pages/pages/[slug].astro`, with `collection="pages"` and `id={page.data.id}` around `<PortableText value={page.data.content} />`.
+
+Use the entry's own id (`post.data.id`), not `post.id`: on the blog template `post.id` is the slug, and polls attached from the post editor are stored against the entry id. Each poll shows in the slot that matches its **Position on the page** setting; a slot with no poll shows nothing.
+
+Then add **My votes** to `/account/votes` in Admin, Menus, stop the dev server and start it again.
+
+After every plugin update, run the command again with the new tag.
+
+### A specific poll anywhere
 
 ```astro
 ---
-import Poll from "../components/Poll.astro";
+import Poll from "../../components/Poll.astro";
 ---
 <Poll id="p_..." />
 ```
 
-Copy `site-kit/pages/account/votes.astro` to `src/pages/account/votes.astro` (change the layout import if your site uses a different layout). Link **My votes** in the site header to `/account/votes`.
-
-On that page:
-
-```astro
----
-import MyVotes from "../components/MyVotes.astro";
----
-<MyVotes />
-```
-
-`astro.config.mjs` must load the sandbox runner and the plugin.
+Use `../components/` instead from a file one folder below `src/` (for example `src/layouts/`).
 
 ## Reword the kit
 
@@ -76,15 +59,15 @@ Every phrase a visitor can see lives in `src/lib/polls-strings.ts`. Change that 
 
 ## Before you add it to a live site
 
-- **EmDash version.** Built and tested on EmDash 1.2. Update the site first.
+- **Guest voting.** Guests vote only where EmDash gets the visitor's address: on Cloudflare, or with `trustedProxyHeaders` in `astro.config.mjs` behind a proxy that sets that header. Elsewhere guests see a sign-in link and the Polls screen says so. See [Guest voting](../docs/website/getting-started/install.md#guest-voting).
+- **The browser console.** A guest sees one expected 401 per poll from the member ballot check (`ballot`), and one on `/account/votes` (`mine`). That is how the kit learns the visitor is not signed in; the poll then shows the guest view.
 - **Caching.** The kit markup is the same for every visitor. Vote state is decided in the browser from the API.
 - **Sign-in.** The sign-in links go to `/_emdash/admin/login`. If your admin lives on another host, change `signInUrl()` in `src/lib/wbcom-kit.ts`.
 - **Members.** Turn on member sign-up in EmDash if you want members-only polls.
-- **Try it on a preview first.** Deploy a preview version, walk `docs/qa/QA_CHECKLIST.md` there, then go live.
 
 ## For the in-text block
 
-Copy `site-kit/blocks/` to `src/polls-block/` and add `pollsBlock()` under `plugins` in `astro.config.mjs`. The install guide has the lines. The block is **This page's poll**. It shows the poll attached to that page. Attach the poll by its question in the post editor's Poll panel. The registry plugin does not need this.
+Optional, trusted site code. Copy `site-kit/blocks/` to `src/polls-block/` and add `pollsBlock()` under `plugins` in `astro.config.mjs`. The install guide has the lines. The block is **This page's poll**. It shows the poll attached to that page. The registry plugin does not need this.
 
 ## What you should see
 
@@ -92,13 +75,16 @@ Copy `site-kit/blocks/` to `src/polls-block/` and add `pollsBlock()` under `plug
 - Results when the poll's visibility rule allows them
 - Nothing, not an empty box, when a slot has no matching poll
 - My votes: polls the signed-in member voted in, and a two-click erase
-- Admin → Polls: list, create, edit, results, copy, delete
+- Admin, Polls: list, create, edit, results, copy, delete
 
-## Lab prove
+## Working on this plugin
+
+Not for site developers. The plugin's own lab is a fresh blog site on port 4332, built and reset by scripts in this repo:
 
 ```bash
-./scripts/reset-lab.sh
-./scripts/prove-lab.sh
+./scripts/setup-lab.sh   # first time: creates ../emdash-lab-polls with --template blog
+./scripts/reset-lab.sh   # test, build, copy the kit with add-to-site.sh, wipe data, restart
+./scripts/prove-lab.sh   # route-level smoke
 ```
 
-Then open http://127.0.0.1:4332/polls-demo and http://127.0.0.1:4332/polls-mine
+`site-kit/lab/` holds lab-only pages (`/polls-demo`, `/polls-mine`) that `apply-kit.sh` adds on top of the kit.

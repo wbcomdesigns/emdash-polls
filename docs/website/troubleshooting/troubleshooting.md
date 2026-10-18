@@ -16,9 +16,13 @@ Check these in order:
 
 Copy the site kit again from the version you installed. The kit and the plugin are released together.
 
-## "This site cannot record a guest vote right now."
+## Guests see "Sign in to vote" on a poll set to Anyone
 
-The visitor's browser blocked the small code WB Polls uses to remember a guest vote, and your hosting did not pass on the visitor's address. Ask the visitor to allow site data for your site, or set the poll to **Signed-in members only**.
+Your hosting does not tell EmDash the visitor's address, so WB Polls cannot count a guest once. The Polls screen says so in one line. On Cloudflare this works by itself. On other hosts, set `trustedProxyHeaders` behind a proxy that sets that header. See [Guest voting](../getting-started/install.md#guest-voting). Members can vote either way.
+
+## "Your vote is still being saved. Try again in a moment."
+
+The same visitor sent a second vote while the first was still being saved, for example by clicking Vote twice quickly. The first vote counts. Reload the page to see it.
 
 ## "You have already voted."
 
