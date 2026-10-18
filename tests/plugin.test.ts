@@ -905,7 +905,7 @@ describe("guest vote", () => {
 		).toMatchObject({ ok: false, error: { code: "SPAM" } });
 		expect(await site.call("vote_guest", { id: "poll_open", choices: ["blue"] })).toMatchObject({
 			ok: false,
-			error: { code: "GUEST_UNAVAILABLE" },
+			error: { code: "MEMBERS_ONLY", reason: "GUEST_UNAVAILABLE" },
 		});
 	});
 

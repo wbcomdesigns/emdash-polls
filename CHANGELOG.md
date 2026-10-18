@@ -7,7 +7,7 @@ Versions match `package.json`, the git tag and the registry release. Newest firs
 Guest voting now needs a visitor address from the host. On Cloudflare nothing changes. On Node and other hosts without a safe `trustedProxyHeaders` setting, guests are asked to sign in. Copy the kit again after you update.
 
 - New      - The Polls screen opens with a Set up visitor pages card: the kit command for the installed version, the visitor addresses it adds, and a link to the install guide. It comes back after each update, and Show the setup steps again brings it back any time.
-- New      - One command, `scripts/add-to-site.sh`, copies the kit, keeps a newer shared Wbcom file and says when it upgrades an older one, backs up the wording file only when you edited it, and prints the template lines with their file names.
+- New      - One command, `scripts/add-to-site.sh`, copies the kit, keeps a newer shared Wbcom file and says when it upgrades an older one, backs up any kit file you edited, and prints the template lines with their file names.
 - Improve  - Install guides start with the shared Before you install steps, clone the release tag, and were checked on EmDash 1.3.1.
 - Improve  - The install guide says which guest 401 in the browser console is expected, and why.
 - Improve  - The polls list names the content type a poll shows on.

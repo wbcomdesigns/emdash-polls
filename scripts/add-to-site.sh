@@ -23,6 +23,7 @@ shared_version() { local v; v="$(sed -n '1s/.*wbcom-shared: *\([0-9]*\).*/\1/p' 
 sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1"; else shasum -a 256 "$1"; fi | cut -d' ' -f1; }
 
 notes=()
+backups=()
 copy() { # copy <kit path> <site path>
 	local from="$KIT/$1" to="$SITE/$2" name
 	name="$(basename "$to")"
@@ -41,13 +42,12 @@ copy() { # copy <kit path> <site path>
 		cmp -s "$from" "$to" || notes+=("Kept   $2 (yours; compare it with the kit copy in $KIT/$1 after an update)")
 		return
 	fi
-	# Back up the wording file only when the owner changed it: its hash is not one the kit ever shipped.
-	if [[ "$name" == polls-strings.ts && -f "$to" ]] && ! cmp -s "$from" "$to" &&
-		! grep -qx "$(sha256 "$to")" "$KIT/lib/polls-strings.sums"; then
+	# Back up any site file the owner changed: its hash is not one the kit released for this path.
+	if [[ -f "$to" ]] && ! cmp -s "$from" "$to" && ! grep -qx "$(sha256 "$to")  $1" "$KIT/kit.sums"; then
 		local backup="$to.bak-$(date +%Y%m%d)"
 		[[ -e "$backup" ]] && backup="$to.bak-$(date +%Y%m%d-%H%M%S)"
 		cp "$to" "$backup"
-		notes+=("Backup $2 had your own wording, so your copy is in ${backup#"$SITE/"}. Move your wording into the new file.")
+		backups+=("${backup#"$SITE/"}")
 	fi
 	cp "$from" "$to"
 }
@@ -60,6 +60,10 @@ copy components/Poll.astro src/components/Poll.astro
 copy components/PollSlot.astro src/components/PollSlot.astro
 copy components/MyVotes.astro src/components/MyVotes.astro
 copy pages/account/votes.astro src/pages/account/votes.astro
+
+for backup in "${backups[@]+"${backups[@]}"}"; do
+	notes+=("Backup ${backup%.bak-*} had your own changes, so your copy is in $backup. Move your changes into the new file.")
+done
 
 [[ -f "$SITE/src/layouts/Base.astro" ]] || notes+=("Check  src/pages/account/votes.astro imports ../../layouts/Base.astro, which this site does not have. Point it at your own layout.")
 
@@ -78,11 +82,16 @@ for note in "${notes[@]+"${notes[@]}"}"; do echo "  $note"; done
 # Step for one template: the paste lines, or "already in place" when the template has PollSlot.
 template_step() { # template_step <n> <file> <collection> <variable>
 	local n="$1" file="$2" coll="$3" var="$4"
-	if [[ -f "$SITE/$file" ]] && grep -q "PollSlot" "$SITE/$file"; then
-		echo "  $n. $file: the PollSlot lines are already in place."
+	if [[ ! -f "$SITE/$file" ]]; then
+		echo "  $n. This site has no $file. Put the PollSlot lines in the template that shows one $coll entry (see the guide)."
+		echo
 		return
 	fi
-	[[ -f "$SITE/$file" ]] || echo "  $n. (This site has no $file. Use the same lines in the template that shows one $coll entry.)"
+	if grep -q "<PollSlot[[:space:]]" "$SITE/$file"; then
+		echo "  $n. $file: the PollSlot lines are already in place."
+		echo
+		return
+	fi
 	cat <<STEP
   $n. In $file, add this line inside the --- block at the top:
 

@@ -15,8 +15,6 @@ Stop the dev server and start it again. **Registry** now shows in the admin menu
 
 **2. The plugin is the engine. Visitor pages come from its site kit.** A registry plugin cannot add pages to your site. Until you copy the kit, its addresses (for example `/account/votes`) show your site's 404 page. That is expected. The kit copy below takes one command.
 
-**3. You need Node 22.16 or later** for the `npx emdash seed` step. WB Polls has no seed step.
-
 Checked on EmDash 1.3.1 with the `blog` template on Node. The Cloudflare lines follow EmDash's own guide; we have not run them on a Cloudflare site yet.
 
 ## Install
@@ -35,7 +33,7 @@ Checked on EmDash 1.3.1 with the `blog` template on Node. The Cloudflare lines f
 
    (`mktemp -d` makes a fresh folder only you can write to, and `&&` runs the script only when the clone worked. Never clone into a fixed `/tmp/<name>`: on a shared machine someone else can create it first.)
 
-   The script copies the kit, never replaces a newer shared file another Wbcom plugin already copied, keeps a backup of the wording file only when you changed it yourself, and prints the exact lines to paste into your templates, with the file names. WB Polls needs no content types, so there is nothing to seed.
+   The script copies the kit, never replaces a newer shared file another Wbcom plugin already copied, keeps a backup of any kit file you changed yourself, and prints the exact lines to paste into your templates, with the file names. WB Polls needs no content types, so there is nothing to seed.
 3. Paste the lines it printed (below). Restart the dev server.
 4. Add the menu link it printed in Admin, Menus: **My votes** to `/account/votes`.
 5. Open **Polls** in the admin and follow its first screen. Create a poll, choose where it shows, and open it ([Your first poll](first-poll.md)).
@@ -74,7 +72,7 @@ Do the same in the page template, `src/pages/pages/[slug].astro`, with `collecti
 | `src/lib/polls-strings.ts` | Every phrase a visitor sees. Reword or translate it here |
 | `src/lib/wbcom-kit.ts`, `src/styles/wbcom-base.css` | Shared by every Wbcom plugin. The first line carries `wbcom-shared: N`, and the script copies them only when your site has no copy or a lower number |
 
-Run it again after an update: it replaces WB Polls' components, styles and wording file, and keeps your My votes page. If you changed `polls-strings.ts` yourself (its contents match no released version, listed in `site-kit/lib/polls-strings.sums`), the script first saves yours as `polls-strings.ts.bak-YYYYMMDD` next to it and says so. Move your wording into the new file. An untouched file from an older release is replaced without a word. When it replaces an older shared file another Wbcom plugin copied, it prints the old and new `wbcom-shared` numbers. A template that already has the PollSlot lines is reported as already in place.
+Run it again after an update: it replaces WB Polls' components, styles and wording file, and keeps your My votes page. Before it replaces a file you changed yourself (its contents match no released version, listed in `site-kit/kit.sums`), it saves yours as `<file>.bak-YYYYMMDD` next to it and lists the backups. Move your changes into the new file. Untouched files from any older release are replaced without a word. When it replaces an older shared file another Wbcom plugin copied, it prints the old and new `wbcom-shared` numbers. A template that already has the `<PollSlot` lines is reported as already in place, and a template your site does not have is named, with no paste steps.
 
 ## Guest voting
 

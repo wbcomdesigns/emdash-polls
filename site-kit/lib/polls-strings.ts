@@ -14,7 +14,6 @@ export const polls = {
 	busy: "Saving...",
 	named: "Your choice will be visible to the site owner.",
 	signIn: "Sign in to vote.",
-	signInLink: "Sign in",
 	signInVotes: "Sign in to see your votes.",
 	myVotes: "My votes",
 	myVotesHelp: "Polls you have voted in on this site.",

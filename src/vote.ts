@@ -30,7 +30,12 @@ const ALREADY_VOTED = { ok: false as const, error: { code: "ALREADY_VOTED" } };
 const MEMBERS_ONLY = { ok: false as const, error: { code: "MEMBERS_ONLY" } };
 const SPAM = { ok: false as const, error: { code: "SPAM" } };
 // No visitor address from the host: guests are members only here (owner decision 2026-10-16).
-export const GUEST_UNAVAILABLE = { ok: false as const, error: { code: "GUEST_UNAVAILABLE" } };
+// The code is MEMBERS_ONLY because the released 0.3.0 kit already shows it as a sign-in prompt;
+// the 0.3.1 kit reads `reason` for its own wording.
+export const GUEST_UNAVAILABLE = {
+	ok: false as const,
+	error: { code: "MEMBERS_ONLY", reason: "GUEST_UNAVAILABLE" },
+};
 const BUSY = { ok: false as const, error: { code: "BUSY" } };
 const LOCK_MS = 30_000;
 
@@ -93,6 +98,8 @@ export async function handleVote(routeCtx: RouteCtx, ctx: Ctx) {
 	if ("error" in loaded) return loaded;
 	if (effectiveStatus(loaded) !== "open") return NOT_OPEN;
 
+	// A refused vote (NOT_OPEN, INVALID_CHOICE, MEMBERS_ONLY) writes nothing, so it is not counted
+	// toward the hourly limit: the limit guards writes, and is counted under the ballot lock.
 	const allowed = new Set(loaded.options.map((option) => option.id));
 	const choices = [...new Set(asStringArray(raw.choices))];
 	if (!choices.length || choices.some((id) => !allowed.has(id))) return INVALID_CHOICE;

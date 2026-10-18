@@ -21,7 +21,7 @@ kit="$(mktemp -d)" &&
 
 (`mktemp -d` makes a fresh folder only you can write to, and `&&` runs the script only when the clone worked. Never clone into a fixed `/tmp/<name>`: on a shared machine someone else can create it first.)
 
-The script refuses a folder that is not an EmDash site, copies the components, the My votes page, the styles and the wording file, copies the two shared Wbcom files only when your site has no copy or an older one (`wbcom-shared: N` on line 1), and saves `polls-strings.ts` as `polls-strings.ts.bak-YYYYMMDD` before it copies the new one, but only when you edited it (a hash not in `site-kit/lib/polls-strings.sums`). WB Polls needs no content types, so there is nothing to seed.
+The script refuses a folder that is not an EmDash site, copies the components, the My votes page, the styles and the wording file, copies the two shared Wbcom files only when your site has no copy or an older one (`wbcom-shared: N` on line 1), and backs up any kit file you edited (a hash not listed for it in `site-kit/kit.sums`) as `<file>.bak-YYYYMMDD` before it copies the new one, then lists the backups. WB Polls needs no content types, so there is nothing to seed.
 
 It then prints the lines to paste. On the blog template they are:
 
@@ -91,5 +91,7 @@ Not for site developers. The plugin's own lab is a fresh blog site on port 4332,
 ./scripts/reset-lab.sh   # test, build, copy the kit with add-to-site.sh, wipe data, restart
 ./scripts/prove-lab.sh   # route-level smoke
 ```
+
+Before a release, run `scripts/kit-sums.sh` after the last kit change so `site-kit/kit.sums` lists the new hashes (`npm test` fails until it does).
 
 `site-kit/lab/` holds lab-only pages (`/polls-demo`, `/polls-mine`) that `apply-kit.sh` adds on top of the kit.

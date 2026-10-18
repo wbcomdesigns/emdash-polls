@@ -54,8 +54,36 @@ const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}${position
 		thanks?: string;
 		/** False when this host gives no visitor address: guests sign in to vote. */
 		guestWrites?: boolean;
-		error?: { code?: string };
+		error?: { code?: string; reason?: string };
 	};
+
+	/*
+	 * The browser id the 0.3.0 engine counted a guest by. The 0.3.1 engine ignores it and counts
+	 * by the host-given address, but a site may run this kit on the 0.3.0 engine until it updates
+	 * the plugin, and that engine refuses a guest with no id.
+	 */
+	function visitorToken(): string {
+		const key = "wbp-visitor";
+		let token = "";
+		try {
+			token = localStorage.getItem(key) || "";
+		} catch {
+			token = "";
+		}
+		if (token.replace(/[^a-zA-Z0-9]/g, "").length < 32) {
+			token = `${crypto.randomUUID().replace(/-/g, "")}${crypto.randomUUID().replace(/-/g, "")}`;
+			try {
+				localStorage.setItem(key, token);
+			} catch {
+				/* private mode still votes once this session on the 0.3.0 engine */
+			}
+		}
+		return token;
+	}
+
+	function signInLine(text: string): string {
+		return `<a href="${esc(signInUrl())}">${esc(text)}</a>`;
+	}
 
 	// Every "sign in to do this" refusal, from this engine and the one before it (0.3.0 sends
 	// NO_VISITOR where 0.3.1 sends GUEST_UNAVAILABLE), so a kit one version apart never says
@@ -69,7 +97,7 @@ const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}${position
 		else if (SIGN_IN_CODES.includes(result.error?.code ?? "")) {
 			// A prompt, not an error: the neutral note style.
 			box.dataset.tone = "info";
-			box.innerHTML = `${esc(S.signIn)} <a href="${esc(signInUrl())}">${esc(S.signInLink)}</a>`;
+			box.innerHTML = signInLine(result.error?.reason === "GUEST_UNAVAILABLE" ? S.guestUnavailable : S.signIn);
 		} else box.textContent = phrase(result.error?.code);
 	}
 
@@ -118,10 +146,9 @@ const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}${position
 		const poll = data.poll;
 		const mine = data.choices ?? [];
 		const closed = poll.status === "closed";
-		// Guests vote only when the engine says this host gives a visitor address. An engine before
-		// 0.3.1 sends no guestWrites: treat that as no, so a guest is asked to sign in instead of
-		// meeting a refusal after pressing Vote.
-		const members = poll.who === "members" || data.guestWrites !== true;
+		// guestWrites false: this host gives no visitor address, so guests sign in to vote. An engine
+		// before 0.3.1 sends no guestWrites and still takes guest votes by browser id: show the form.
+		const members = poll.who === "members" || data.guestWrites === false;
 		const canVote = !closed && (!members || signedIn) && (!mine.length || Boolean(poll.allow_change));
 		// The route sends results only when this visitor may see them. Before a vote that is still
 		// possible, the answers show once, as the form; anyone who cannot vote sees the bars.
@@ -129,7 +156,7 @@ const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}${position
 		let html = `<h2>${esc(poll.question)}</h2>`;
 		if (closed) html += `<p class="wb-muted">${esc(S.closed)}</p>`;
 		if (showBars) html += bars(poll, data.results as { total: number; options: Option[] }, mine);
-		else if (poll.results === "after_vote" && !mine.length) html += `<p class="wb-muted">${esc(S.hidden)}</p>`;
+		else if (poll.results === "after_vote" && !mine.length && canVote) html += `<p class="wb-muted">${esc(S.hidden)}</p>`;
 		else if (poll.results === "after_close" && !closed) html += `<p class="wb-muted">${esc(S.hiddenClosed)}</p>`;
 		if (mine.length) html += `<p class="wb-muted">${esc(S.voted)}</p>`;
 		if (canVote) html += formHtml(root.id || "wbp", poll, mine);
@@ -137,7 +164,7 @@ const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}${position
 			// Not signed in is a prompt, not an error: the answers (unless the bars already list them),
 			// then a neutral sign-in line.
 			if (!showBars) html += `<ul class="wbp-results">${poll.options.map((option) => `<li class="wbp-option"><span>${esc(option.label)}</span></li>`).join("")}</ul>`;
-			html += `<p class="wbp-note">${esc(S.signIn)} <a href="${esc(signInUrl())}">${esc(S.signInLink)}</a></p>`;
+			html += `<p class="wbp-note">${signInLine(S.signIn)}</p>`;
 		}
 		body.innerHTML = html;
 		live.textContent = "";
@@ -171,7 +198,7 @@ const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}${position
 			const website = String(new FormData(form).get("website") ?? "");
 			const result = signedIn
 				? await api("polls", "vote", { id: poll.id, choices: picked })
-				: await api("polls", "vote_guest", { id: poll.id, choices: picked, website });
+				: await api("polls", "vote_guest", { id: poll.id, choices: picked, visitor: visitorToken(), website });
 			button.removeAttribute("aria-busy");
 			button.textContent = S.vote;
 			root.removeAttribute("aria-busy");
@@ -210,8 +237,11 @@ const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}${position
 		const signedIn = Boolean(memberBallot.ok);
 		let data: Payload = got;
 		if (signedIn) data = { ...got, ...memberBallot, poll: memberBallot.poll || got.poll };
-		else if (got.poll.who === "anyone" && got.guestWrites === true) {
-			const guest = (await api("polls", `ballot_guest?id=${encodeURIComponent(got.poll.id)}`)) as Payload;
+		else if (got.poll.who === "anyone" && got.guestWrites !== false) {
+			const guest = (await api(
+				"polls",
+				`ballot_guest?id=${encodeURIComponent(got.poll.id)}&visitor=${encodeURIComponent(visitorToken())}`,
+			)) as Payload;
 			if (guest.ok) data = { ...got, ...guest, poll: guest.poll || got.poll };
 		}
 		paint(root, data, signedIn);

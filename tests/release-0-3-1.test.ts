@@ -73,7 +73,7 @@ describe("guest writes need a visitor address", () => {
 		for (const ip of [null, "", "unknown"]) {
 			expect(
 				await site.call("vote_guest", { id: "p", choices: ["blue"], visitor: "a".repeat(32) }, fromIp(ip)),
-			).toMatchObject({ ok: false, error: { code: "GUEST_UNAVAILABLE" } });
+			).toMatchObject({ ok: false, error: { code: "MEMBERS_ONLY", reason: "GUEST_UNAVAILABLE" } });
 		}
 		expect(await site.rt.inspect.storage.list(VOTES)).toHaveLength(0);
 	});
@@ -134,7 +134,7 @@ describe("guest writes need a visitor address", () => {
 		await site.rt.fixtures.plugin.storage(POLLS, "p", poll());
 		expect(await site.call("vote_guest", { id: "p", choices: ["blue"] }, fromIp("not-an-ip"))).toMatchObject({
 			ok: false,
-			error: { code: "GUEST_UNAVAILABLE" },
+			error: { code: "MEMBERS_ONLY", reason: "GUEST_UNAVAILABLE" },
 		});
 		expect(await site.rt.inspect.storage.list(VOTES)).toHaveLength(0);
 	});
