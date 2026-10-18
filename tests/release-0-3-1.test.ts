@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import { emptyPoll } from "../src/lib/polls";
+import { phrase, polls as S } from "../site-kit/lib/polls-strings";
 import { POLLS, VOTES } from "../src/lib/types";
 import { admin, ana, openSite } from "./site";
 
@@ -221,3 +222,11 @@ describe("polls list", () => {
 	});
 });
 
+
+describe("kit and engine one version apart", () => {
+	it("shows the sign-in wording for the guest refusal of this engine and of 0.3.0", () => {
+		expect(phrase("GUEST_UNAVAILABLE")).toBe(S.guestUnavailable);
+		expect(phrase("NO_VISITOR")).toBe(S.guestUnavailable);
+		expect(phrase("BUSY")).toBe(S.inProgress);
+	});
+});

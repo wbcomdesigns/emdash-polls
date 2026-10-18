@@ -2,7 +2,7 @@
 
 One living list of flow-level cases. Walk all of it before every release. When you add or fix behaviour, add or change its case in the same pull request. There are no per-release QA files.
 
-**Last walk:** 2026-10-19, 0.3.1 branch, EmDash 1.3.0. Lab http://127.0.0.1:4332 (fresh `--template blog`, file install) and a second fresh blog site on 4383 with WB Polls 0.3.0 installed from the registry and the 0.3.1 kit copied with `add-to-site.sh`. Browser: G-6 (with `trustedProxyHeaders` and an X-Forwarded-For header), G-10, G-11, G-12, G-13, M-vote, My votes list (fresh site), A-15, A-16, A-17, light and dark at 1440 and 390 on the post, page and My votes. Route only: G-14 (parallel guest and member votes), G-8, `health` guestWrites. Tests: 66 passed. Not walked: G-1 dedicated members-only poll, G-7, M-2/M-3 as a second account, in-text block, Admin Menus link, Cloudflare. Developer walk, not a second-person QA PASS.
+**Last walk:** 2026-10-19 (second pass), 0.3.1 branch, EmDash 1.3.1. Lab http://127.0.0.1:4332 (fresh `--template blog` on 1.3.1, file install) and the scratch site upgraded from 1.3.0 to 1.3.1 with WB Polls 0.3.0 from the registry plus the 0.3.1 kit. Browser: G-10 (Always poll shows bars and a neutral sign-in note), after_vote and after_close stay hidden for guests, member before voting sees only the form (G-92), G-13, G-15, G-16, A-16 to A-19 at 1440, 768 and 390, light and dark. Route or shell only: G-14, BUSY not counted, add-to-site.sh (tests/add-to-site.test.sh). Tests: 69 vitest plus the shell checks. Not walked: G-1, G-7, second member, in-text block, Admin Menus link, Cloudflare, a fresh 1.3.1 registry install (the registry list stayed empty on that site). Developer walk, not a second-person QA PASS.
 
 When you walk it, replace that line with the date, the version, and three lists: cases walked in the browser, cases checked at route level only, cases not walked. Do not claim a case you did not run.
 
@@ -38,6 +38,8 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | G-12 | Guest console on a post with a poll | Exactly one 401, from `ballot` (documented as expected). One 401 from `mine` on `/account/votes` |
 | G-13 | Post template with the two slots from `add-to-site.sh` (`../../components/PollSlot.astro`) | Page renders, poll in the slot that matches its Position |
 | G-14 | Several votes for different answers sent at once by one voter on a one-choice poll | One stored choice; the others get ALREADY_VOTED, BUSY or RATE_LIMITED |
+| G-15 | Results Always, guest who cannot vote (no-address host or members-only poll) | Bars and counts show, then a neutral (not green) "Sign in to vote." note. After a vote and After close polls still hide results |
+| G-16 | Engine 0.3.0 with the 0.3.1 kit, guest | Sign-in note and results, no Vote button, never "Something went wrong". Engine 0.3.1 with the 0.3.0 kit: a guest vote on a no-address host says "Something went wrong"; the Polls screen shows the setup card again so the owner copies the new kit |
 
 ## Member (subscriber role)
 
@@ -74,6 +76,8 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | A-15 | Template has `<PollSlot position="above">` before the content and `position="below"` after. Set a poll to Above, then to Below | Only the matching slot shows the poll; the other renders nothing. A template with one slot and no position shows the poll either way |
 | A-16 | Fresh install, open Polls | "Set up visitor pages" card with the `mktemp -d` clone command for the installed tag, My votes address, Install guide link. "Visitor pages are set up" hides it for good and leaves one line plus the guide link |
 | A-17 | Host gives no visitor address, open Polls | One line: guests cannot vote here, with the Guest voting guide link. Not shown when the host gives an address |
+| A-18 | Polls screen at 1440, 768 and 390 with the setup card | Six-line command fully visible at 1440 and 768, `main` does not scroll sideways. At 390 the clone address line is cut and the guide link under it ("Copy it from the install guide on a phone") gives the full command |
+| A-19 | Press Visitor pages are set up, then Show the setup steps again; update the plugin | The card hides, comes back on Show the setup steps again, and comes back after a version change. The list names a content type (Pages), not "A content type" |
 
 ## Presentation, every screen
 
