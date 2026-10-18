@@ -4,14 +4,19 @@ Versions match `package.json`, the git tag and the registry release. Newest firs
 
 ## [0.3.1]
 
-Guest voting now needs a visitor address from the host. On Cloudflare nothing changes. On Node and other hosts without `trustedProxyHeaders`, guests are asked to sign in. Copy the kit again after you update.
+Guest voting now needs a visitor address from the host. On Cloudflare nothing changes. On Node and other hosts without a safe `trustedProxyHeaders` setting, guests are asked to sign in. Copy the kit again after you update.
 
-- New      - The Polls screen opens with a Set up visitor pages card: the one-line kit command for the installed version, the visitor addresses it adds, and a link to the install guide.
-- New      - One command, `scripts/add-to-site.sh`, copies the kit, keeps a newer shared Wbcom file, backs up a changed wording file, and prints the template lines with their file names.
-- Improve  - Install guides start with the shared Before you install steps, clone the release tag, and were checked on EmDash 1.3.0.
+- New      - The Polls screen opens with a Set up visitor pages card: the kit command for the installed version, the visitor addresses it adds, and a link to the install guide. It comes back after each update, and Show the setup steps again brings it back any time.
+- New      - One command, `scripts/add-to-site.sh`, copies the kit, keeps a newer shared Wbcom file and says when it upgrades an older one, backs up the wording file only when you edited it, and prints the template lines with their file names.
+- Improve  - Install guides start with the shared Before you install steps, clone the release tag, and were checked on EmDash 1.3.1.
 - Improve  - The install guide says which guest 401 in the browser console is expected, and why.
+- Improve  - The polls list names the content type a poll shows on.
+- Improve  - The sign-in prompt uses a neutral note style instead of the green success style.
+- Improve  - A second vote sent while the first is saving no longer uses up the hourly limit.
 - Fix      - The PollSlot snippet names `src/pages/posts/[slug].astro` and imports `../../components/PollSlot.astro`, the path that works on the blog template.
 - Fix      - Vote buttons use the theme's own brand colours in dark mode (shared kit styles 4) and pass 4.5:1.
+- Fix      - A guest who cannot vote still sees the results of a poll whose results show always.
+- Fix      - The kit shows the sign-in wording for a guest refusal from this engine or the 0.3.0 engine, never "Something went wrong".
 - Security - When the host gives no visitor address, guest votes are refused instead of counted by a browser id, and the admin says so in one line.
 - Security - Two votes sent at the same moment by one voter can no longer both count on a single-choice poll.
 - Security - An IPv6 guest counts once per /64 network.

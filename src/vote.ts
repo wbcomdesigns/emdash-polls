@@ -87,7 +87,6 @@ export async function handleBallot(routeCtx: RouteCtx, ctx: Ctx) {
 export async function handleVote(routeCtx: RouteCtx, ctx: Ctx) {
 	const user = memberOf(routeCtx);
 	if (!user) return SIGN_IN;
-	if (await rateLimited(ctx, `vote:${user.id}`)) return RATE_LIMITED;
 
 	const raw = asRecord(routeCtx.input);
 	const loaded = await loadForMember(ctx, asString(raw.id));
@@ -122,7 +121,6 @@ export async function handleVoteGuest(routeCtx: RouteCtx, ctx: Ctx) {
 	if (asString(raw.website) || asString(raw.honeypot)) return SPAM;
 	const who = await guestWho(ctx, routeCtx);
 	if (!who) return GUEST_UNAVAILABLE;
-	if (await rateLimited(ctx, `vote:${who.who}`)) return RATE_LIMITED;
 
 	const loaded = await loadForMember(ctx, asString(raw.id));
 	if ("error" in loaded) return loaded;
@@ -173,7 +171,11 @@ async function saveChoices(
 	poll: PollRow,
 	opts: { who: string; memberId: string; visitor: string; name: string; choices: string[] },
 ) {
-	return withBallotLock(ctx, `ballot:${poll.id}:${opts.who}`, () => writeChoices(ctx, poll, opts));
+	// The hourly limit is counted only by the request that holds the lock, so a BUSY answer to a
+	// double click does not use up the voter's hour.
+	return withBallotLock(ctx, `ballot:${poll.id}:${opts.who}`, async () =>
+		(await rateLimited(ctx, `vote:${opts.who}`)) ? RATE_LIMITED : writeChoices(ctx, poll, opts),
+	);
 }
 
 async function writeChoices(

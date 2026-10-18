@@ -17,7 +17,7 @@ Stop the dev server and start it again. **Registry** now shows in the admin menu
 
 **3. You need Node 22.16 or later** for the `npx emdash seed` step. WB Polls has no seed step.
 
-Checked on EmDash 1.3.0 with the `blog` template on Node. The Cloudflare lines follow EmDash's own guide; we have not run them on a Cloudflare site yet.
+Checked on EmDash 1.3.1 with the `blog` template on Node. The Cloudflare lines follow EmDash's own guide; we have not run them on a Cloudflare site yet.
 
 ## Install
 
@@ -25,12 +25,17 @@ Checked on EmDash 1.3.0 with the `blog` template on Node. The Cloudflare lines f
 2. From your site's root folder, get the kit for the version you just installed and copy it in:
 
    ```bash
-   kit="$(mktemp -d)" && git clone --branch v0.3.1 --depth 1 https://github.com/wbcomdesigns/emdash-polls "$kit/emdash-polls" && "$kit/emdash-polls/scripts/add-to-site.sh" .
+   kit="$(mktemp -d)" &&
+     git clone --depth 1 \
+       --branch v0.3.1 \
+       https://github.com/wbcomdesigns/emdash-polls \
+       "$kit/emdash-polls" &&
+     "$kit/emdash-polls/scripts/add-to-site.sh" .
    ```
 
    (`mktemp -d` makes a fresh folder only you can write to, and `&&` runs the script only when the clone worked. Never clone into a fixed `/tmp/<name>`: on a shared machine someone else can create it first.)
 
-   The script copies the kit, never replaces a newer shared file another Wbcom plugin already copied, keeps a backup of any wording file you changed, and prints the exact lines to paste into your templates, with the file names. WB Polls needs no content types, so there is nothing to seed.
+   The script copies the kit, never replaces a newer shared file another Wbcom plugin already copied, keeps a backup of the wording file only when you changed it yourself, and prints the exact lines to paste into your templates, with the file names. WB Polls needs no content types, so there is nothing to seed.
 3. Paste the lines it printed (below). Restart the dev server.
 4. Add the menu link it printed in Admin, Menus: **My votes** to `/account/votes`.
 5. Open **Polls** in the admin and follow its first screen. Create a poll, choose where it shows, and open it ([Your first poll](first-poll.md)).
@@ -69,16 +74,17 @@ Do the same in the page template, `src/pages/pages/[slug].astro`, with `collecti
 | `src/lib/polls-strings.ts` | Every phrase a visitor sees. Reword or translate it here |
 | `src/lib/wbcom-kit.ts`, `src/styles/wbcom-base.css` | Shared by every Wbcom plugin. The first line carries `wbcom-shared: N`, and the script copies them only when your site has no copy or a lower number |
 
-Run it again after an update: it replaces WB Polls' components, styles and wording file, and keeps your My votes page. If your `polls-strings.ts` differs from the new one, the script first saves yours as `polls-strings.ts.bak-YYYYMMDD` next to it and says so. Move your wording into the new file.
+Run it again after an update: it replaces WB Polls' components, styles and wording file, and keeps your My votes page. If you changed `polls-strings.ts` yourself (its contents match no released version, listed in `site-kit/lib/polls-strings.sums`), the script first saves yours as `polls-strings.ts.bak-YYYYMMDD` next to it and says so. Move your wording into the new file. An untouched file from an older release is replaced without a word. When it replaces an older shared file another Wbcom plugin copied, it prints the old and new `wbcom-shared` numbers. A template that already has the PollSlot lines is reported as already in place.
 
 ## Guest voting
 
 A poll set to **Anyone** takes guest votes only where EmDash knows the visitor's address. One guest is one address (an IPv6 guest is one /64 network), stored as a salted hash, never the address itself.
 
-- **Cloudflare:** EmDash gets the address. Guests vote.
-- **Node and other hosts:** EmDash gets an address only when you name the header your proxy sets, in `astro.config.mjs`: `trustedProxyHeaders: ["x-forwarded-for"]` inside `emdash({ ... })`. Set it only behind a proxy that writes that header, or visitors could send their own.
+EmDash gives a plugin the visitor's address only on Cloudflare, or when the site sets `trustedProxyHeaders` in `astro.config.mjs`. Without an address, guests are asked to sign in before they can vote, so one person cannot vote many times.
 
-Without an address, guests see the answers and a **Sign in to vote** link, members vote as usual, and the Polls screen says in one line that guests cannot vote.
+Set `trustedProxyHeaders` only to a header that **your proxy writes itself and replaces** on every request. EmDash reads the first address in that header. Many proxies **add** to `X-Forwarded-For` instead of replacing it (nginx `$proxy_add_x_forwarded_for`, most load balancers), so the first address is whatever the visitor typed, and a guest could vote again and again. Behind nginx, set `proxy_set_header X-Real-IP $remote_addr;` and use `trustedProxyHeaders: ["x-real-ip"]`. Behind another proxy, use the header it overwrites with the connecting address. If you are not sure, leave it unset: members can still take part.
+
+Without an address, guests see the poll (with its results when the poll shows them to everyone) and a **Sign in to vote** link, members vote as usual, and the Polls screen says in one line that guests cannot vote.
 
 ## The browser console
 

@@ -57,11 +57,18 @@ const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}${position
 		error?: { code?: string };
 	};
 
+	// Every "sign in to do this" refusal, from this engine and the one before it (0.3.0 sends
+	// NO_VISITOR where 0.3.1 sends GUEST_UNAVAILABLE), so a kit one version apart never says
+	// "Something went wrong" for a known refusal.
+	const SIGN_IN_CODES = ["SIGN_IN_REQUIRED", "MEMBERS_ONLY", "GUEST_UNAVAILABLE", "NO_VISITOR"];
+
 	function tell(box: HTMLElement, result: Payload, success = "") {
 		box.hidden = false;
 		box.dataset.tone = result.ok ? "success" : "error";
 		if (result.ok) box.textContent = success;
-		else if (["SIGN_IN_REQUIRED", "MEMBERS_ONLY", "GUEST_UNAVAILABLE"].includes(result.error?.code ?? "")) {
+		else if (SIGN_IN_CODES.includes(result.error?.code ?? "")) {
+			// A prompt, not an error: the neutral note style.
+			box.dataset.tone = "info";
 			box.innerHTML = `${esc(S.signIn)} <a href="${esc(signInUrl())}">${esc(S.signInLink)}</a>`;
 		} else box.textContent = phrase(result.error?.code);
 	}
@@ -111,10 +118,14 @@ const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}${position
 		const poll = data.poll;
 		const mine = data.choices ?? [];
 		const closed = poll.status === "closed";
-		// No visitor address on this host: guests sign in to vote, as on a members-only poll.
-		const members = poll.who === "members" || data.guestWrites === false;
+		// Guests vote only when the engine says this host gives a visitor address. An engine before
+		// 0.3.1 sends no guestWrites: treat that as no, so a guest is asked to sign in instead of
+		// meeting a refusal after pressing Vote.
+		const members = poll.who === "members" || data.guestWrites !== true;
 		const canVote = !closed && (!members || signedIn) && (!mine.length || Boolean(poll.allow_change));
-		const showBars = Boolean(data.results) && (mine.length > 0 || closed);
+		// The route sends results only when this visitor may see them. Before a vote that is still
+		// possible, the answers show once, as the form; anyone who cannot vote sees the bars.
+		const showBars = Boolean(data.results) && (mine.length > 0 || closed || !canVote);
 		let html = `<h2>${esc(poll.question)}</h2>`;
 		if (closed) html += `<p class="wb-muted">${esc(S.closed)}</p>`;
 		if (showBars) html += bars(poll, data.results as { total: number; options: Option[] }, mine);
@@ -123,9 +134,10 @@ const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}${position
 		if (mine.length) html += `<p class="wb-muted">${esc(S.voted)}</p>`;
 		if (canVote) html += formHtml(root.id || "wbp", poll, mine);
 		else if (!closed && members && !signedIn) {
-			// Not signed in is a prompt, not an error: list the answers, then a plain sign-in line.
-			html += `<ul class="wbp-results">${poll.options.map((option) => `<li class="wbp-option"><span>${esc(option.label)}</span></li>`).join("")}</ul>`;
-			html += `<p class="wb-status">${esc(S.signIn)} <a href="${esc(signInUrl())}">${esc(S.signInLink)}</a></p>`;
+			// Not signed in is a prompt, not an error: the answers (unless the bars already list them),
+			// then a neutral sign-in line.
+			if (!showBars) html += `<ul class="wbp-results">${poll.options.map((option) => `<li class="wbp-option"><span>${esc(option.label)}</span></li>`).join("")}</ul>`;
+			html += `<p class="wbp-note">${esc(S.signIn)} <a href="${esc(signInUrl())}">${esc(S.signInLink)}</a></p>`;
 		}
 		body.innerHTML = html;
 		live.textContent = "";
@@ -198,7 +210,7 @@ const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}${position
 		const signedIn = Boolean(memberBallot.ok);
 		let data: Payload = got;
 		if (signedIn) data = { ...got, ...memberBallot, poll: memberBallot.poll || got.poll };
-		else if (got.poll.who === "anyone" && got.guestWrites !== false) {
+		else if (got.poll.who === "anyone" && got.guestWrites === true) {
 			const guest = (await api("polls", `ballot_guest?id=${encodeURIComponent(got.poll.id)}`)) as Payload;
 			if (guest.ok) data = { ...got, ...guest, poll: guest.poll || got.poll };
 		}

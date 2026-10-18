@@ -55,6 +55,8 @@ const CODES: Record<string, string> = {
 	RATE_LIMITED: polls.rateLimited,
 	SPAM: polls.spam,
 	GUEST_UNAVAILABLE: polls.guestUnavailable,
+	// Sent by the 0.3.0 engine for the same refusal.
+	NO_VISITOR: polls.guestUnavailable,
 	BUSY: polls.inProgress,
 	OFFLINE: polls.offline,
 	FAILED: polls.fallback,

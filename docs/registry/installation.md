@@ -9,9 +9,9 @@ Stop the dev server and start it again. **Registry** now shows in the admin menu
 
 **2. The plugin is the engine. Visitor pages come from its site kit.** A registry plugin cannot add pages to your site. Until you copy the kit, its addresses (for example `/account/votes`) show your site's 404 page. That is expected. The kit copy below takes one command.
 
-**3. You need Node 22.16 or later** for the `npx emdash seed` step. WB Polls has no seed step.
+**3. You need Node 22.16 or later** for the `npx emdash seed` step.
 
-Checked on EmDash 1.3.0 with the `blog` template on Node. The Cloudflare lines follow EmDash's own guide; we have not run them on a Cloudflare site yet.
+Checked on EmDash 1.3.1 with the `blog` template on Node. The Cloudflare lines follow EmDash's own guide; we have not run them on a Cloudflare site yet.
 
 ## Install
 
@@ -19,12 +19,17 @@ Checked on EmDash 1.3.0 with the `blog` template on Node. The Cloudflare lines f
 2. From your site's root folder:
 
    ```bash
-   kit="$(mktemp -d)" && git clone --branch v0.3.1 --depth 1 https://github.com/wbcomdesigns/emdash-polls "$kit/emdash-polls" && "$kit/emdash-polls/scripts/add-to-site.sh" .
+   kit="$(mktemp -d)" &&
+     git clone --depth 1 \
+       --branch v0.3.1 \
+       https://github.com/wbcomdesigns/emdash-polls \
+       "$kit/emdash-polls" &&
+     "$kit/emdash-polls/scripts/add-to-site.sh" .
    ```
 
 3. Paste the lines it printed. Restart the dev server.
 4. Add the menu link it printed in Admin, Menus.
-5. Open Polls in the admin, follow its first screen.
+5. Open Polls in the admin.
 
 After an update, run step 2 with the new tag.
 

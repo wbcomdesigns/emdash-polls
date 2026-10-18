@@ -18,7 +18,7 @@ Copy the site kit again from the version you installed. The kit and the plugin a
 
 ## Guests see "Sign in to vote" on a poll set to Anyone
 
-Your hosting does not tell EmDash the visitor's address, so WB Polls cannot count a guest once. The Polls screen says so in one line. On Cloudflare this works by itself. On other hosts, set `trustedProxyHeaders` behind a proxy that sets that header. See [Guest voting](../getting-started/install.md#guest-voting). Members can vote either way.
+Your hosting does not tell EmDash the visitor's address, so WB Polls cannot count a guest once. The Polls screen says so in one line. On Cloudflare this works by itself. On other hosts, set `trustedProxyHeaders` to a header your proxy writes itself and replaces, never an appended `X-Forwarded-For`. See [Guest voting](../getting-started/install.md#guest-voting). Members can vote either way.
 
 ## "Your vote is still being saved. Try again in a moment."
 

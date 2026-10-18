@@ -108,6 +108,7 @@ export async function renderList(
 ): Promise<BlockResponse> {
 	const q = asString(opts.q);
 	const listed = await listPolls(ctx, { q, before: opts.before, after: opts.after, limit: PAGE });
+	const typeNames = new Map((await siteCollections(ctx)).map((type) => [type.slug, type.label]));
 	const rows = await Promise.all(
 		listed.items.map(async (poll) => {
 			const votes = await countVotes(ctx, poll.id);
@@ -124,7 +125,7 @@ export async function renderList(
 			return {
 				poll: poll.question || "Untitled poll",
 				who: `${poll.who === "members" ? "Members" : "Anyone"}, ${poll.named ? "named" : "anonymous"}`,
-				where: attachLabel(poll),
+				where: attachLabel(poll, typeNames),
 				votes: String(votes),
 				status: displayStatus(poll),
 				action: { type: "menu", action_id: "poll_mod", label: "Actions", items },
@@ -749,13 +750,26 @@ async function moderate(ctx: Ctx, value: unknown): Promise<BlockResponse> {
 }
 
 const KIT_DONE = "kit_pages_done";
+
+/** The shared six-line kit command, every line 52 characters or fewer: an admin code block neither wraps nor scrolls. */
+export function kitCommand(tag: string): string {
+	return [
+		`kit="$(mktemp -d)" &&`,
+		`  git clone --depth 1 \\`,
+		`    --branch ${tag} \\`,
+		`    ${REPO_URL} \\`,
+		`    "$kit/emdash-polls" &&`,
+		`  "$kit/emdash-polls/scripts/add-to-site.sh" .`,
+	].join("\n");
+}
 const REPO_URL = "https://github.com/wbcomdesigns/emdash-polls";
 
 /**
  * The "Set up visitor pages" card. A registry plugin cannot add pages or put a poll on one, so until
  * the site kit is copied no poll shows anywhere and /account/votes is the site's 404. The card gives
  * the command for the version that is installed (never main), until the owner says the pages are
- * set up; then one line to the guide.
+ * set up; then one line to the guide. "Done" is stored with the version, so the card comes back
+ * after every plugin update, when the kit has to be copied again.
  */
 export async function kitBlocks(ctx: Ctx): Promise<BlockMap[]> {
 	const tag = `v${ctx.plugin.version}`;
@@ -764,10 +778,10 @@ export async function kitBlocks(ctx: Ctx): Promise<BlockMap[]> {
 		label: "Install guide",
 		target: { kind: "external", url: `${REPO_URL}/blob/${tag}/docs/website/getting-started/install.md` },
 	};
-	if ((await ctx.kv.get<string>(KIT_DONE)) === "1") {
+	if ((await ctx.kv.get<string>(KIT_DONE)) === ctx.plugin.version) {
 		return [
-			{ type: "context", text: `Polls show on your site through the WB Polls site kit. After each plugin update, copy the kit for ${tag} again.` },
-			{ type: "actions", elements: [guide] },
+			{ type: "context", text: `Polls show on your site through the WB Polls site kit. After each plugin update, copy the kit for the new version again.` },
+			{ type: "actions", elements: [guide, { type: "button", action_id: "kit_again", label: "Show the setup steps again" }] },
 		];
 	}
 	return [
@@ -782,7 +796,11 @@ export async function kitBlocks(ctx: Ctx): Promise<BlockMap[]> {
 		{
 			type: "code",
 			language: "bash",
-			code: `kit="$(mktemp -d)" && git clone --branch ${tag} --depth 1 ${REPO_URL} "$kit/emdash-polls" && "$kit/emdash-polls/scripts/add-to-site.sh" .`,
+			code: kitCommand(tag),
+		},
+		{
+			type: "actions",
+			elements: [{ ...guide, label: "Copy it from the install guide on a phone" }],
 		},
 		{
 			type: "fields",
@@ -804,7 +822,7 @@ function guestsOffBlocks(ctx: Ctx): BlockMap[] {
 	return [
 		{
 			type: "context",
-			text: "Guests cannot vote on this site: your host does not tell EmDash the visitor's address. Members can still vote. To let guests vote, host on Cloudflare or set trustedProxyHeaders in astro.config.mjs.",
+			text: "Guests cannot vote on this site: your host does not tell EmDash the visitor's address. Members can still vote. To let guests vote, host on Cloudflare, or set trustedProxyHeaders to a header your proxy writes itself (the guide explains which).",
 		},
 		{
 			type: "actions",
@@ -835,8 +853,12 @@ async function routeAdmin(input: unknown, ctx: Ctx): Promise<BlockResponse> {
 	const type = asString(raw.type);
 	const page = asString(raw.page);
 
+	if (type === "block_action" && asString(raw.action_id) === "kit_again") {
+		await ctx.kv.delete(KIT_DONE);
+		return renderList(ctx);
+	}
 	if (type === "block_action" && asString(raw.action_id) === "kit_done") {
-		await ctx.kv.set(KIT_DONE, "1");
+		await ctx.kv.set(KIT_DONE, ctx.plugin.version);
 		return renderList(ctx, {}, { toast: { message: "Noted. The install guide link stays on this page.", type: "success" } });
 	}
 

@@ -2,7 +2,7 @@
 
 The plugin is the engine. This folder is what a site developer copies into an EmDash site so visitors can see a poll and vote. The plugin alone does not draw a poll on the site.
 
-Checked on EmDash 1.3.0 with the `blog` template.
+Checked on EmDash 1.3.1 with the `blog` template on Node.
 
 ## Add it to your site
 
@@ -11,12 +11,17 @@ Install WB Polls from the registry first (Admin, Registry, search **WB Polls**).
 Then, from your site's root folder, get the kit at the tag of the version you installed and copy it in:
 
 ```bash
-kit="$(mktemp -d)" && git clone --branch v0.3.1 --depth 1 https://github.com/wbcomdesigns/emdash-polls "$kit/emdash-polls" && "$kit/emdash-polls/scripts/add-to-site.sh" .
+kit="$(mktemp -d)" &&
+  git clone --depth 1 \
+    --branch v0.3.1 \
+    https://github.com/wbcomdesigns/emdash-polls \
+    "$kit/emdash-polls" &&
+  "$kit/emdash-polls/scripts/add-to-site.sh" .
 ```
 
 (`mktemp -d` makes a fresh folder only you can write to, and `&&` runs the script only when the clone worked. Never clone into a fixed `/tmp/<name>`: on a shared machine someone else can create it first.)
 
-The script refuses a folder that is not an EmDash site, copies the components, the My votes page, the styles and the wording file, copies the two shared Wbcom files only when your site has no copy or an older one (`wbcom-shared: N` on line 1), and saves a changed `polls-strings.ts` as `polls-strings.ts.bak-YYYYMMDD` before it copies the new one. WB Polls needs no content types, so there is nothing to seed.
+The script refuses a folder that is not an EmDash site, copies the components, the My votes page, the styles and the wording file, copies the two shared Wbcom files only when your site has no copy or an older one (`wbcom-shared: N` on line 1), and saves `polls-strings.ts` as `polls-strings.ts.bak-YYYYMMDD` before it copies the new one, but only when you edited it (a hash not in `site-kit/lib/polls-strings.sums`). WB Polls needs no content types, so there is nothing to seed.
 
 It then prints the lines to paste. On the blog template they are:
 
@@ -59,7 +64,7 @@ Every phrase a visitor can see lives in `src/lib/polls-strings.ts`. Change that 
 
 ## Before you add it to a live site
 
-- **Guest voting.** Guests vote only where EmDash gets the visitor's address: on Cloudflare, or with `trustedProxyHeaders` in `astro.config.mjs` behind a proxy that sets that header. Elsewhere guests see a sign-in link and the Polls screen says so. See [Guest voting](../docs/website/getting-started/install.md#guest-voting).
+- **Guest voting.** Guests vote only where EmDash gets the visitor's address: on Cloudflare, or with `trustedProxyHeaders` set to a header your proxy writes itself and replaces (behind nginx, `X-Real-IP` with `trustedProxyHeaders: ["x-real-ip"]`, never an appended `X-Forwarded-For`). Elsewhere guests see a sign-in link and the Polls screen says so. See [Guest voting](../docs/website/getting-started/install.md#guest-voting).
 - **The browser console.** A guest sees one expected 401 per poll from the member ballot check (`ballot`), and one on `/account/votes` (`mine`). That is how the kit learns the visitor is not signed in; the poll then shows the guest view.
 - **Caching.** The kit markup is the same for every visitor. Vote state is decided in the browser from the API.
 - **Sign-in.** The sign-in links go to `/_emdash/admin/login`. If your admin lives on another host, change `signInUrl()` in `src/lib/wbcom-kit.ts`.

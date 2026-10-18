@@ -1,10 +1,21 @@
 ## 0.3.1
 
-Guests vote only where the host gives EmDash the visitor's address (Cloudflare, or `trustedProxyHeaders`). Elsewhere they sign in.
+Guests vote only where the host gives EmDash the visitor's address (Cloudflare, or `trustedProxyHeaders` set the safe way, see FAQ). Elsewhere they sign in.
 
 - Security: two votes sent at once by one voter count once. An IPv6 guest counts once per /64.
 - New: a Set up visitor pages card and `scripts/add-to-site.sh` copy the kit in one command.
 - Fix: the PollSlot snippet works on the blog post template. Dark mode buttons pass 4.5:1.
+
+Copy the kit again after you update, from your site's root folder:
+
+```bash
+kit="$(mktemp -d)" &&
+  git clone --depth 1 \
+    --branch v0.3.1 \
+    https://github.com/wbcomdesigns/emdash-polls \
+    "$kit/emdash-polls" &&
+  "$kit/emdash-polls/scripts/add-to-site.sh" .
+```
 
 ## 0.3.0
 

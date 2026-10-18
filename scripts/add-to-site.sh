@@ -19,27 +19,35 @@ fi
 # The number on the first line of a shared file. A copy from before the numbers existed counts as 0.
 shared_version() { local v; v="$(sed -n '1s/.*wbcom-shared: *\([0-9]*\).*/\1/p' "$1" 2>/dev/null)"; echo "${v:-0}"; }
 
+# SHA-256 of a file, with whichever tool this machine has.
+sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1"; else shasum -a 256 "$1"; fi | cut -d' ' -f1; }
+
 notes=()
 copy() { # copy <kit path> <site path>
 	local from="$KIT/$1" to="$SITE/$2" name
 	name="$(basename "$to")"
 	mkdir -p "$(dirname "$to")"
 	if [[ "$name" == wbcom-base.css || "$name" == wbcom-kit.ts ]] && [[ -f "$to" ]]; then
-		if (( $(shared_version "$from") < $(shared_version "$to") )); then
-			notes+=("Kept   $2 (wbcom-shared $(shared_version "$to") from another Wbcom plugin is newer than $(shared_version "$from"))")
+		local mine theirs
+		mine="$(shared_version "$from")" theirs="$(shared_version "$to")"
+		if (( mine < theirs )); then
+			notes+=("Kept   $2 (wbcom-shared $theirs from another Wbcom plugin is newer than $mine)")
 			return
 		fi
+		(( mine > theirs )) && notes+=("Upgraded $2 from wbcom-shared $theirs to $mine (shared with your other Wbcom plugins)")
 	fi
 	# The My votes page is the site's own once it exists: the developer may point it at their layout.
 	if [[ "$name" == votes.astro && -f "$to" ]]; then
 		cmp -s "$from" "$to" || notes+=("Kept   $2 (yours; compare it with the kit copy in $KIT/$1 after an update)")
 		return
 	fi
-	if [[ "$name" == polls-strings.ts && -f "$to" ]] && ! cmp -s "$from" "$to"; then
+	# Back up the wording file only when the owner changed it: its hash is not one the kit ever shipped.
+	if [[ "$name" == polls-strings.ts && -f "$to" ]] && ! cmp -s "$from" "$to" &&
+		! grep -qx "$(sha256 "$to")" "$KIT/lib/polls-strings.sums"; then
 		local backup="$to.bak-$(date +%Y%m%d)"
 		[[ -e "$backup" ]] && backup="$to.bak-$(date +%Y%m%d-%H%M%S)"
 		cp "$to" "$backup"
-		notes+=("Backup $2 differed from the kit, so your copy is in ${backup#"$SITE/"}. Move your wording into the new file.")
+		notes+=("Backup $2 had your own wording, so your copy is in ${backup#"$SITE/"}. Move your wording into the new file.")
 	fi
 	cp "$from" "$to"
 }
@@ -67,31 +75,39 @@ WB Polls kit copied into $SITE
 DONE
 for note in "${notes[@]+"${notes[@]}"}"; do echo "  $note"; done
 
-cat <<'DONE'
-
-Left for you:
-
-  1. In src/pages/posts/[slug].astro, add this line inside the --- block at the top:
-
-       import PollSlot from "../../components/PollSlot.astro";
-
-     Then put one slot just before and one just after the post text,
-     <PortableText value={post.data.content} />:
-
-       <PollSlot collection="posts" id={post.data.id} position="above" />
-       <PortableText value={post.data.content} />
-       <PollSlot collection="posts" id={post.data.id} position="below" />
-
-  2. In src/pages/pages/[slug].astro, the same import inside the --- block:
+# Step for one template: the paste lines, or "already in place" when the template has PollSlot.
+template_step() { # template_step <n> <file> <collection> <variable>
+	local n="$1" file="$2" coll="$3" var="$4"
+	if [[ -f "$SITE/$file" ]] && grep -q "PollSlot" "$SITE/$file"; then
+		echo "  $n. $file: the PollSlot lines are already in place."
+		return
+	fi
+	[[ -f "$SITE/$file" ]] || echo "  $n. (This site has no $file. Use the same lines in the template that shows one $coll entry.)"
+	cat <<STEP
+  $n. In $file, add this line inside the --- block at the top:
 
        import PollSlot from "../../components/PollSlot.astro";
 
-     and the two slots around <PortableText value={page.data.content} />:
+     Then put one slot just before and one just after the text,
+     <PortableText value={$var.data.content} />:
 
-       <PollSlot collection="pages" id={page.data.id} position="above" />
-       <PortableText value={page.data.content} />
-       <PollSlot collection="pages" id={page.data.id} position="below" />
+       <PollSlot collection="$coll" id={$var.data.id} position="above" />
+       <PortableText value={$var.data.content} />
+       <PollSlot collection="$coll" id={$var.data.id} position="below" />
 
+STEP
+}
+
+version="$(sed -n 's/^[[:space:]]*"version":[[:space:]]*"\([^"]*\)".*/\1/p' "$PLUGIN/package.json" | head -n 1)"
+ref="main"
+[[ -n "$version" ]] && ref="v$version"
+
+echo
+echo "Left for you:"
+echo
+template_step 1 "src/pages/posts/[slug].astro" posts post
+template_step 2 "src/pages/pages/[slug].astro" pages page
+cat <<DONE
      Each poll shows in the slot that matches its Position setting. A slot with no poll shows nothing.
 
   3. In the admin, Menus: add a link "My votes" to /account/votes.
@@ -99,8 +115,14 @@ Left for you:
   4. Stop the dev server and start it again, then open a post and /account/votes.
      Create a poll in the admin (Polls, New poll), set it to show on the whole site, and open it.
 
+After every plugin update, run this again from your site's root folder, with the new version's tag in place of $ref:
+
+  kit="\$(mktemp -d)" &&
+    git clone --depth 1 \\
+      --branch $ref \\
+      https://github.com/wbcomdesigns/emdash-polls \\
+      "\$kit/emdash-polls" &&
+    "\$kit/emdash-polls/scripts/add-to-site.sh" .
+
+Guide: https://github.com/wbcomdesigns/emdash-polls/blob/$ref/docs/website/getting-started/install.md
 DONE
-version="$(sed -n 's/^[[:space:]]*"version":[[:space:]]*"\([^"]*\)".*/\1/p' "$PLUGIN/package.json" | head -n 1)"
-ref="main"
-[[ -n "$version" ]] && ref="v$version"
-echo "Guide: https://github.com/wbcomdesigns/emdash-polls/blob/$ref/docs/website/getting-started/install.md"

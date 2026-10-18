@@ -151,10 +151,14 @@ describe("first admin screen", () => {
 		expect(first.blocks[0]).toMatchObject({ type: "header", text: "Polls" });
 		expect(first.blocks[1]).toMatchObject({ type: "banner", title: "Set up visitor pages" });
 		const code = first.blocks.find((b) => b.type === "code") as { code: string };
-		expect(code.code).toMatch(
-			/^kit="\$\(mktemp -d\)" && git clone --branch v\d+\.\d+\.\d+ --depth 1 https:\/\/github.com\/wbcomdesigns\/emdash-polls "\$kit\/emdash-polls" && "\$kit\/emdash-polls\/scripts\/add-to-site.sh" \.$/,
-		);
-		expect(text).not.toContain("/tmp/emdash-polls");
+		// Six short lines (52 characters at most): an admin code block neither wraps nor scrolls.
+		const lines = code.code.split("\n");
+		expect(lines).toHaveLength(6);
+		for (const line of lines) expect(line.length).toBeLessThanOrEqual(52);
+		expect(lines[0]).toBe('kit="$(mktemp -d)" &&');
+		expect(lines[2]).toMatch(/^    --branch v\d+\.\d+\.\d+ \\$/);
+		expect(lines[5]).toBe('  "$kit/emdash-polls/scripts/add-to-site.sh" .');
+		expect(text).toContain("Copy it from the install guide on a phone");		expect(text).not.toContain("/tmp/emdash-polls");
 		expect(text).toContain("/account/votes");
 		expect(text).toMatch(/blob\/v\d+\.\d+\.\d+\/docs\/website\/getting-started\/install\.md/);
 		expect(text).not.toContain("Guests cannot vote");
@@ -165,6 +169,13 @@ describe("first admin screen", () => {
 		expect(JSON.stringify(done.blocks)).toContain("Install guide");
 		const again = (await site.call("admin", { type: "page_load", page: "/polls" }, asAdmin("203.0.113.7"))) as Page;
 		expect(JSON.stringify(again.blocks)).not.toContain("Set up visitor pages");
+		expect(JSON.stringify(again.blocks)).toContain("Show the setup steps again");
+		const shown = (await site.call("admin", { type: "block_action", action_id: "kit_again" }, asAdmin("203.0.113.7"))) as Page;
+		expect(JSON.stringify(shown.blocks)).toContain("Set up visitor pages");
+		// "Done" belongs to one version: after an update the card is back.
+		await site.rt.fixtures.plugin.kv("kit_pages_done", "0.0.1");
+		const updated = (await site.call("admin", { type: "page_load", page: "/polls" }, asAdmin("203.0.113.7"))) as Page;
+		expect(JSON.stringify(updated.blocks)).toContain("Set up visitor pages");
 	});
 
 	it("says in one line that guests cannot vote when the host gives no visitor address", async () => {
@@ -180,3 +191,33 @@ describe("first admin screen", () => {
 		expect(JSON.stringify(form.blocks)).not.toContain("Guests cannot vote");
 	});
 });
+
+describe("hourly limit and BUSY", () => {
+	it("a vote answered BUSY does not use up the voter's hour", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await site.rt.fixtures.plugin.storage(POLLS, "p", poll());
+		// Another request holds this voter's lock.
+		await site.rt.fixtures.plugin.kv("ballot:p:ana", String(Date.now()));
+		for (let i = 0; i < 12; i += 1) {
+			expect(await site.call("vote", { id: "p", choices: ["blue"] }, site.as(ana))).toMatchObject({ error: { code: "BUSY" } });
+		}
+		// The lock goes stale; the next vote is the first one that counts.
+		await site.rt.fixtures.plugin.kv("ballot:p:ana", "0");
+		expect(await site.call("vote", { id: "p", choices: ["blue"] }, site.as(ana))).toMatchObject({ ok: true });
+	});
+});
+
+describe("polls list", () => {
+	it("names the content type a poll shows on", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await site.rt.fixtures.collection({ slug: "pages", label: "Pages", labelSingular: "Page", fields: [{ slug: "title", label: "Title", type: "string" }] } as never);
+		await site.rt.fixtures.plugin.storage(POLLS, "p", poll({ attach: "collection", attach_key: "pages" }));
+		const list = (await site.call("admin", { type: "page_load", page: "/polls" }, { method: "POST", user: admin })) as {
+			blocks: Array<{ type: string; rows?: Array<{ where: string }> }>;
+		};
+		expect(list.blocks.find((b) => b.type === "table")?.rows?.[0]?.where).toBe("Pages");
+	});
+});
+
