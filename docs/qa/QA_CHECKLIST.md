@@ -34,7 +34,7 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | G-92 | Open poll, results Always, before voting | One list of answers. No empty 0% chart above the same answers |
 | G-93 | Page with a poll slot and no matching poll | Nothing. No empty bordered box |
 | G-10 | Host gives no visitor address (Node, no `trustedProxyHeaders`): open a post with an Anyone poll | Answers listed and "Sign in to vote." with a Sign in link. No Vote button. `vote_guest` answers `MEMBERS_ONLY` with reason `GUEST_UNAVAILABLE` and stores nothing |
-| G-11 | Same host, `trustedProxyHeaders: ["x-forwarded-for"]` and the header sent | Guest votes once; a second vote from that address is refused |
+| G-11 | Same host, `trustedProxyHeaders: ["x-real-ip"]` and the header sent | Guest votes once; a second vote from that address is refused |
 | G-12 | Guest console on a post with a poll | Exactly one 401, from `ballot` (documented as expected). One 401 from `mine` on `/account/votes` |
 | G-13 | Post template with the two slots from `add-to-site.sh` (`../../components/PollSlot.astro`) | Page renders, poll in the slot that matches its Position |
 | G-14 | Several votes for different answers sent at once by one voter on a one-choice poll | One stored choice; the others get ALREADY_VOTED, BUSY or RATE_LIMITED |

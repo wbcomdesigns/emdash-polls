@@ -78,7 +78,7 @@ Run it again after an update: it replaces WB Polls' components, styles and wordi
 
 A poll set to **Anyone** takes guest votes only where EmDash knows the visitor's address. One guest is one address (an IPv6 guest is one /64 network), stored as a salted hash, never the address itself.
 
-EmDash gives a plugin the visitor's address only on Cloudflare, or when the site sets `trustedProxyHeaders` in `astro.config.mjs`. Without an address, guests are asked to sign in before they can vote, so one person cannot vote many times.
+EmDash gives a plugin the visitor's address only on Cloudflare, or when the site sets `trustedProxyHeaders` inside `emdash({ ... })` in `astro.config.mjs` (for example `trustedProxyHeaders: ["x-real-ip"],`). Without an address, guests are asked to sign in before they can vote, so one person cannot vote many times.
 
 Set `trustedProxyHeaders` only to a header that **your proxy writes itself and replaces** on every request. EmDash reads the first address in that header. Many proxies **add** to `X-Forwarded-For` instead of replacing it (nginx `$proxy_add_x_forwarded_for`, most load balancers), so the first address is whatever the visitor typed, and a guest could vote again and again. Behind nginx, set `proxy_set_header X-Real-IP $remote_addr;` and use `trustedProxyHeaders: ["x-real-ip"]`. Behind another proxy, use the header it overwrites with the connecting address. If you are not sure, leave it unset: members can still take part.
 
