@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import { emptyPoll } from "../src/lib/polls";
-import { guestAddress } from "../src/lib/visitor";
 import { POLLS, VOTES } from "../src/lib/types";
 import { admin, ana, openSite } from "./site";
 
@@ -128,14 +127,15 @@ describe("guest writes need a visitor address", () => {
 		expect(await site.rt.inspect.storage.list(VOTES)).toHaveLength(2);
 	});
 
-	it("reduces an address to the part that names one guest", () => {
-		expect(guestAddress("203.0.113.7")).toBe("203.0.113.7");
-		expect(guestAddress("::ffff:203.0.113.7")).toBe("203.0.113.7");
-		expect(guestAddress("2001:DB8:1:2::1")).toBe("2001:db8:1:2::/64");
-		expect(guestAddress("2001:db8:1:2:aaaa:bbbb:cccc:dddd")).toBe("2001:db8:1:2::/64");
-		expect(guestAddress("fe80::1%eth0")).toBe("fe80:0:0:0::/64");
-		expect(guestAddress(null)).toBeNull();
-		expect(guestAddress("unknown")).toBeNull();
+	it("refuses a guest whose address cannot be parsed, as if there were none", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await site.rt.fixtures.plugin.storage(POLLS, "p", poll());
+		expect(await site.call("vote_guest", { id: "p", choices: ["blue"] }, fromIp("not-an-ip"))).toMatchObject({
+			ok: false,
+			error: { code: "GUEST_UNAVAILABLE" },
+		});
+		expect(await site.rt.inspect.storage.list(VOTES)).toHaveLength(0);
 	});
 });
 

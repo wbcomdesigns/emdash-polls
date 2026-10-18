@@ -17,7 +17,7 @@ Stop the dev server and start it again. **Registry** now shows in the admin menu
 
 **3. You need Node 22.16 or later** for the `npx emdash seed` step. WB Polls has no seed step.
 
-Checked on EmDash 1.3.0 with the `blog` template, Node and Cloudflare.
+Checked on EmDash 1.3.0 with the `blog` template on Node. The Cloudflare lines follow EmDash's own guide; we have not run them on a Cloudflare site yet.
 
 ## Install
 
@@ -64,12 +64,12 @@ Do the same in the page template, `src/pages/pages/[slug].astro`, with `collecti
 | File | What it is |
 | --- | --- |
 | `src/components/Poll.astro`, `PollSlot.astro`, `MyVotes.astro` | The poll, the slot that finds the page's poll, and the member's vote list |
-| `src/pages/account/votes.astro` | The My votes page. It uses `src/layouts/Base.astro`; the script tells you if your site has no such layout |
+| `src/pages/account/votes.astro` | The My votes page. It uses `src/layouts/Base.astro`; the script tells you if your site has no such layout. Copied only the first time, so your changes to it stay |
 | `src/styles/polls.css` | The poll's own styles |
 | `src/lib/polls-strings.ts` | Every phrase a visitor sees. Reword or translate it here |
 | `src/lib/wbcom-kit.ts`, `src/styles/wbcom-base.css` | Shared by every Wbcom plugin. The first line carries `wbcom-shared: N`, and the script copies them only when your site has no copy or a lower number |
 
-Run it again after an update: it replaces WB Polls' own files. If your `polls-strings.ts` differs from the new one, the script first saves yours as `polls-strings.ts.bak-YYYYMMDD` next to it and says so. Move your wording into the new file.
+Run it again after an update: it replaces WB Polls' components, styles and wording file, and keeps your My votes page. If your `polls-strings.ts` differs from the new one, the script first saves yours as `polls-strings.ts.bak-YYYYMMDD` next to it and says so. Move your wording into the new file.
 
 ## Guest voting
 

@@ -788,8 +788,7 @@ export async function kitBlocks(ctx: Ctx): Promise<BlockMap[]> {
 			type: "fields",
 			fields: [
 				{ label: "My votes", value: "/account/votes" },
-				{ label: "Polls on posts", value: "/posts/<post>/, above or below the text" },
-				{ label: "Polls on pages", value: "/pages/<page>/, above or below the text" },
+				{ label: "Polls", value: "On posts and pages" },
 			],
 		},
 		{

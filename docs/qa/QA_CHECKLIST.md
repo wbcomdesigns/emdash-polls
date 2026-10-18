@@ -2,7 +2,7 @@
 
 One living list of flow-level cases. Walk all of it before every release. When you add or fix behaviour, add or change its case in the same pull request. There are no per-release QA files.
 
-**Last walk:** 2026-10-14, 0.2.1, lab http://127.0.0.1:4332. Isolated Chromium. Browser: empty Vote shows "Pick an answer from the list." then clears after a real vote (status hidden); closed poll stays with "This poll is closed." and bars; option leftGap 0; `/account/votes` guest sign-in and member list + two-click erase; extras return to the vote form after erase; Vote 44px; dark h2 17.03; admin 390 Actions right=354; form ISO examples 2026-10-20T09:00 / 2026-10-21T18:00. Route: prove-lab.sh all pass including `/account/votes`. Admin API: closed row Actions include Open (no Close); copy opens Edit poll with "(copy)", toast "Rename this copy, then open it.", collection attach kept as posts. Tests: 41 passed (reopen after close, copy toast, closed slot). editor_poll 200. Not walked: G-1 dedicated members-only poll, G-7 same-visitor change, M-2/M-3 as a second account, in-text block (#16 stopped), a second-site registry install. Developer walk, not a second-person QA PASS.
+**Last walk:** 2026-10-19, 0.3.1 branch, EmDash 1.3.0. Lab http://127.0.0.1:4332 (fresh `--template blog`, file install) and a second fresh blog site on 4383 with WB Polls 0.3.0 installed from the registry and the 0.3.1 kit copied with `add-to-site.sh`. Browser: G-6 (with `trustedProxyHeaders` and an X-Forwarded-For header), G-10, G-11, G-12, G-13, M-vote, My votes list (fresh site), A-15, A-16, A-17, light and dark at 1440 and 390 on the post, page and My votes. Route only: G-14 (parallel guest and member votes), G-8, `health` guestWrites. Tests: 66 passed. Not walked: G-1 dedicated members-only poll, G-7, M-2/M-3 as a second account, in-text block, Admin Menus link, Cloudflare. Developer walk, not a second-person QA PASS.
 
 When you walk it, replace that line with the date, the version, and three lists: cases walked in the browser, cases checked at route level only, cases not walked. Do not claim a case you did not run.
 
@@ -33,6 +33,11 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | G-91 | Change three phrases in the wording file (a button, an empty state, an error), rebuild | Each change shows everywhere that phrase is used. No English left on screen that is not in the file |
 | G-92 | Open poll, results Always, before voting | One list of answers. No empty 0% chart above the same answers |
 | G-93 | Page with a poll slot and no matching poll | Nothing. No empty bordered box |
+| G-10 | Host gives no visitor address (Node, no `trustedProxyHeaders`): open a post with an Anyone poll | Answers listed and "Sign in to vote." with a Sign in link. No Vote button. `vote_guest` answers `GUEST_UNAVAILABLE` and stores nothing |
+| G-11 | Same host, `trustedProxyHeaders: ["x-forwarded-for"]` and the header sent | Guest votes once; a second vote from that address is refused |
+| G-12 | Guest console on a post with a poll | Exactly one 401, from `ballot` (documented as expected). One 401 from `mine` on `/account/votes` |
+| G-13 | Post template with the two slots from `add-to-site.sh` (`../../components/PollSlot.astro`) | Page renders, poll in the slot that matches its Position |
+| G-14 | Several votes for different answers sent at once by one voter on a one-choice poll | One stored choice; the others get ALREADY_VOTED, BUSY or RATE_LIMITED |
 
 ## Member (subscriber role)
 
@@ -67,6 +72,8 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | A-13 | New poll: pick an open day in the date picker and 09:30 in the time list, save, edit again | Day and 09:30 come back. The list shows Scheduled. Clearing the day and saving shows Draft. Nothing is typed |
 | A-14 | Attach an open poll to all posts, then open a post in the editor and expand the Poll panel | The panel says "Visitors see a shared poll" and names it, not "No poll here". The existing-poll list reads "Choose a poll" |
 | A-15 | Template has `<PollSlot position="above">` before the content and `position="below"` after. Set a poll to Above, then to Below | Only the matching slot shows the poll; the other renders nothing. A template with one slot and no position shows the poll either way |
+| A-16 | Fresh install, open Polls | "Set up visitor pages" card with the `mktemp -d` clone command for the installed tag, My votes address, Install guide link. "Visitor pages are set up" hides it for good and leaves one line plus the guide link |
+| A-17 | Host gives no visitor address, open Polls | One line: guests cannot vote here, with the Guest voting guide link. Not shown when the host gives an address |
 
 ## Presentation, every screen
 

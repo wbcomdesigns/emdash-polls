@@ -11,7 +11,7 @@ Stop the dev server and start it again. **Registry** now shows in the admin menu
 
 **3. You need Node 22.16 or later** for the `npx emdash seed` step. WB Polls has no seed step.
 
-Checked on EmDash 1.3.0 with the `blog` template, Node and Cloudflare.
+Checked on EmDash 1.3.0 with the `blog` template on Node. The Cloudflare lines follow EmDash's own guide; we have not run them on a Cloudflare site yet.
 
 ## Install
 
@@ -22,10 +22,10 @@ Checked on EmDash 1.3.0 with the `blog` template, Node and Cloudflare.
    kit="$(mktemp -d)" && git clone --branch v0.3.1 --depth 1 https://github.com/wbcomdesigns/emdash-polls "$kit/emdash-polls" && "$kit/emdash-polls/scripts/add-to-site.sh" .
    ```
 
-3. Paste the PollSlot lines it printed into the post and page templates it names. Restart the dev server.
-4. Add the My votes link it printed in Admin, Menus.
-5. Open Polls in the admin and follow its first screen.
+3. Paste the lines it printed. Restart the dev server.
+4. Add the menu link it printed in Admin, Menus.
+5. Open Polls in the admin, follow its first screen.
 
-After every update, run step 2 with the new tag.
+After an update, run step 2 with the new tag.
 
-Full guide: https://github.com/wbcomdesigns/emdash-polls/blob/v0.3.1/docs/website/getting-started/install.md
+Guide: https://github.com/wbcomdesigns/emdash-polls/blob/v0.3.1/docs/website/getting-started/install.md

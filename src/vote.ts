@@ -148,7 +148,7 @@ async function guestWho(ctx: Ctx, routeCtx: RouteCtx) {
 	const address = requestAddress(routeCtx);
 	if (!address) return null;
 	const hash = await visitorHash(ctx, address);
-	return { who: visitorWho(hash), hash };
+	return hash ? { who: visitorWho(hash), hash } : null;
 }
 
 /**

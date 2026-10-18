@@ -30,8 +30,14 @@ copy() { # copy <kit path> <site path>
 			return
 		fi
 	fi
+	# The My votes page is the site's own once it exists: the developer may point it at their layout.
+	if [[ "$name" == votes.astro && -f "$to" ]]; then
+		cmp -s "$from" "$to" || notes+=("Kept   $2 (yours; compare it with the kit copy in $KIT/$1 after an update)")
+		return
+	fi
 	if [[ "$name" == polls-strings.ts && -f "$to" ]] && ! cmp -s "$from" "$to"; then
 		local backup="$to.bak-$(date +%Y%m%d)"
+		[[ -e "$backup" ]] && backup="$to.bak-$(date +%Y%m%d-%H%M%S)"
 		cp "$to" "$backup"
 		notes+=("Backup $2 differed from the kit, so your copy is in ${backup#"$SITE/"}. Move your wording into the new file.")
 	fi
@@ -94,4 +100,7 @@ Left for you:
      Create a poll in the admin (Polls, New poll), set it to show on the whole site, and open it.
 
 DONE
-echo "Guide: https://github.com/wbcomdesigns/emdash-polls/blob/v$(node -p "require('$PLUGIN/package.json').version")/docs/website/getting-started/install.md"
+version="$(sed -n 's/^[[:space:]]*"version":[[:space:]]*"\([^"]*\)".*/\1/p' "$PLUGIN/package.json" | head -n 1)"
+ref="main"
+[[ -n "$version" ]] && ref="v$version"
+echo "Guide: https://github.com/wbcomdesigns/emdash-polls/blob/$ref/docs/website/getting-started/install.md"
