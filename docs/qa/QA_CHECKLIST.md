@@ -33,13 +33,14 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | G-91 | Change three phrases in the wording file (a button, an empty state, an error), rebuild | Each change shows everywhere that phrase is used. No English left on screen that is not in the file |
 | G-92 | Open poll, results Always, before voting | One list of answers. No empty 0% chart above the same answers |
 | G-93 | Page with a poll slot and no matching poll | Nothing. No empty bordered box |
-| G-10 | Host gives no visitor address (Node, no `trustedProxyHeaders`): open a post with an Anyone poll | Answers listed and "Sign in to vote." with a Sign in link. No Vote button. `vote_guest` answers `GUEST_UNAVAILABLE` and stores nothing |
+| G-10 | Host gives no visitor address (Node, no `trustedProxyHeaders`): open a post with an Anyone poll | Answers listed and "Sign in to vote." with a Sign in link. No Vote button. `vote_guest` answers `MEMBERS_ONLY` with reason `GUEST_UNAVAILABLE` and stores nothing |
 | G-11 | Same host, `trustedProxyHeaders: ["x-forwarded-for"]` and the header sent | Guest votes once; a second vote from that address is refused |
 | G-12 | Guest console on a post with a poll | Exactly one 401, from `ballot` (documented as expected). One 401 from `mine` on `/account/votes` |
 | G-13 | Post template with the two slots from `add-to-site.sh` (`../../components/PollSlot.astro`) | Page renders, poll in the slot that matches its Position |
 | G-14 | Several votes for different answers sent at once by one voter on a one-choice poll | One stored choice; the others get ALREADY_VOTED, BUSY or RATE_LIMITED |
 | G-15 | Results Always, guest who cannot vote (no-address host or members-only poll) | Bars and counts show, then a neutral (not green) "Sign in to vote." note. After a vote and After close polls still hide results |
-| G-16 | Engine 0.3.0 with the 0.3.1 kit, guest | Sign-in note and results, no Vote button, never "Something went wrong". Engine 0.3.1 with the 0.3.0 kit: a guest vote on a no-address host says "Something went wrong"; the Polls screen shows the setup card again so the owner copies the new kit |
+| G-16 | Engine 0.3.0 (registry) with the 0.3.1 kit, guest, with and without an address | Guests vote as on 0.3.0: the form shows, the vote counts once (by browser id without an address, by address with one), and a reload says "You voted." |
+| G-17 | Engine 0.3.1 with the released 0.3.0 kit, guest, no address | Pressing Vote shows the old kit's sign-in prompt, never "Something went wrong" |
 
 ## Member (subscriber role)
 
