@@ -13,7 +13,7 @@ Then, from your site's root folder, get the kit at the tag of the version you in
 ```bash
 kit="$(mktemp -d)" &&
   git clone --depth 1 \
-    --branch v0.3.1 \
+    --branch v0.4.0 \
     https://github.com/wbcomdesigns/emdash-polls \
     "$kit/emdash-polls" &&
   "$kit/emdash-polls/scripts/add-to-site.sh" .

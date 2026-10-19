@@ -21,3 +21,6 @@ Not from a registry install. Attach it above or below the content, or place `<Po
 
 **Is there a paid version?**
 No. Everything here is free.
+
+**Why does it ask to read my content?**
+So a poll attached to a draft stays hidden until you publish that page. WB Polls only checks whether a page is published and lists your content types by name.

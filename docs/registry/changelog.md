@@ -1,17 +1,19 @@
-## 0.3.1
+## 0.4.0
+
+New permission: Read your content, so a poll attached to a draft stays hidden until you publish that page. You approve it once when you update.
 
 Guests vote only where the host gives EmDash the visitor's address (Cloudflare, or `trustedProxyHeaders` set the safe way, see FAQ). Elsewhere they sign in.
 
-- Security: two votes sent at once by one voter count once. An IPv6 guest counts once per /64.
 - New: a Set up visitor pages card and `scripts/add-to-site.sh` copy the kit in one command.
 - Fix: the PollSlot snippet works on the blog post template. Dark mode buttons pass 4.5:1.
+- Security: a poll on a draft page stays hidden until you publish it. Two votes sent at once by one voter count once. An IPv6 guest counts once per /64.
 
 Copy the kit again after you update, from your site's root folder:
 
 ```bash
 kit="$(mktemp -d)" &&
   git clone --depth 1 \
-    --branch v0.3.1 \
+    --branch v0.4.0 \
     https://github.com/wbcomdesigns/emdash-polls \
     "$kit/emdash-polls" &&
   "$kit/emdash-polls/scripts/add-to-site.sh" .

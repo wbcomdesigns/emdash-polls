@@ -10,6 +10,7 @@ import {
 	countVotes,
 	effectiveStatus,
 	entryAttachKey,
+	entryPublished,
 	getPoll,
 	listPolls,
 	newId,
@@ -34,7 +35,21 @@ function entryOf(routeCtx: RouteCtx): { collection: string; id: string } | null 
 	return { collection: entry.collection, id: entry.id };
 }
 
+/** The panel, with one plain line first when the page is not published yet. */
 async function renderPanel(
+	ctx: Ctx,
+	entry: { collection: string; id: string },
+	extra?: Pick<BlockResponse, "toast">,
+): Promise<BlockResponse> {
+	const panel = await renderPanelBody(ctx, entry, extra);
+	if (await entryPublished(ctx, entry.collection, entry.id)) return panel;
+	return {
+		...panel,
+		blocks: [{ type: "context", text: "This page is not published yet. Its poll shows to visitors after you publish it." }, ...panel.blocks],
+	};
+}
+
+async function renderPanelBody(
 	ctx: Ctx,
 	entry: { collection: string; id: string },
 	extra?: Pick<BlockResponse, "toast">,

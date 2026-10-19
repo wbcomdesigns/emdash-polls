@@ -432,11 +432,31 @@ export async function pollForSlot(ctx: Ctx, collection: string, entryId: string)
 	);
 }
 
+/**
+ * True only for a published entry of a content type that exists. The type is checked first from
+ * the schema list: a content read on a type that does not exist rejects across the sandbox bridge,
+ * which can hang the sandbox. A missing entry, a draft and an unpublished entry are all false.
+ */
+export async function entryPublished(
+	ctx: Pick<PluginContext, "content" | "schema">,
+	collection: string,
+	entryId: string,
+): Promise<boolean> {
+	if (!collection || !entryId || !ctx.content) return false;
+	const types = (await ctx.schema?.listCollections().catch(() => null)) ?? [];
+	if (!types.some((type) => type.slug === collection)) return false;
+	const item = await ctx.content.get(collection, entryId).catch(() => null);
+	return item?.status === "published";
+}
+
 export async function readSlot(
-	ctx: Ctx,
+	ctx: Ctx & Pick<PluginContext, "content" | "schema">,
 	input: unknown,
 ): Promise<{ ok: true; poll?: ReturnType<typeof publicPoll>; results?: Awaited<ReturnType<typeof tally>> }> {
 	const raw = asRecord(input);
+	// Nothing shows for an entry visitors cannot see yet, whatever the poll is attached to (the
+	// page, its content type or the whole site). Same empty answer as "no poll here".
+	if (!(await entryPublished(ctx, asString(raw.collection), asString(raw.id)))) return { ok: true };
 	const row = await pollForSlot(ctx, asString(raw.collection), asString(raw.id));
 	if (!row) return { ok: true };
 	const live = await applySchedule(ctx, row);

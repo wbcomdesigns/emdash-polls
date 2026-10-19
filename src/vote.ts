@@ -31,7 +31,7 @@ const MEMBERS_ONLY = { ok: false as const, error: { code: "MEMBERS_ONLY" } };
 const SPAM = { ok: false as const, error: { code: "SPAM" } };
 // No visitor address from the host: guests are members only here (owner decision 2026-10-16).
 // The code is MEMBERS_ONLY because the released 0.3.0 kit already shows it as a sign-in prompt;
-// the 0.3.1 kit reads `reason` for its own wording.
+// the 0.4.0 kit reads `reason` for its own wording.
 export const GUEST_UNAVAILABLE = {
 	ok: false as const,
 	error: { code: "MEMBERS_ONLY", reason: "GUEST_UNAVAILABLE" },

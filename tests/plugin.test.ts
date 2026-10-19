@@ -73,7 +73,7 @@ describe("manifest", () => {
 		expect(host.manifest.admin?.editorPanels).toEqual(
 			expect.arrayContaining([expect.objectContaining({ id: "poll", title: "Poll", route: "editor_poll" })]),
 		);
-		expect(host.manifest.capabilities ?? []).toEqual(["schema:read"]);
+		expect(host.manifest.capabilities ?? []).toEqual(["content:read", "schema:read"]);
 	});
 });
 
@@ -925,6 +925,9 @@ describe("slot", () => {
 		const site = await openSite();
 		dispose = site.dispose;
 		const posts = await withPosts(site.rt);
+		const second = await site.rt.fixtures.content("posts", { data: { title: "Second" }, slug: "second", status: "published" } as never);
+		await site.rt.fixtures.collection({ slug: "pages", label: "Pages", labelSingular: "Page", fields: [{ slug: "title", label: "Title", type: "string" }] } as never);
+		const home = await site.rt.fixtures.content("pages", { data: { title: "Home" }, slug: "home", status: "published" } as never);
 		await site.rt.fixtures.plugin.storage(
 			POLLS,
 			"poll_site",
@@ -970,12 +973,12 @@ describe("slot", () => {
 		// The kit needs the position to fill only the matching above or below slot.
 		expect(page.poll?.position).toBe("below");
 
-		const other = (await site.call("slot", { collection: "posts", id: "no-such" }, { method: "GET" })) as {
+		const other = (await site.call("slot", { collection: "posts", id: second.id }, { method: "GET" })) as {
 			poll?: { question: string };
 		};
 		expect(other.poll?.question).toBe("Posts?");
 
-		const siteWide = (await site.call("slot", { collection: "pages", id: "home" }, { method: "GET" })) as {
+		const siteWide = (await site.call("slot", { collection: "pages", id: home.id }, { method: "GET" })) as {
 			poll?: { question: string };
 		};
 		expect(siteWide.poll?.question).toBe("Site?");
@@ -985,7 +988,7 @@ describe("slot", () => {
 			"poll_site",
 			samplePoll({ question: "Site?", attach: "site", attach_key: "", status: "closed" }),
 		);
-		const afterClose = (await site.call("slot", { collection: "pages", id: "home" }, { method: "GET" })) as {
+		const afterClose = (await site.call("slot", { collection: "pages", id: home.id }, { method: "GET" })) as {
 			ok: boolean;
 			poll?: { question: string; status: string };
 		};
