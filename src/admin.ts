@@ -247,7 +247,7 @@ export async function renderForm(
 			...(voted ? [{ type: "banner" as const, variant: "default" as const, title: lockedNote }] : []),
 			{
 				type: "context",
-				text: "One Save stores the question, who can vote, where it shows, and when results appear.",
+				text: "One Save stores the question, who can vote, where it shows, and when results appear. Shows once the page or post is published.",
 			},
 			{
 				type: "form",
@@ -301,7 +301,7 @@ export async function renderForm(
 						placeholder: "Thanks, your vote is in.",
 						initial_value: asString(values.thanks) || poll.thanks,
 					},
-					select("attach", "Where it shows", asString(values.attach) || poll.attach, [
+					select("attach", "Where it shows (once the page or post is published)", asString(values.attach) || poll.attach, [
 						{ label: "Not attached", value: "none" },
 						{ label: "Whole site", value: "site" },
 						{ label: "One content type", value: "collection" },

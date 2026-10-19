@@ -2,10 +2,13 @@
 
 Versions match `package.json`, the git tag and the registry release. Newest first.
 
-## [0.3.1]
+## [0.4.0]
+
+New permission: Read your content, so a poll attached to a draft stays hidden until you publish that page. You approve it once when you update.
 
 Guest voting now needs a visitor address from the host. On Cloudflare nothing changes. On Node and other hosts without a safe `trustedProxyHeaders` setting, guests are asked to sign in. Copy the kit again after you update.
 
+- New      - The post editor's Poll panel on a draft says the poll shows after you publish it.
 - New      - The Polls screen opens with a Set up visitor pages card: the kit command for the installed version, the visitor addresses it adds, and a link to the install guide. It comes back after each update, and Show the setup steps again brings it back any time.
 - New      - One command, `scripts/add-to-site.sh`, copies the kit, keeps a newer shared Wbcom file and says when it upgrades an older one, backs up any kit file you edited, and prints the template lines with their file names.
 - Improve  - Install guides start with the shared Before you install steps, clone the release tag, and were checked on EmDash 1.3.1.
@@ -17,6 +20,7 @@ Guest voting now needs a visitor address from the host. On Cloudflare nothing ch
 - Fix      - Vote buttons use the theme's own brand colours in dark mode (shared kit styles 4) and pass 4.5:1.
 - Fix      - A guest who cannot vote still sees the results of a poll whose results show always.
 - Fix      - The kit shows the sign-in wording for a guest refusal from this engine or the 0.3.0 engine, never "Something went wrong".
+- Security - A poll attached to a page, a content type or the whole site no longer shows on a draft or unpublished page.
 - Security - When the host gives no visitor address, guest votes are refused instead of counted by a browser id, and the admin says so in one line.
 - Security - Two votes sent at the same moment by one voter can no longer both count on a single-choice poll.
 - Security - An IPv6 guest counts once per /64 network.

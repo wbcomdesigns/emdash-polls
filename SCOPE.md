@@ -14,7 +14,7 @@ This file is the contract for the plugin. Code, tests, docs and cards all follow
 - **Member account list (`<My...>`):** not in 0.1.0. Moved to 0.2.0. The erase-by-person function stays, as an admin action.
 - **Block inside post text:** only with a trusted install. The registry install is the whole product without it.
 - **Open and close times** are shown in the site's time zone and date format, from EmDash's site settings.
-- **Capabilities:** `schema:read` so the poll form can list content types by name. Nothing else.
+- **Capabilities:** `schema:read` so the poll form can list content types by name, and `content:read` (owner decision 2026-10-19, 0.4.0) so a poll never shows on a draft or unpublished entry. Nothing else.
 
 ## Purpose
 
@@ -126,7 +126,7 @@ Do not build these. If a card seems to need one, stop and ask the owner.
 
 ## Capabilities
 
-`schema:read`. Used to list the site's content types by name on the poll form. The plugin still stores only its own polls and votes.
+`schema:read`: list the site's content types by name on the poll form. `content:read` (0.4.0, owner decision 2026-10-19): check that the entry a poll would show on is published. The plugin reads nothing else from content and still stores only its own polls and votes.
 
 Ask for nothing more without the owner's agreement: every capability is shown to the site owner at install.
 

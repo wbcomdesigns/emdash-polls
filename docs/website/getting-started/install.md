@@ -2,6 +2,8 @@
 
 **Included in Free.** WB Polls has no paid version.
 
+New permission: Read your content, so a poll attached to a draft stays hidden until you publish that page. You approve it once when you update.
+
 Installing takes two parts: the plugin in the admin, then the site kit in your site's code. The second part needs someone who can edit the site's files.
 
 ## Before you install
@@ -19,13 +21,13 @@ Checked on EmDash 1.3.1 with the `blog` template on Node. The Cloudflare lines f
 
 ## Install
 
-1. Admin, Registry, search **WB Polls**, Install, then accept the permissions. WB Polls asks for one thing: to read your content types, so you can pick one by name when you place a poll. A **Polls** item and a **New poll** item appear in the admin menu.
+1. Admin, Registry, search **WB Polls**, Install, then accept the permissions. WB Polls asks to read your content: the list of content types, so you can pick one by name, and whether a page is published, so a poll on a draft stays hidden until you publish it. A **Polls** item and a **New poll** item appear in the admin menu.
 2. From your site's root folder, get the kit for the version you just installed and copy it in:
 
    ```bash
    kit="$(mktemp -d)" &&
      git clone --depth 1 \
-       --branch v0.3.1 \
+       --branch v0.4.0 \
        https://github.com/wbcomdesigns/emdash-polls \
        "$kit/emdash-polls" &&
      "$kit/emdash-polls/scripts/add-to-site.sh" .

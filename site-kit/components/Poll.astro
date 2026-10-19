@@ -58,7 +58,7 @@ const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}${position
 	};
 
 	/*
-	 * The browser id the 0.3.0 engine counted a guest by. The 0.3.1 engine ignores it and counts
+	 * The browser id the 0.3.0 engine counted a guest by. The 0.4.0 engine ignores it and counts
 	 * by the host-given address, but a site may run this kit on the 0.3.0 engine until it updates
 	 * the plugin, and that engine refuses a guest with no id.
 	 */
@@ -86,7 +86,7 @@ const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}${position
 	}
 
 	// Every "sign in to do this" refusal, from this engine and the one before it (0.3.0 sends
-	// NO_VISITOR where 0.3.1 sends GUEST_UNAVAILABLE), so a kit one version apart never says
+	// NO_VISITOR where 0.4.0 sends GUEST_UNAVAILABLE), so a kit one version apart never says
 	// "Something went wrong" for a known refusal.
 	const SIGN_IN_CODES = ["SIGN_IN_REQUIRED", "MEMBERS_ONLY", "GUEST_UNAVAILABLE", "NO_VISITOR"];
 
@@ -147,7 +147,7 @@ const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}${position
 		const mine = data.choices ?? [];
 		const closed = poll.status === "closed";
 		// guestWrites false: this host gives no visitor address, so guests sign in to vote. An engine
-		// before 0.3.1 sends no guestWrites and still takes guest votes by browser id: show the form.
+		// before 0.4.0 sends no guestWrites and still takes guest votes by browser id: show the form.
 		const members = poll.who === "members" || data.guestWrites === false;
 		const canVote = !closed && (!members || signedIn) && (!mine.length || Boolean(poll.allow_change));
 		// The route sends results only when this visitor may see them. Before a vote that is still
