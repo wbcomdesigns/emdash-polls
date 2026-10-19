@@ -372,9 +372,10 @@ export function statusLabel(poll: Poll, now = Date.now()): string {
 	return "Draft";
 }
 
-export function attachLabel(poll: Poll): string {
+/** Where a poll shows, in the owner's words. Pass the site's content type names to name the type. */
+export function attachLabel(poll: Poll, typeNames?: Map<string, string>): string {
 	if (poll.attach === "site") return "Whole site";
-	if (poll.attach === "collection") return "A content type";
+	if (poll.attach === "collection") return typeNames?.get(poll.attach_key) ?? "A content type";
 	if (poll.attach === "entry") return "One page";
 	return "Not attached";
 }

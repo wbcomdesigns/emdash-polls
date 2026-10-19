@@ -159,3 +159,21 @@
 	overflow: hidden;
 	clip: rect(0, 0, 0, 0);
 }
+
+/* A sign-in prompt is information, not success: neutral surface, the theme's own text colour.
+   The shared .wb-status stays green for real successes. */
+.wbp-note,
+.wb[data-wbp] .wb-status[data-tone="info"] {
+	margin: 0;
+	padding: 0.75rem 1rem;
+	border: 1px solid var(--wb-border);
+	border-radius: 8px;
+	background: var(--wb-surface);
+	color: var(--wb-fg);
+}
+
+.wbp-note a,
+.wb[data-wbp] .wb-status[data-tone="info"] a {
+	color: inherit;
+	font-weight: 600;
+}

@@ -14,10 +14,12 @@ Open `src/pages/posts/[slug].astro`.
 import PollSlot from "../../components/PollSlot.astro";
 ```
 
-2. Add this line after the article content, inside the page markup:
+2. Put one slot just before and one just after the post text, `<PortableText value={post.data.content} />`. Each poll shows in the slot that matches its **Position on the page**:
 
 ```astro
-<PollSlot collection="posts" id={post.data.id} />
+<PollSlot collection="posts" id={post.data.id} position="above" />
+<PortableText value={post.data.content} />
+<PollSlot collection="posts" id={post.data.id} position="below" />
 ```
 
 ## Pages
@@ -30,10 +32,12 @@ Open `src/pages/pages/[slug].astro`.
 import PollSlot from "../../components/PollSlot.astro";
 ```
 
-2. Add this line after the page content:
+2. Put the two slots around the page text, `<PortableText value={page.data.content} />`:
 
 ```astro
-<PollSlot collection="pages" id={page.data.id} />
+<PollSlot collection="pages" id={page.data.id} position="above" />
+<PortableText value={page.data.content} />
+<PollSlot collection="pages" id={page.data.id} position="below" />
 ```
 
 ## Use `post.data.id`, not `post.id`

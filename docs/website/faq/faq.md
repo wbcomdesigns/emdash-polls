@@ -4,11 +4,15 @@
 
 ## Can guests vote?
 
-Yes, when **Who can vote** is set to **Anyone**. Each guest can vote once per poll. Signed-in members always vote as themselves.
+Yes, when **Who can vote** is set to **Anyone** and your hosting tells EmDash the visitor's address: on Cloudflare, or with `trustedProxyHeaders` set (see [Guest voting](../getting-started/install.md#guest-voting)). Without it, guests see a sign-in link instead, and the Polls screen says so. Each guest can vote once per poll. Signed-in members always vote as themselves.
 
 ## Can a visitor vote twice?
 
-Not on purpose. A guest's vote is remembered by their internet address when your hosting provides it, otherwise by a code in their browser. A determined guest can get around the browser code with a private window. For polls where one vote per person matters, choose **Signed-in members only**.
+Not on purpose. A guest's vote is counted by their internet address, stored only as a scrambled code. Visitors on the same network (an office, a phone network sharing one address) count as one guest. For polls where one vote per person matters, choose **Signed-in members only**.
+
+## Why does the browser console show a 401?
+
+That is expected for a guest: one per poll from the member ballot check, and one on My votes. The poll asks the member route whether the visitor is signed in, a guest's answer is 401, and the poll then shows the guest view.
 
 ## Who can see how someone voted?
 

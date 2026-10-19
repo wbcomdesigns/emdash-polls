@@ -1,3 +1,22 @@
+## 0.3.1
+
+Guests vote only where the host gives EmDash the visitor's address (Cloudflare, or `trustedProxyHeaders` set the safe way, see FAQ). Elsewhere they sign in.
+
+- Security: two votes sent at once by one voter count once. An IPv6 guest counts once per /64.
+- New: a Set up visitor pages card and `scripts/add-to-site.sh` copy the kit in one command.
+- Fix: the PollSlot snippet works on the blog post template. Dark mode buttons pass 4.5:1.
+
+Copy the kit again after you update, from your site's root folder:
+
+```bash
+kit="$(mktemp -d)" &&
+  git clone --depth 1 \
+    --branch v0.3.1 \
+    https://github.com/wbcomdesigns/emdash-polls \
+    "$kit/emdash-polls" &&
+  "$kit/emdash-polls/scripts/add-to-site.sh" .
+```
+
 ## 0.3.0
 
 - New: poll stats on the list, a results bar chart, and an optional This page's poll block for post text (trusted install).
@@ -19,25 +38,5 @@
 
 - Fix: the page editor Poll panel can open a poll, and new polls open so visitors can vote.
 - Fix: the existing-poll list starts with "Choose a poll".
-
-## 0.2.1
-
-- Fix: a closed poll stays visible with results, and can be opened again.
-- Fix: copy keeps the attachment and opens rename.
-- Fix: the vote error clears after a successful vote. Answer rows stay flush.
-- New: copy `pages/account/votes.astro` and link My votes in the header.
-
-## 0.2.0
-
-- New: My votes lists the polls you voted in. Two clicks erase them.
-- Fix: the kit reaches a registry install. Copy the kit again after you update.
-- Fix: one list of answers before you vote when results are always visible.
-- Fix: pick a content type by name (`schema:read` on update). A hidden slot no longer leaves an empty box.
-
-## 0.1.1
-
-- Polls stay readable in dark mode on any site theme.
-- A missing poll explains what to do next.
-- Tapping anywhere on an answer selects it.
 
 Older versions: https://github.com/wbcomdesigns/emdash-polls/blob/main/CHANGELOG.md

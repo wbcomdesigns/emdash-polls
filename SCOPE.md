@@ -10,7 +10,7 @@ This file is the contract for the plugin. Code, tests, docs and cards all follow
 
 - **Attaching a poll from the editing screen is a documented plugin surface** (`admin.editorPanels`, saved-entry panels). An ordinary panel gets the saved entry's identity, which is all this needs. While proving it, also try a field widget (`admin.fieldWidgets`): a "Poll" field an owner adds to a content type. Report which is plainer for the owner; build one, not both, unless the owner says otherwise.
 - **Dashboard card** (`admin.widgets`): open polls with their vote totals.
-- **Visitors first:** a visitor is never locked out by hosting. Trusted visitor address where EmDash supplies it, browser cookie otherwise, written content always approved first.
+- **Visitors first:** a visitor is never locked out by hosting. Trusted visitor address where EmDash supplies it, written content always approved first. (Changed 2026-10-16, see below: with no address, guest votes are refused and guests sign in.)
 - **Member account list (`<My...>`):** not in 0.1.0. Moved to 0.2.0. The erase-by-person function stays, as an admin action.
 - **Block inside post text:** only with a trusted install. The registry install is the whole product without it.
 - **Open and close times** are shown in the site's time zone and date format, from EmDash's site settings.
@@ -47,7 +47,7 @@ How it stays general:
 - Nothing depends on a collection or on any other plugin
 - Every visitor-facing word is in one wording file, so a non-English site or a site with its own vocabulary changes it in one place
 
-**Decided by the owner on 2026-10-13: the site owner chooses who can take part.** One setting: signed-in members only, or anyone. For a guest: one entry per visitor, identified by a salted hash of the IP (never the IP itself, never a cookie the visitor can clear to vote again within the hour limit), an hourly limit per visitor, a honeypot field on every guest form, and written content always held for approval. Guests have no account, so they have no "My ..." list and cannot erase their entries themselves; the owner removes them in admin. If the host supplies no trusted visitor address, fall back to a browser cookie (one entry per browser), keep written content waiting for approval, and say on the admin page that protection is weaker on this hosting. A visitor is never locked out by hosting (owner direction 2026-10-13: visitors first, about nine in ten EmDash sites have visitors only). Member routes stay private routes using `routeCtx.user`. Guest routes are separate public routes: never merge the two paths.
+**Decided by the owner on 2026-10-13: the site owner chooses who can take part.** One setting: signed-in members only, or anyone. For a guest: one entry per visitor, identified by a salted hash of the IP (never the IP itself, never a cookie the visitor can clear to vote again within the hour limit), an hourly limit per visitor, a honeypot field on every guest form, and written content always held for approval. Guests have no account, so they have no "My ..." list and cannot erase their entries themselves; the owner removes them in admin. **Changed by the owner on 2026-10-16, after the security review:** if the host supplies no trusted visitor address (any host but Cloudflare, unless the site sets `trustedProxyHeaders`), guest votes are refused with code `MEMBERS_ONLY` and `reason: "GUEST_UNAVAILABLE"` (the released 0.3.0 kit already shows that code as a sign-in prompt) and nothing is stored. The kit shows the answers and a sign-in link, `health` reports `guestWrites: false`, and the Polls screen says in one line that guests cannot vote on this hosting. A browser-sent id is never used to count a guest. An IPv6 guest is counted by its /64. A visitor is never locked out by hosting (owner direction 2026-10-13: visitors first, about nine in ten EmDash sites have visitors only). Member routes stay private routes using `routeCtx.user`. Guest routes are separate public routes: never merge the two paths.
 
 ## Decisions made with the owner
 
@@ -180,13 +180,13 @@ Base: `/_emdash/api/plugins/polls/<name>` on a local install. A registry install
 
 | Route | Who | Methods | Input | Returns |
 | --- | --- | --- | --- | --- |
-| `health` | public | GET | - | `ok`, version, open poll count |
-| `get` | public | GET | `id` or `latest=1` | Poll (question, options, multiple, status, closes_at) and `results` when visible to a guest |
+| `health` | public | GET | - | `ok`, version, open poll count, `guestWrites` (false when the host gives no visitor address) |
+| `get` | public | GET | `id` or `latest=1` | Poll (question, options, multiple, status, closes_at), `guestWrites`, and `results` when visible to a guest |
 | `slot` | public | GET | `collection`, `id` | The open poll attached to this entry, else to its collection, else site-wide, else nothing |
 | `ballot` | member | GET | `id` | The caller's own choices and the results they are allowed to see |
-| `vote` | member | POST | `id`, `choices` (option ids) | Saved choices and results if now visible |
+| `vote` | member | POST | `id`, `choices` (option ids) | Saved choices and results if now visible. One compare-and-set lock per poll and voter: a second vote sent at the same moment gets `BUSY` |
 | `mine` | member | GET, DELETE | - | GET: polls the caller voted in. DELETE: erase all own votes |
-| `vote_guest` | public | POST | `id`, `choices`, honeypot field | Saved choices and results if now visible. Refused when the poll is members only |
+| `vote_guest` | public | POST | `id`, `choices`, honeypot field | Saved choices and results if now visible. Refused when the poll is members only, and with `MEMBERS_ONLY` plus `reason: "GUEST_UNAVAILABLE"` when the host gives no visitor address. The browser id (`visitor`) is accepted and ignored, for kits talking to the 0.3.0 engine |
 | `ballot_guest` | public | GET | `id` | The visitor's own choices and the results they may see |
 | `admin` | admin | POST | Block Kit | List, form, results |
 

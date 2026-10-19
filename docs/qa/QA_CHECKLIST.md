@@ -2,7 +2,7 @@
 
 One living list of flow-level cases. Walk all of it before every release. When you add or fix behaviour, add or change its case in the same pull request. There are no per-release QA files.
 
-**Last walk:** 2026-10-14, 0.2.1, lab http://127.0.0.1:4332. Isolated Chromium. Browser: empty Vote shows "Pick an answer from the list." then clears after a real vote (status hidden); closed poll stays with "This poll is closed." and bars; option leftGap 0; `/account/votes` guest sign-in and member list + two-click erase; extras return to the vote form after erase; Vote 44px; dark h2 17.03; admin 390 Actions right=354; form ISO examples 2026-10-20T09:00 / 2026-10-21T18:00. Route: prove-lab.sh all pass including `/account/votes`. Admin API: closed row Actions include Open (no Close); copy opens Edit poll with "(copy)", toast "Rename this copy, then open it.", collection attach kept as posts. Tests: 41 passed (reopen after close, copy toast, closed slot). editor_poll 200. Not walked: G-1 dedicated members-only poll, G-7 same-visitor change, M-2/M-3 as a second account, in-text block (#16 stopped), a second-site registry install. Developer walk, not a second-person QA PASS.
+**Last walk:** 2026-10-19 (second pass), 0.3.1 branch, EmDash 1.3.1. Lab http://127.0.0.1:4332 (fresh `--template blog` on 1.3.1, file install) and the scratch site upgraded from 1.3.0 to 1.3.1 with WB Polls 0.3.0 from the registry plus the 0.3.1 kit. Browser: G-10 (Always poll shows bars and a neutral sign-in note), after_vote and after_close stay hidden for guests, member before voting sees only the form (G-92), G-13, G-15, G-16, A-16 to A-19 at 1440, 768 and 390, light and dark. Route or shell only: G-14, BUSY not counted, add-to-site.sh (tests/add-to-site.test.sh). Tests: 69 vitest plus the shell checks. Not walked: G-1, G-7, second member, in-text block, Admin Menus link, Cloudflare, a fresh 1.3.1 registry install (the registry list stayed empty on that site). Developer walk, not a second-person QA PASS.
 
 When you walk it, replace that line with the date, the version, and three lists: cases walked in the browser, cases checked at route level only, cases not walked. Do not claim a case you did not run.
 
@@ -33,6 +33,14 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | G-91 | Change three phrases in the wording file (a button, an empty state, an error), rebuild | Each change shows everywhere that phrase is used. No English left on screen that is not in the file |
 | G-92 | Open poll, results Always, before voting | One list of answers. No empty 0% chart above the same answers |
 | G-93 | Page with a poll slot and no matching poll | Nothing. No empty bordered box |
+| G-10 | Host gives no visitor address (Node, no `trustedProxyHeaders`): open a post with an Anyone poll | Answers listed and "Sign in to vote." with a Sign in link. No Vote button. `vote_guest` answers `MEMBERS_ONLY` with reason `GUEST_UNAVAILABLE` and stores nothing |
+| G-11 | Same host, `trustedProxyHeaders: ["x-real-ip"]` and the header sent | Guest votes once; a second vote from that address is refused |
+| G-12 | Guest console on a post with a poll | Exactly one 401, from `ballot` (documented as expected). One 401 from `mine` on `/account/votes` |
+| G-13 | Post template with the two slots from `add-to-site.sh` (`../../components/PollSlot.astro`) | Page renders, poll in the slot that matches its Position |
+| G-14 | Several votes for different answers sent at once by one voter on a one-choice poll | One stored choice; the others get ALREADY_VOTED, BUSY or RATE_LIMITED |
+| G-15 | Results Always, guest who cannot vote (no-address host or members-only poll) | Bars and counts show, then a neutral (not green) "Sign in to vote." note. After a vote and After close polls still hide results |
+| G-16 | Engine 0.3.0 (registry) with the 0.3.1 kit, guest, with and without an address | Guests vote as on 0.3.0: the form shows, the vote counts once (by browser id without an address, by address with one), and a reload says "You voted." |
+| G-17 | Engine 0.3.1 with the released 0.3.0 kit, guest, no address | Pressing Vote shows the old kit's sign-in prompt, never "Something went wrong" |
 
 ## Member (subscriber role)
 
@@ -67,6 +75,10 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | A-13 | New poll: pick an open day in the date picker and 09:30 in the time list, save, edit again | Day and 09:30 come back. The list shows Scheduled. Clearing the day and saving shows Draft. Nothing is typed |
 | A-14 | Attach an open poll to all posts, then open a post in the editor and expand the Poll panel | The panel says "Visitors see a shared poll" and names it, not "No poll here". The existing-poll list reads "Choose a poll" |
 | A-15 | Template has `<PollSlot position="above">` before the content and `position="below"` after. Set a poll to Above, then to Below | Only the matching slot shows the poll; the other renders nothing. A template with one slot and no position shows the poll either way |
+| A-16 | Fresh install, open Polls | "Set up visitor pages" card with the `mktemp -d` clone command for the installed tag, My votes address, Install guide link. "Visitor pages are set up" hides it for good and leaves one line plus the guide link |
+| A-17 | Host gives no visitor address, open Polls | One line: guests cannot vote here, with the Guest voting guide link. Not shown when the host gives an address |
+| A-18 | Polls screen at 1440, 768 and 390 with the setup card | Six-line command fully visible at 1440 and 768, `main` does not scroll sideways. At 390 the clone address line is cut and the guide link under it ("Copy it from the install guide on a phone") gives the full command |
+| A-19 | Press Visitor pages are set up, then Show the setup steps again; update the plugin | The card hides, comes back on Show the setup steps again, and comes back after a version change. The list names a content type (Pages), not "A content type" |
 
 ## Presentation, every screen
 

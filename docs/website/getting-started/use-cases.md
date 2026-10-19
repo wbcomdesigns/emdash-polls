@@ -59,7 +59,7 @@ Pick this when each person should vote once.
 
 - **Who can vote:** Signed-in members only.
 
-Guests see the poll and are asked to sign in. Guest votes are counted by internet address or a browser code, and a private window can get around the browser code. Members-only is the reliable choice for one vote per person.
+Guests see the poll and are asked to sign in. Guest votes are counted by internet address, so people sharing one network count as one guest. Members-only is the reliable choice for one vote per person.
 
 Two optional settings help here:
 
