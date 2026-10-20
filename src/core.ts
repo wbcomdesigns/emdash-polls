@@ -21,25 +21,6 @@ export const RATE_LIMITED = {
 	error: { code: "RATE_LIMITED", message: "Too many requests. Try again in an hour." },
 };
 
-const RATE_WINDOW_MS = 60 * 60 * 1000;
-const RATE_MAX = 8;
-
-export async function rateLimited(ctx: Pick<PluginContext, "kv">, who: string): Promise<boolean> {
-	if (!who) return false;
-	const key = `rate:${who}`;
-	// Compare-and-set, so requests arriving together cannot each slip under the limit.
-	for (let attempt = 0; attempt < 4; attempt += 1) {
-		const seen = await ctx.kv.getVersioned<string>(key);
-		const [start, count] = (seen?.value || "0|0").split("|").map(Number);
-		const now = Date.now();
-		const fresh = now - start > RATE_WINDOW_MS;
-		if (!fresh && count >= RATE_MAX) return true;
-		const next = fresh ? `${now}|1` : `${start}|${count + 1}`;
-		if ((await ctx.kv.compareAndSet(key, seen?.revision ?? null, next)).applied) return false;
-	}
-	return true;
-}
-
 export type EntryRef = { title: string; url: string; published: boolean };
 
 export async function entryRef(ctx: PluginContext, collection: string, id: string): Promise<EntryRef | null> {

@@ -70,33 +70,51 @@ function countRows(poll: Pick<Poll, "options"> & { id: string }, rows: Array<{ d
  * Make the poll's counts ready, using at most `calls` bridge calls. Returns the ready record, or
  * the record as far as it got (not ready), or null when nothing could be done.
  *
- * ponytail: a vote whose rows land between a rebuild's count and its store can be counted twice
- * or missed (one bridge call wide; `seq` stops the wider case). The owner's Recount fixes it.
+ * A poll of up to 100 vote rows is counted in one query and stored with one compare-and-set.
+ * ponytail: a vote that lands between that query and that write finds no record, so its change is
+ * not applied and the stored count misses it (one bridge call wide). The owner's Recount fixes it.
+ *
+ * A bigger poll first gets an empty record (step 0, not ready), so every vote from then on applies
+ * its change and moves `seq`. Answers are then counted a few per call, and each step is stored only
+ * if `seq` and `step` did not move meanwhile: a step a vote raced is counted again, never stored.
+ * A failed step is tried once more in the same call when the budget allows, so on a busy poll the
+ * counting settles once votes pause for the length of one step.
  */
 export async function ensureTally(ctx: Ctx, poll: Pick<Poll, "options"> & { id: string }, row: Tally | null, calls: number): Promise<Tally | null> {
 	if (row?.ready) return row;
-	const n = poll.options.length;
 	if (!row) {
 		if (calls < 2) return null;
 		const found = await ctx.storage[VOTES].query({ where: { poll: poll.id }, limit: 100 });
-		let next: Tally;
-		if (!found.hasMore) next = countRows(poll, found.items);
-		else {
-			const upto = Math.min(n, calls - 2);
-			if (upto < 1) return null;
-			next = { ...zeroTally(poll), step: upto, ready: upto >= n };
-			for (let i = 0; i < upto; i += 1) next[field(i)] = await countAnswer(ctx, poll, i);
-		}
-		// A reader that lost the race to create it still shows what it counted.
-		await ctx.storage[TALLIES].compareAndSet(poll.id, null, next);
-		return next;
+		const next = found.hasMore ? { ...zeroTally(poll), step: 0, ready: false } : countRows(poll, found.items);
+		// A reader that lost the race to create it waits for the next read, which steps the winner's record.
+		const made = await ctx.storage[TALLIES].compareAndSet(poll.id, null, next);
+		if (!found.hasMore) return next;
+		return made.applied ? stepTally(ctx, poll, next, calls - 2) : null;
 	}
-	const upto = Math.min(n, row.step + calls - 1);
-	if (upto <= row.step) return row;
-	const set: Record<string, number | boolean> = { step: upto, ready: upto >= n };
-	for (let i = row.step; i < upto; i += 1) set[field(i)] = await countAnswer(ctx, poll, i);
-	const done = await ctx.storage[TALLIES].updateIf(poll.id, { where: { seq: row.seq, step: row.step }, set });
-	return done.applied ? parseTally(done.data) : row;
+	return stepTally(ctx, poll, row, calls);
+}
+
+/** Count the next answers of a record that is not ready: per attempt the counts and one guarded write, plus a read before a retry. */
+async function stepTally(ctx: Ctx, poll: Pick<Poll, "options"> & { id: string }, row: Tally, calls: number): Promise<Tally | null> {
+	const n = poll.options.length;
+	let current = row;
+	let left = calls;
+	for (let attempt = 0; attempt < 2; attempt += 1) {
+		const upto = Math.min(n, current.step + left - 1);
+		if (upto <= current.step) return current;
+		const set: Record<string, number | boolean> = { step: upto, ready: upto >= n };
+		for (let i = current.step; i < upto; i += 1) set[field(i)] = await countAnswer(ctx, poll, i);
+		const done = await ctx.storage[TALLIES].updateIf(poll.id, { where: { seq: current.seq, step: current.step }, set });
+		left -= upto - current.step + 1;
+		if (done.applied) return parseTally(done.data);
+		// A vote landed during the step. Read the record again and retry once if one answer still fits.
+		if (attempt || left < 3) return current;
+		const again = await getTally(ctx, poll.id);
+		left -= 1;
+		if (!again || again.ready) return again;
+		current = again;
+	}
+	return current;
 }
 
 async function countAnswer(ctx: Ctx, poll: Pick<Poll, "options"> & { id: string }, i: number): Promise<number> {

@@ -371,16 +371,33 @@ export async function hasVotes(ctx: Ctx, pollId: string): Promise<boolean> {
 }
 
 /**
- * One step of removing a deleted poll: up to 100 of its vote rows, or, once none are left, the poll
- * row itself. Three calls. The poll is hidden from every view from the moment it is marked.
- * Returns false when no poll is waiting.
+ * How long after a poll is marked deleted a vote or a reader that loaded it just before the mark may
+ * still write (a vote holds its voter lock for at most this long). The poll row stays until then.
  */
-export async function deleteStep(ctx: Ctx): Promise<boolean> {
-	const waiting = (await ctx.storage[POLLS].query({ where: { status: DELETING }, limit: 1 })).items[0];
+export const DELETE_GRACE_MS = 30_000;
+
+/**
+ * One step of removing a deleted poll, in at most `calls` bridge calls: three, or two when the
+ * caller passes the poll it just marked. Each step removes up to 100 of its vote rows. Once a sweep
+ * after the grace time finds none, no vote can add one any more, and the poll is marked `purge`;
+ * the next step deletes its count record and the poll row. The poll is hidden from every view from
+ * the moment it is marked. Returns false when no step ran (nothing waiting, or too few calls).
+ */
+export async function deleteStep(ctx: Ctx, calls: number, marked?: { id: string; data: unknown }): Promise<boolean> {
+	if (calls < (marked ? 2 : 3)) return false;
+	const waiting = marked ?? (await ctx.storage[POLLS].query({ where: { status: DELETING }, limit: 1 })).items[0];
 	if (!waiting) return false;
+	const mark = asRecord(waiting.data);
+	if (mark.purge === true) {
+		await ctx.storage[TALLIES].delete(waiting.id);
+		await ctx.storage[POLLS].delete(waiting.id);
+		return true;
+	}
 	const votes = await ctx.storage[VOTES].query({ where: { poll: waiting.id }, limit: 100 });
 	if (votes.items.length) await ctx.storage[VOTES].deleteMany(votes.items.map((item) => item.id));
-	else await ctx.storage[POLLS].delete(waiting.id);
+	else if (Date.now() - (Date.parse(asString(mark.deleted_at)) || 0) >= DELETE_GRACE_MS) {
+		await ctx.storage[POLLS].updateIf(waiting.id, { where: { status: DELETING }, set: { purge: true } });
+	}
 	return true;
 }
 
@@ -555,8 +572,9 @@ export async function listPolls(
 			limit: q ? 100 : limit + 1,
 			cursor,
 		});
+		// The bound for Next comes from every row read, deleted polls included: a page of only deleted polls still moves on.
+		scanned = asString(asRecord(found.items[found.items.length - 1]?.data).createdAt) || scanned;
 		for (const poll of pollRows(found.items)) {
-			scanned = poll.createdAt;
 			if (!matches(poll)) continue;
 			collected.push(poll);
 			if (collected.length > limit) break;

@@ -26,9 +26,10 @@ import {
 	type PollRow,
 } from "./lib/polls";
 import { applyVoteDelta, buildMissing, ensureTally, getTally, parseTally, restartTally, resultsOf, totalOf, type Tally } from "./lib/tally";
-import { DELETING, QUESTION_MAX, TALLIES, THANKS_MAX, VOTES, type Poll } from "./lib/types";
+import { DELETING, POLLS, QUESTION_MAX, TALLIES, THANKS_MAX, VOTES, type Poll } from "./lib/types";
 import { MAX_CALLS } from "./core";
-import { asBoolean, asRecord, asString } from "./util";
+import { asBoolean, asRecord, asString, nowIso } from "./util";
+import { withVoteLock } from "./vote";
 
 type Toast = { message: string; type: "success" | "error" | "info" };
 export type BlockMap = Record<string, unknown> & { type: string };
@@ -60,6 +61,19 @@ const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const LIST_CALLS = 6;
 /** Calls a list load with nothing else to do may spend on upkeep (removing a deleted poll, counting older polls). */
 const UPKEEP = MAX_CALLS - LIST_CALLS;
+/** Calls the edit form makes at most: the poll, whether it has votes, the content types. */
+const FORM_CALLS = 3;
+/** Calls the dashboard widget makes: the open polls and their counts. */
+const WIDGET_CALLS = 2;
+
+/**
+ * One step of removing a deleted poll's votes on a screen that has `spare` calls left (Results,
+ * the edit form, the dashboard widget), so the votes go even when the owner seldom opens the list.
+ * Never fails the screen.
+ */
+function tidy(ctx: Ctx, spare: number): Promise<boolean> {
+	return deleteStep(ctx, spare).catch(() => false);
+}
 
 function link(label: string, path: string) {
 	return { type: "link", label, target: { kind: "plugin-page", path } };
@@ -122,7 +136,7 @@ async function talliesFor(ctx: Ctx, polls: PollRow[]): Promise<Map<string, Tally
  * or, when none is waiting, counting the listed polls from 0.4.0 that have no counts yet.
  */
 async function upkeep(ctx: Ctx, spare: number, listed: PollRow[], tallies: Map<string, Tally>): Promise<void> {
-	if (spare < 3 || (await deleteStep(ctx))) return;
+	if (spare < 3 || (await deleteStep(ctx, spare))) return;
 	const missing = listed.filter((poll) => !tallies.has(poll.id));
 	for (const [id, row] of await buildMissing(ctx, missing)) tallies.set(id, row);
 }
@@ -194,12 +208,20 @@ export async function renderList(
 			? [
 					{
 						type: "empty",
-						title: q ? (listed.hasOlder ? "No match among the newest polls" : "No polls match that question") : "No polls yet",
+						title: q
+							? listed.hasOlder
+								? "No match among the newest polls"
+								: "No polls match that question"
+							: listed.hasOlder
+								? "No polls on this page"
+								: "No polls yet",
 						description: q
 							? listed.hasOlder
 								? "Older polls were not searched yet. Choose Next to search them."
 								: "Try a different search, or create a poll."
-							: "Ask a question, add two or more answers, then open the poll.",
+							: listed.hasOlder
+								? "The polls here were deleted. Choose Next to see older polls."
+								: "Ask a question, add two or more answers, then open the poll.",
 						actions: [link("Create a poll", "/edit")],
 					},
 					// A search reads a few hundred polls per call, so a match can be further back.
@@ -429,7 +451,7 @@ export async function renderOpenWidget(ctx: Ctx): Promise<BlockResponse> {
 async function renderResults(
 	ctx: Ctx,
 	poll: PollRow,
-	opts: { extra?: Extra; page?: string; tally?: Tally | null; used: number },
+	opts: { extra?: Extra; page?: string; tally?: Tally | null; used: number; tidy?: boolean },
 ): Promise<BlockResponse> {
 	let used = opts.used;
 	let row = opts.tally;
@@ -439,6 +461,8 @@ async function renderResults(
 	}
 	// One call is kept for the named list.
 	const ready = await ensureTally(ctx, poll, row, MAX_CALLS - used - (poll.named ? 1 : 0));
+	// Counting spends what is left, so a step of deleting runs only when the poll was counted already.
+	if (opts.tidy && row?.ready) await tidy(ctx, MAX_CALLS - used - (poll.named ? 1 : 0));
 	const results = resultsOf(poll, ready);
 	const [dir, bound = ""] = (opts.page ?? "").split(/:(.*)/s);
 	const named = poll.named
@@ -713,13 +737,14 @@ async function savePoll(ctx: Ctx, values: Record<string, unknown>): Promise<Bloc
 
 async function moderate(ctx: Ctx, value: unknown): Promise<BlockResponse> {
 	const { action, rev, id } = parseStamped(value);
+	if (action === "delete_confirm") return confirmDelete(ctx, id, rev);
 	const poll = await getPoll(ctx, id);
 	const stale = statusError(poll, rev);
 	if (stale) return renderList(ctx, {}, { toast: { message: stale, type: "error" } });
 	if (!poll) return renderList(ctx, {}, { toast: { message: "That poll is gone.", type: "error" } });
 
 	if (action === "edit") return renderForm(ctx, poll.id);
-	if (action === "results") return renderResults(ctx, poll, { page: extraOf(value), used: 1 });
+	if (action === "results") return renderResults(ctx, poll, { page: extraOf(value), used: 1, tidy: true });
 	if (action === "recount") {
 		const tally = await restartTally(ctx, poll.id);
 		return renderResults(ctx, poll, { tally, used: 2, extra: { toast: { message: "Counting the votes again.", type: "info" } } });
@@ -736,12 +761,25 @@ async function moderate(ctx: Ctx, value: unknown): Promise<BlockResponse> {
 		if (!memberId) {
 			return renderResults(ctx, poll, { used: 1, extra: { toast: { message: "Pick a member to remove.", type: "error" } } });
 		}
-		const ids = await memberVoteIds(ctx, poll.id, memberId);
-		if (!ids.length) return renderResults(ctx, poll, { used: 2, extra: { toast: { message: "No votes to remove.", type: "info" } } });
-		await ctx.storage[VOTES].deleteMany(ids);
-		// The rows were deleted: the count update cannot fail this answer (applyVoteDelta never throws).
-		const tally = await applyVoteDelta(ctx, poll, [], ids.map((id) => id.slice(id.lastIndexOf(":") + 1)));
-		return renderResults(ctx, poll, { tally, used: 4, extra: { toast: { message: "Those votes were removed.", type: "success" } } });
+		// Under the member's vote lock (not counted toward their hourly limit): a vote change landing at
+		// the same moment cannot take the same votes off the counts twice.
+		const done = await withVoteLock(
+			ctx,
+			memberId,
+			async () => {
+				const ids = await memberVoteIds(ctx, poll.id, memberId);
+				if (!ids.length) return { removed: false, tally: null };
+				await ctx.storage[VOTES].deleteMany(ids);
+				// The rows were deleted: the count update cannot fail this answer (applyVoteDelta never throws).
+				return { removed: true, tally: await applyVoteDelta(ctx, poll, [], ids.map((id) => id.slice(id.lastIndexOf(":") + 1))) };
+			},
+			false,
+		);
+		if ("error" in done) {
+			return renderResults(ctx, poll, { used: 3, extra: { toast: { message: "This member is voting right now. Try again in a moment.", type: "error" } } });
+		}
+		if (!done.removed) return renderResults(ctx, poll, { used: 5, extra: { toast: { message: "No votes to remove.", type: "info" } } });
+		return renderResults(ctx, poll, { tally: done.tally, used: 7, extra: { toast: { message: "Those votes were removed.", type: "success" } } });
 	}
 
 	if (action === "open") {
@@ -795,21 +833,26 @@ async function moderate(ctx: Ctx, value: unknown): Promise<BlockResponse> {
 		};
 	}
 
-	if (action === "delete_confirm") {
-		// One write hides the poll from every visitor and admin view. Its votes are removed a hundred
-		// at a time by later list loads (see deleteStep), then the poll row itself.
-		const applied = await ctx.storage.polls.updateIf(poll.id, {
-			where: { rev: poll.rev },
-			set: { status: DELETING, attach: "none", attach_key: "", rev: `deleting:${poll.rev}` },
-		});
-		if (!applied.applied) {
-			return renderList(ctx, {}, { toast: { message: "Someone else changed this poll. Open it again.", type: "error" } });
-		}
-		await ctx.storage[TALLIES].delete(poll.id).catch(() => undefined);
-		return renderList(ctx, {}, { toast: { message: "Poll deleted.", type: "success" } });
-	}
-
 	return renderList(ctx, {}, { toast: { message: "Unknown action.", type: "error" } });
+}
+
+/**
+ * One write hides the poll from every visitor and admin view; its version check stands in for a read
+ * of the poll. What the list leaves of the budget removes its first hundred votes at once. Later admin
+ * screens remove the rest a hundred at a time, then its counts and the poll row (see deleteStep).
+ */
+async function confirmDelete(ctx: Ctx, id: string, rev: string): Promise<BlockResponse> {
+	const marked = id
+		? await ctx.storage[POLLS].updateIf(id, {
+				where: { rev },
+				set: { status: DELETING, attach: "none", attach_key: "", rev: `deleting:${rev}`, deleted_at: nowIso() },
+			})
+		: { applied: false as const };
+	if (!marked.applied) {
+		return renderList(ctx, {}, { toast: { message: "Someone else changed this poll, or it is gone. Open the list again.", type: "error" } });
+	}
+	await deleteStep(ctx, MAX_CALLS - 1 - LIST_CALLS, { id, data: marked.data }).catch(() => false);
+	return renderList(ctx, {}, { toast: { message: "Poll deleted.", type: "success" } });
 }
 
 const KIT_DONE = "kit_pages_done";
@@ -968,10 +1011,14 @@ async function routeAdmin(input: unknown, ctx: Ctx): Promise<BlockResponse> {
 	}
 
 	if (asString(raw.widget) === "open" || page === "widget:open" || page.includes("widget:open")) {
-		return renderOpenWidget(ctx);
+		const widget = await renderOpenWidget(ctx);
+		await tidy(ctx, MAX_CALLS - WIDGET_CALLS);
+		return widget;
 	}
 	if (page.includes("/edit") || page.endsWith("edit")) {
-		return renderForm(ctx, asString(raw.id));
+		const form = await renderForm(ctx, asString(raw.id));
+		await tidy(ctx, MAX_CALLS - FORM_CALLS);
+		return form;
 	}
 	return renderList(ctx, {}, undefined, UPKEEP);
 }

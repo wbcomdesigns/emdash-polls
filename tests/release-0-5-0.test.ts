@@ -46,6 +46,12 @@ async function seed040(site: Site, id: string, voters: number, extra: Row = {}, 
 	return expected;
 }
 
+/** Move a deleted poll's mark past the grace time, as if it was deleted a while ago. */
+async function backdate(site: Site, id: string) {
+	const row = (await site.rt.inspect.storage.get<Row>(POLLS, id))!;
+	await site.rt.fixtures.plugin.storage(POLLS, id, { ...row, deleted_at: "2020-01-01T00:00:00.000Z" });
+}
+
 /** One plugin call, asserting it fits Cloudflare's budget. */
 async function within<T>(run: () => Promise<T>): Promise<T> {
 	const { result, calls } = await countBridgeCalls(run);
@@ -162,9 +168,16 @@ describe("deleting a poll", () => {
 		expect(await site.call("slot", { collection: "posts", id: posts.live }, { method: "GET" })).toEqual({ ok: true });
 		expect(await site.call("mine", {}, site.as(member("m1"), "GET"))).toEqual({ ok: true, items: [] });
 		const load = () => within(() => site.call("admin", { type: "page_load", page: "/polls" }, site.as(admin)));
+		// delete_confirm itself removed the first hundred.
+		expect((await site.rt.inspect.storage.list(VOTES)).filter((v) => (v.data as Row).poll === "gone")).toHaveLength(130);
 		expect(JSON.stringify(await load())).not.toContain("Which one?");
-		for (let i = 0; i < 3; i += 1) await load();
+		await load();
 		expect((await site.rt.inspect.storage.list(VOTES)).filter((v) => (v.data as Row).poll === "gone")).toHaveLength(0);
+		// Within the grace time a vote that loaded the poll before the mark may still land: the row stays.
+		await load();
+		expect(await site.rt.inspect.storage.get(POLLS, "gone")).not.toBeNull();
+		await backdate(site, "gone");
+		await load();
 		await load();
 		expect(await site.rt.inspect.storage.get(POLLS, "gone")).toBeNull();
 	});
@@ -174,7 +187,7 @@ describe("My votes", () => {
 	it("erases more than one call can in steps the kit repeats, and the counts follow", async () => {
 		const site = await openSite();
 		dispose = site.dispose;
-		// One member with a vote in 350 polls: 350 rows, more than three pages.
+		// One member with a vote in 350 polls: 350 rows, more than two pages.
 		for (let i = 0; i < 350; i += 1) {
 			const id = `p${String(i).padStart(3, "0")}`;
 			await site.rt.fixtures.plugin.storage(POLLS, id, poll({ options: TEN.slice(0, 2) }));
@@ -189,9 +202,9 @@ describe("My votes", () => {
 		}
 		expect((await get(site, "p000")).results?.total).toBe(1);
 		const first = await within(() => site.call("mine", {}, site.as(member("heavy"), "DELETE")));
-		expect(first).toMatchObject({ ok: false, erased: 300, error: { code: "BUSY", reason: "MORE" } });
+		expect(first).toMatchObject({ ok: false, erased: 200, error: { code: "BUSY", reason: "MORE" } });
 		const second = await within(() => site.call("mine", {}, site.as(member("heavy"), "DELETE")));
-		expect(second).toMatchObject({ ok: true, erased: 50 });
+		expect(second).toMatchObject({ ok: true, erased: 150 });
 		expect((await get(site, "p000")).results?.total).toBe(0);
 	});
 });

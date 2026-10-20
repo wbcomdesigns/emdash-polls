@@ -34,7 +34,7 @@ The same visitor sent a lot of votes in a short time. WB Polls slows this down t
 
 ## Visitors see "Results are being counted" or the list says Counting
 
-The poll was created before 0.5.0 and has more than 100 votes, or someone chose **Recount votes**. WB Polls counts it again from the stored votes over the next page views or admin screens. Opening the poll's **Results** in the admin and choosing **Continue counting** finishes it. No vote is lost meanwhile.
+The poll was created before 0.5.0 and has more than 100 votes, or someone chose **Recount votes**. WB Polls counts it again from the stored votes over the next page views or admin screens. Opening the poll's **Results** in the admin and choosing **Continue counting** finishes it. No vote is lost meanwhile. A count that a new vote lands in is counted again, so on a very busy poll the numbers appear once votes pause for a moment.
 
 ## Members get "Sign in to vote in this poll."
 

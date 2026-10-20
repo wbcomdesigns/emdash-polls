@@ -4,7 +4,7 @@ Every poll page, vote and admin screen now fits Cloudflare's limit of 10 request
 
 - New      - Each poll keeps a running total, so results show in one read on any size of poll.
 - New      - Results has Recount votes, which counts a poll again from the stored votes.
-- Improve  - Deleting a poll hides it at once; its votes are removed in the background.
+- Improve  - Deleting a poll hides it at once; its votes, names included, are removed as you open admin screens.
 - Improve  - Open and close times are read from the poll's dates on every view.
 - Fix      - On Cloudflare a guest vote no longer shows "Something went wrong" after it was saved.
 - Fix      - On Cloudflare the Polls screen, Results, My votes and the Poll panel no longer fail on a busy site.

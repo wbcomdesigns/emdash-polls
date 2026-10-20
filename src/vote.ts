@@ -1,6 +1,6 @@
 import type { PluginContext } from "emdash/plugin";
 
-import { MAX_CALLS, RATE_LIMITED, SIGN_IN, rateLimited, type Member } from "./core";
+import { MAX_CALLS, RATE_LIMITED, SIGN_IN, type Member } from "./core";
 import {
 	NOT_FOUND,
 	effectiveStatus,
@@ -36,7 +36,7 @@ export const GUEST_UNAVAILABLE = {
 	ok: false as const,
 	error: { code: "MEMBERS_ONLY", reason: "GUEST_UNAVAILABLE" },
 };
-const BUSY = { ok: false as const, error: { code: "BUSY" } };
+export const BUSY = { ok: false as const, error: { code: "BUSY" } };
 const LOCK_MS = 30_000;
 const RATE_WINDOW_MS = 60 * 60 * 1000;
 const RATE_MAX = 8;
@@ -160,7 +160,9 @@ export async function handleVoteGuest(routeCtx: RouteCtx, ctx: Ctx) {
 	if (!choices) return INVALID_CHOICE;
 
 	const who = await guestWho(ctx, routeCtx);
-	if (!who) return GUEST_UNAVAILABLE;
+	// The address was checked above, so no key here means another first guest created the site's
+	// salt at the same moment. Guests can vote here: the kit says "try again in a moment".
+	if (!who) return BUSY;
 	return saveChoices(ctx, loaded, {
 		who: who.who,
 		memberId: "",
@@ -184,16 +186,24 @@ async function guestWho(ctx: Ctx, routeCtx: RouteCtx) {
  * compare-and-set takes the lock and counts the vote toward the hourly limit, so votes sent together
  * take turns (the loser gets BUSY) and a BUSY answer to a double click does not use up the hour.
  * A lock older than LOCK_MS is left over from a request that died, and is taken over.
+ * Erasing votes takes the same lock, so an erase and a vote change never take the same votes off
+ * the counts twice. `counted: false` (the owner removing a member's votes) skips the hourly limit
+ * and leaves the member's count as it was. One attempt: a lost compare-and-set answers BUSY.
  */
-async function withVoteLock<T>(ctx: Ctx, who: string, run: () => Promise<T>): Promise<T | typeof BUSY | typeof RATE_LIMITED> {
+export async function withVoteLock<T>(
+	ctx: Pick<PluginContext, "kv">,
+	who: string,
+	run: () => Promise<T>,
+	counted = true,
+): Promise<T | typeof BUSY | typeof RATE_LIMITED> {
 	const key = `vote:${who}`;
 	const seen = await ctx.kv.getVersioned<string>(key);
 	const [lockedAt = 0, start = 0, count = 0] = (seen?.value || "0|0|0").split("|").map(Number);
 	const now = Date.now();
 	if (now - lockedAt < LOCK_MS) return BUSY;
 	const fresh = now - start > RATE_WINDOW_MS;
-	if (!fresh && count >= RATE_MAX) return RATE_LIMITED;
-	const hour = fresh ? `${now}|1` : `${start}|${count + 1}`;
+	if (counted && !fresh && count >= RATE_MAX) return RATE_LIMITED;
+	const hour = !counted ? `${start}|${count}` : fresh ? `${now}|1` : `${start}|${count + 1}`;
 	const claimed = await ctx.kv.compareAndSet(key, seen?.revision ?? null, `${now}|${hour}`);
 	if (!claimed.applied) return BUSY;
 	try {
@@ -295,10 +305,14 @@ async function listMine(ctx: Ctx, memberId: string) {
 }
 
 /** Pages of 100 rows one erase call removes. More than that answers BUSY with reason MORE, and the kit calls again. */
-const ERASE_PAGES = 3;
+const ERASE_PAGES = 2;
 
-async function eraseMine(ctx: Ctx, memberId: string) {
-	if (await rateLimited(ctx, `erase:${memberId}`)) return RATE_LIMITED;
+/** Under the member's vote lock, which also counts the erase toward their hourly limit. */
+function eraseMine(ctx: Ctx, memberId: string) {
+	return withVoteLock(ctx, memberId, () => eraseRows(ctx, memberId));
+}
+
+async function eraseRows(ctx: Ctx, memberId: string) {
 	let erased = 0;
 	let pages = 0;
 	let more = false;
@@ -319,8 +333,8 @@ async function eraseMine(ctx: Ctx, memberId: string) {
 		more = found.hasMore;
 		if (!more) break;
 	}
-	// Calls left: the budget less the hourly limit (2) and a query and a delete per page.
-	await dropCounts(ctx, touched, MAX_CALLS - 2 - 2 * pages);
+	// Calls left: the budget less the lock (2 now, 1 to release) and a query and a delete per page.
+	await dropCounts(ctx, touched, MAX_CALLS - 3 - 2 * pages);
 	if (more) return { ok: false as const, erased, error: { code: "BUSY", reason: "MORE" } };
 	return { ok: true as const, erased };
 }

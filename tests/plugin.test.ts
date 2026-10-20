@@ -332,9 +332,13 @@ describe("admin", () => {
 			site.as(admin),
 		)) as { toast?: { message: string } };
 		expect(deleted.toast?.message).toBe("Poll deleted.");
-		// Hidden at once; the row goes on a later list load, after its votes.
+		// Hidden at once; the row goes on later list loads, after its votes and a grace time for votes in flight.
 		expect(await site.call("get", { id: row.id }, { method: "GET" })).toMatchObject({ ok: false, error: { code: "NOT_FOUND" } });
 		await site.call("admin", { type: "page_load", page: "/polls" }, site.as(admin));
+		expect(await site.rt.inspect.storage.get(POLLS, row.id)).not.toBeNull();
+		const marked = (await site.rt.inspect.storage.get<Record<string, unknown>>(POLLS, row.id))!;
+		await site.rt.fixtures.plugin.storage(POLLS, row.id, { ...marked, deleted_at: "2020-01-01T00:00:00.000Z" });
+		for (let i = 0; i < 2; i += 1) await site.call("admin", { type: "page_load", page: "/polls" }, site.as(admin));
 		expect(await site.rt.inspect.storage.get(POLLS, row.id)).toBeNull();
 	});
 

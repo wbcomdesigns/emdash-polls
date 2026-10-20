@@ -9,7 +9,7 @@ Every poll page, vote and admin screen now fits Cloudflare's limit of 10 request
 - New      - Each poll keeps a running total, updated in the same step as the vote, so results show in one read on any size of poll.
 - New      - Results has Recount votes, which counts a poll again from the stored votes a few answers at a time.
 - New      - A poll from an earlier version is counted the first time it is opened, and shows "Results are being counted" until every answer is counted.
-- Improve  - Deleting a poll hides it everywhere at once, and its votes are removed a hundred at a time as the Polls screen loads.
+- Improve  - Deleting a poll hides it everywhere at once, and its votes, names included, are removed a hundred at a time as you open admin screens.
 - Improve  - Delete my votes erases a member with votes in hundreds of polls in steps the page runs by itself.
 - Improve  - A poll's open and close times are read from its dates on every view instead of being saved by the first visitor.
 - Improve  - The named voters list on Results pages by member, so a member's choices never split across two pages.
