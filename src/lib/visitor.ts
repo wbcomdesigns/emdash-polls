@@ -11,14 +11,14 @@ async function sha256(text: string): Promise<string> {
 	return [...new Uint8Array(bytes)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-async function salt(ctx: Ctx): Promise<string | null> {
-	for (let attempt = 0; attempt < 4; attempt += 1) {
-		const seen = await ctx.kv.getVersioned<string>(SALT);
-		if (seen?.value) return seen.value;
-		const next = crypto.randomUUID();
-		if ((await ctx.kv.compareAndSet(SALT, seen?.revision ?? null, next)).applied) return next;
-	}
-	// Never a one-off salt: a key nobody can produce again would let the same guest vote twice.
+/** The site's salt and the bridge calls it took: one read, or two on the very first guest. */
+async function salt(ctx: Ctx): Promise<{ value: string; calls: number } | null> {
+	const seen = await ctx.kv.getVersioned<string>(SALT);
+	if (seen?.value) return { value: seen.value, calls: 1 };
+	const next = crypto.randomUUID();
+	if ((await ctx.kv.compareAndSet(SALT, seen?.revision ?? null, next)).applied) return { value: next, calls: 2 };
+	// Another guest created it at the same moment. Never a one-off salt: a key nobody can produce
+	// again would let the same guest vote twice. The guest is asked to try again.
 	return null;
 }
 
@@ -32,8 +32,8 @@ export function requestAddress(routeCtx: { requestMeta?: unknown }): string | nu
 	return typeof ip === "string" ? guestKey(ip) : null;
 }
 
-/** Salted hash of the guest's address, or null when the salt could not be read. Never the address itself. */
-export async function visitorHash(ctx: Ctx, address: string): Promise<string | null> {
+/** Salted hash of the guest's address (never the address itself) and the calls it took, or null when the salt could not be read. */
+export async function visitorHash(ctx: Ctx, address: string): Promise<{ hash: string; calls: number } | null> {
 	const secret = await salt(ctx);
-	return secret ? sha256(`${secret}|ip|${address}`) : null;
+	return secret ? { hash: await sha256(`${secret.value}|ip|${address}`), calls: secret.calls } : null;
 }

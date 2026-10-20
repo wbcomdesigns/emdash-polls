@@ -21,7 +21,7 @@ import { polls as S } from "../lib/polls-strings";
 	import { phrase, polls as S } from "../lib/polls-strings";
 
 	type Item = { id: string; question: string; status: string; labels: string[] };
-	type Payload = { ok?: boolean; items?: Item[]; erased?: number; error?: { code?: string } };
+	type Payload = { ok?: boolean; items?: Item[]; erased?: number; error?: { code?: string; reason?: string } };
 
 	function statusLabel(status: string): string {
 		if (status === "closed") return S.statusClosed;
@@ -77,7 +77,11 @@ import { polls as S } from "../lib/polls-strings";
 			}
 			button.setAttribute("aria-busy", "true");
 			root.setAttribute("aria-busy", "true");
-			const result = (await api("polls", "mine", undefined, "DELETE")) as Payload;
+			// A member with very many votes is erased in steps: 0.5.0 answers BUSY with reason MORE until done.
+			let result = (await api("polls", "mine", undefined, "DELETE")) as Payload;
+			for (let step = 0; step < 50 && result.error?.reason === "MORE"; step += 1) {
+				result = (await api("polls", "mine", undefined, "DELETE")) as Payload;
+			}
 			button.removeAttribute("aria-busy");
 			root.removeAttribute("aria-busy");
 			if (!result.ok) {

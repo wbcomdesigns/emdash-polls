@@ -32,6 +32,10 @@ That visitor's vote is already counted. On a poll with **Members may change thei
 
 The same visitor sent a lot of votes in a short time. WB Polls slows this down to keep results fair. It clears by itself.
 
+## Visitors see "Results are being counted" or the list says Counting
+
+The poll was created before 0.5.0 and has more than 100 votes, or someone chose **Recount votes**. WB Polls counts it again from the stored votes over the next page views or admin screens. Opening the poll's **Results** in the admin and choosing **Continue counting** finishes it. No vote is lost meanwhile.
+
 ## Members get "Sign in to vote in this poll."
 
 The poll is set to **Signed-in members only**. Members need an account on your site. Turn on sign-up in EmDash if visitors cannot create one.

@@ -13,6 +13,11 @@ You see:
 - **Votes**, **Answers** and **Status** at the top.
 - A bar chart of the answers. A long answer is shortened on the chart. The table below keeps the full wording.
 - A table with each answer's votes and share.
+- **Recount votes** at the bottom, which counts the poll's votes again from the stored votes. Use it if a total ever looks wrong. It counts a few answers at a time: while it runs, the screen says how many answers are counted and has **Continue counting**, and visitors see "Results are being counted" instead of numbers.
+
+### Polls from before 0.5.0
+
+WB Polls 0.5.0 keeps a running total for each poll, so a page shows results in one step. A poll created before 0.5.0 gets its total the first time someone opens it, on your site or in the admin. A poll with up to 100 votes is counted at once. A bigger poll is counted over two or three page views, and until then shows "Results are being counted" (on your site) or **Counting** (in the admin) instead of a number that is not finished yet.
 
 ### Named polls
 

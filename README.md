@@ -2,7 +2,7 @@
 
 Create polls, let visitors or members vote once, and show live results anywhere on your site.
 
-Status: 0.4.0 in review. 0.3.0 is live on the EmDash registry as `@vapvarun.bsky.social/polls`.
+Status: 0.5.0 in review. 0.4.0 is live on the EmDash registry as `@vapvarun.bsky.social/polls`.
 
 - Install on a site: [docs/website/getting-started/install.md](docs/website/getting-started/install.md)
 - Scope and schema: [SCOPE.md](SCOPE.md)

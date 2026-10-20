@@ -22,7 +22,7 @@ Everything happens on the **Polls** screen. The top shows how many polls are ope
 - **Close:** stop voting now (offered on open polls). A poll can also close by itself on its **Closes on** day.
 - **Results:** a bar chart, totals, shares and, on a named poll, each member's choice.
 - **Copy:** makes a new draft with the same question, answers and settings, and no votes. The copy opens for editing with "(copy)" after the question so you can rename it. Use it to run the same question again later.
-- **Delete:** removes the poll and all its votes. You confirm once on the next screen. This cannot be undone.
+- **Delete:** removes the poll and all its votes. You confirm once on the next screen. This cannot be undone. The poll disappears from your site and the list at once. Its votes are removed in the background, a hundred each time the Polls screen loads.
 
 A closed poll can be opened again from the same menu.
 

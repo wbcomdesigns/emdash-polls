@@ -52,6 +52,8 @@ const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}${position
 		choices?: string[];
 		results?: { total: number; options: Option[] };
 		thanks?: string;
+		/** 0.5.0 and later: results are still being counted (a poll from before 0.5.0), so no numbers yet. */
+		counting?: boolean;
 		/** False when this host gives no visitor address: guests sign in to vote. */
 		guestWrites?: boolean;
 		error?: { code?: string; reason?: string };
@@ -156,6 +158,7 @@ const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}${position
 		let html = `<h2>${esc(poll.question)}</h2>`;
 		if (closed) html += `<p class="wb-muted">${esc(S.closed)}</p>`;
 		if (showBars) html += bars(poll, data.results as { total: number; options: Option[] }, mine);
+		else if (data.counting && (mine.length > 0 || closed || !canVote)) html += `<p class="wb-muted">${esc(S.counting)}</p>`;
 		else if (poll.results === "after_vote" && !mine.length && canVote) html += `<p class="wb-muted">${esc(S.hidden)}</p>`;
 		else if (poll.results === "after_close" && !closed) html += `<p class="wb-muted">${esc(S.hiddenClosed)}</p>`;
 		if (mine.length) html += `<p class="wb-muted">${esc(S.voted)}</p>`;

@@ -1,5 +1,8 @@
 export const POLLS = "polls";
 export const VOTES = "votes";
+export const TALLIES = "tallies";
+/** Stored status of a poll the owner deleted while its votes are removed in steps. Never shown. */
+export const DELETING = "deleting";
 
 export const QUESTION_MAX = 200;
 export const THANKS_MAX = 140;
