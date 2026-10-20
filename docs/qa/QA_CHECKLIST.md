@@ -92,7 +92,7 @@ Run on the Cloudflare testbed with the plugin from the registry and a seeded bus
 | --- | --- | --- |
 | C-1 | Guest votes on a fresh poll, then changes the vote (allow change on) | Saved, bars show, totals move by one each way. Reload: same totals |
 | C-2 | Member votes on the busy poll, changes five answers | Saved, totals exact |
-| C-3 | Polls list load, Next, sort, Find; Open, Close, Delete (asks), Delete poll, Copy, Edit and Save | Each screen loads; after Delete poll the list loads and the poll is gone |
+| C-3 | Polls list load, Next and Previous, Find (and Next on a search with no match among the newest polls); Open, Close, Delete (asks), Delete poll, Copy, Edit and Save | Each screen loads; after Delete poll the list loads and the poll is gone |
 | C-4 | Results of the busy poll, Next on named voters, Remove votes on one member, Recount votes and Continue counting | Each loads, totals drop by that member's answers |
 | C-5 | Post editor Poll panel: load, attach, open, remove, create here | Each loads |
 | C-6 | My votes as a member with votes in many polls, then Delete my votes | List loads, erase finishes, totals drop |

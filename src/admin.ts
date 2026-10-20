@@ -194,12 +194,16 @@ export async function renderList(
 			? [
 					{
 						type: "empty",
-						title: q ? "No polls match that question" : "No polls yet",
+						title: q ? (listed.hasOlder ? "No match among the newest polls" : "No polls match that question") : "No polls yet",
 						description: q
-							? "Try a different search, or create a poll."
+							? listed.hasOlder
+								? "Older polls were not searched yet. Choose Next to search them."
+								: "Try a different search, or create a poll."
 							: "Ask a question, add two or more answers, then open the poll.",
 						actions: [link("Create a poll", "/edit")],
 					},
+					// A search reads a few hundred polls per call, so a match can be further back.
+					...nav,
 				]
 			: [
 					{

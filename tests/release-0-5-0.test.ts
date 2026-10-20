@@ -195,3 +195,28 @@ describe("My votes", () => {
 		expect((await get(site, "p000")).results?.total).toBe(0);
 	});
 });
+
+describe("admin search on a site with many polls", () => {
+	it("offers Next when the newest polls hold no match, and Next reaches an older match", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		for (let i = 0; i < 320; i += 1) {
+			await site.rt.fixtures.plugin.storage(
+				POLLS,
+				`p${i}`,
+				poll({ question: i === 0 ? "Zebra crossing?" : `Question ${i}`, createdAt: new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString() }),
+			);
+		}
+		type Blocks = { blocks: Array<{ type: string; elements?: Array<{ label: string; value: string }> }> };
+		const next = (screen: Blocks) =>
+			screen.blocks.flatMap((block) => block.elements ?? []).find((element) => element.label === "Next");
+		let screen = (await site.call("admin", { type: "form_submit", action_id: "find", values: { q: "zebra" } }, site.as(admin))) as Blocks;
+		expect(JSON.stringify(screen.blocks)).toContain("No match among the newest polls");
+		for (let step = 0; step < 3 && !JSON.stringify(screen.blocks).includes("Zebra crossing?"); step += 1) {
+			const button = next(screen);
+			expect(button).toBeDefined();
+			screen = (await site.call("admin", { type: "block_action", action_id: "page", value: button!.value }, site.as(admin))) as Blocks;
+		}
+		expect(JSON.stringify(screen.blocks)).toContain("Zebra crossing?");
+	});
+});
