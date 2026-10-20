@@ -3,31 +3,33 @@ import type { PluginContext } from "emdash/plugin";
 import {
 	applyOptionEdits,
 	attachLabel,
-	ballotsFromVotes,
 	copyPoll,
-	countVotes,
-	deleteVotesForMember,
-	deleteVotesForPoll,
+	createPoll,
+	deleteStep,
 	emptyPoll,
 	getPoll,
 	hasVotes,
 	listPolls,
-	listVotesForPoll,
+	memberVoteIds,
+	namedPage,
 	newId,
 	newRev,
 	answerFields,
 	answersFromForm,
+	openPolls,
 	parsePoll,
 	formTime,
 	parseTimeField,
 	splitTime,
 	timeOptions,
-	putPoll,
 	statusLabel,
-	tally,
+	type PollRow,
 } from "./lib/polls";
-import { POLLS, QUESTION_MAX, THANKS_MAX, VOTES, type Poll } from "./lib/types";
-import { asBoolean, asRecord, asString } from "./util";
+import { applyVoteDelta, buildMissing, ensureTally, getTally, parseTally, restartTally, resultsOf, totalOf, type Tally } from "./lib/tally";
+import { DELETING, POLLS, QUESTION_MAX, TALLIES, THANKS_MAX, VOTES, type Poll } from "./lib/types";
+import { MAX_CALLS } from "./core";
+import { asBoolean, asRecord, asString, nowIso } from "./util";
+import { withVoteLock } from "./vote";
 
 type Toast = { message: string; type: "success" | "error" | "info" };
 export type BlockMap = Record<string, unknown> & { type: string };
@@ -37,20 +39,41 @@ type Ctx = PluginContext;
 type Extra = Pick<BlockResponse, "toast">;
 type SiteCollection = { slug: string; label: string };
 
-/** Content types on the site, by their normal names. Hidden types stay out. */
-async function siteCollections(ctx: Ctx): Promise<SiteCollection[]> {
-	const found = (await ctx.schema?.listCollections()) ?? [];
-	return found
-		.filter((item) => !item.hidden)
-		.map((item) => ({
-			slug: item.slug,
-			label: item.label || item.labelSingular || item.slug,
-		}));
+const typesRead = new WeakMap<object, Promise<SiteCollection[]>>();
+
+/** Content types on the site, by their normal names. Hidden types stay out. Read once per plugin call. */
+function siteCollections(ctx: Ctx): Promise<SiteCollection[]> {
+	let found = typesRead.get(ctx);
+	if (!found) {
+		found = (async () =>
+			((await ctx.schema?.listCollections()) ?? [])
+				.filter((item) => !item.hidden)
+				.map((item) => ({ slug: item.slug, label: item.label || item.labelSingular || item.slug })))();
+		typesRead.set(ctx, found);
+	}
+	return found;
 }
 
 const PAGE = 25;
 const NAMED_PAGE = 25;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+/** Calls the polls list makes without a search: the page, content types, counts, two stats, the setup card. */
+const LIST_CALLS = 6;
+/** Calls a list load with nothing else to do may spend on upkeep (removing a deleted poll, counting older polls). */
+const UPKEEP = MAX_CALLS - LIST_CALLS;
+/** Calls the edit form makes at most: the poll, whether it has votes, the content types. */
+const FORM_CALLS = 3;
+/** Calls the dashboard widget makes: the open polls and their counts. */
+const WIDGET_CALLS = 2;
+
+/**
+ * One step of removing a deleted poll's votes on a screen that has `spare` calls left (Results,
+ * the edit form, the dashboard widget), so the votes go even when the owner seldom opens the list.
+ * Never fails the screen.
+ */
+function tidy(ctx: Ctx, spare: number): Promise<boolean> {
+	return deleteStep(ctx, spare).catch(() => false);
+}
 
 function link(label: string, path: string) {
 	return { type: "link", label, target: { kind: "plugin-page", path } };
@@ -85,33 +108,58 @@ function statusError(row: Poll | null, rev: string): string | null {
 }
 
 async function listStats(ctx: Ctx): Promise<BlockMap> {
-	const open = await ctx.storage[POLLS].count({ status: "open" });
+	const open = await openPolls(ctx);
 	const since = new Date(Date.now() - WEEK_MS).toISOString();
 	const votes = await ctx.storage[VOTES].count({ createdAt: { gte: since } });
 	return {
 		type: "stats",
 		items: [
-			{ label: "Open polls", value: String(open) },
+			{ label: "Open polls", value: `${open.items.length}${open.more ? "+" : ""}` },
 			{ label: "Votes this week", value: String(votes) },
 		],
 	};
+}
+
+/** Stored counts for the listed polls, in one read. */
+async function talliesFor(ctx: Ctx, polls: PollRow[]): Promise<Map<string, Tally>> {
+	const found = polls.length ? await ctx.storage[TALLIES].getMany(polls.map((poll) => poll.id)) : new Map<string, unknown>();
+	const out = new Map<string, Tally>();
+	for (const [id, data] of found) {
+		const row = parseTally(data);
+		if (row) out.set(id, row);
+	}
+	return out;
+}
+
+/**
+ * Upkeep on a list load that has `spare` calls left: one step of removing a deleted poll's votes,
+ * or, when none is waiting, counting the listed polls from 0.4.0 that have no counts yet.
+ */
+async function upkeep(ctx: Ctx, spare: number, listed: PollRow[], tallies: Map<string, Tally>): Promise<void> {
+	if (spare < 3 || (await deleteStep(ctx, spare))) return;
+	const missing = listed.filter((poll) => !tallies.has(poll.id));
+	for (const [id, row] of await buildMissing(ctx, missing)) tallies.set(id, row);
 }
 
 function displayStatus(poll: Poll): string {
 	return statusLabel(poll);
 }
 
+/** The polls list. `spare`: calls the caller leaves for upkeep (only a plain list load leaves any). */
 export async function renderList(
 	ctx: Ctx,
 	opts: { q?: string; before?: string; after?: string } = {},
 	extra?: Extra,
+	spare = 0,
 ): Promise<BlockResponse> {
 	const q = asString(opts.q);
 	const listed = await listPolls(ctx, { q, before: opts.before, after: opts.after, limit: PAGE });
 	const typeNames = new Map((await siteCollections(ctx)).map((type) => [type.slug, type.label]));
+	const tallies = await talliesFor(ctx, listed.items);
+	await upkeep(ctx, spare, listed.items, tallies);
 	const rows = await Promise.all(
 		listed.items.map(async (poll) => {
-			const votes = await countVotes(ctx, poll.id);
+			const votes = totalOf(poll, tallies.get(poll.id) ?? null);
 			const items: Array<{ label: string; value: string }> = [{ label: "Edit", value: stamped("edit", poll.id, poll.rev) }];
 			if (displayStatus(poll) !== "Open") {
 				items.push({ label: "Open", value: stamped("open", poll.id, poll.rev) });
@@ -126,7 +174,7 @@ export async function renderList(
 				poll: poll.question || "Untitled poll",
 				who: `${poll.who === "members" ? "Members" : "Anyone"}, ${poll.named ? "named" : "anonymous"}`,
 				where: attachLabel(poll, typeNames),
-				votes: String(votes),
+				votes: votes === null ? "Counting" : String(votes),
 				status: displayStatus(poll),
 				action: { type: "menu", action_id: "poll_mod", label: "Actions", items },
 			};
@@ -144,12 +192,12 @@ export async function renderList(
 				value: `after|${listed.items[0].createdAt}|${q}`,
 			});
 		}
-		if (listed.hasOlder && listed.items[listed.items.length - 1]) {
+		if (listed.hasOlder && listed.olderBound) {
 			elements.push({
 				type: "button",
 				label: "Next",
 				action_id: "page",
-				value: `before|${listed.items[listed.items.length - 1]?.createdAt}|${q}`,
+				value: `before|${listed.olderBound}|${q}`,
 			});
 		}
 		if (elements.length) nav.push({ type: "actions", elements });
@@ -160,12 +208,24 @@ export async function renderList(
 			? [
 					{
 						type: "empty",
-						title: q ? "No polls match that question" : "No polls yet",
+						title: q
+							? listed.hasOlder
+								? "No match among the newest polls"
+								: "No polls match that question"
+							: listed.hasOlder
+								? "No polls on this page"
+								: "No polls yet",
 						description: q
-							? "Try a different search, or create a poll."
-							: "Ask a question, add two or more answers, then open the poll.",
+							? listed.hasOlder
+								? "Older polls were not searched yet. Choose Next to search them."
+								: "Try a different search, or create a poll."
+							: listed.hasOlder
+								? "The polls here were deleted. Choose Next to see older polls."
+								: "Ask a question, add two or more answers, then open the poll.",
 						actions: [link("Create a poll", "/edit")],
 					},
+					// A search reads a few hundred polls per call, so a match can be further back.
+					...nav,
 				]
 			: [
 					{
@@ -353,14 +413,7 @@ export async function renderForm(
 }
 
 export async function renderOpenWidget(ctx: Ctx): Promise<BlockResponse> {
-	const found = await ctx.storage.polls.query({
-		where: { status: "open" },
-		orderBy: { createdAt: "desc" },
-		limit: 8,
-	});
-	const open = found.items
-		.map((item) => ({ id: item.id, ...parsePoll(item.data) }))
-		.filter((poll) => displayStatus(poll) === "Open");
+	const open = (await openPolls(ctx)).items.slice(0, 8);
 	if (open.length === 0) {
 		return {
 			blocks: [
@@ -369,12 +422,11 @@ export async function renderOpenWidget(ctx: Ctx): Promise<BlockResponse> {
 			],
 		};
 	}
-	const rows = await Promise.all(
-		open.map(async (poll) => ({
-			question: poll.question,
-			votes: String(await countVotes(ctx, poll.id)),
-		})),
-	);
+	const tallies = await talliesFor(ctx, open);
+	const rows = open.map((poll) => {
+		const votes = totalOf(poll, tallies.get(poll.id) ?? null);
+		return { question: poll.question, votes: votes === null ? "Counting" : String(votes) };
+	});
 	return {
 		blocks: [
 			{
@@ -391,112 +443,129 @@ export async function renderOpenWidget(ctx: Ctx): Promise<BlockResponse> {
 	};
 }
 
+/**
+ * The Results screen. `used`: calls the action made before this render; what is left of the budget
+ * goes to counting a poll from 0.4.0. `page`: `a:<member id>` (after) or `b:<member id>` (before)
+ * for the named list; anything else is the first page.
+ */
 async function renderResults(
 	ctx: Ctx,
-	poll: Poll & { id: string },
-	extra?: Extra,
-	namedOffset = 0,
+	poll: PollRow,
+	opts: { extra?: Extra; page?: string; tally?: Tally | null; used: number; tidy?: boolean },
 ): Promise<BlockResponse> {
-	const results = await tally(ctx, poll);
-	const votes = await listVotesForPoll(ctx, poll.id);
-	const ballots = ballotsFromVotes(poll, votes);
-	const namedRows = poll.named
-		? ballots
-				.filter((row) => row.who && !row.who.startsWith("v-"))
-				.map((row) => ({
-					who: row.name || "A member",
-					choice: row.labels.join(", ") || "No choice",
-					action: {
-						type: "button",
-						action_id: "poll_mod",
-						label: "Remove votes",
-						style: "danger",
-						value: stamped("erase", poll.id, poll.rev, row.who),
-						confirm: {
-							title: "Remove these votes?",
-							text: "This person can vote again if the poll is still open.",
-							confirm: "Remove",
-							deny: "Keep them",
-						},
-					},
-				}))
-		: [];
-	const start = namedOffset > 0 ? namedOffset : 0;
-	const namedPage = namedRows.slice(start, start + NAMED_PAGE);
+	let used = opts.used;
+	let row = opts.tally;
+	if (row === undefined) {
+		row = await getTally(ctx, poll.id);
+		used += 1;
+	}
+	// One call is kept for the named list.
+	const ready = await ensureTally(ctx, poll, row, MAX_CALLS - used - (poll.named ? 1 : 0));
+	// Counting spends what is left, so a step of deleting runs only when the poll was counted already.
+	if (opts.tidy && row?.ready) await tidy(ctx, MAX_CALLS - used - (poll.named ? 1 : 0));
+	const results = resultsOf(poll, ready);
+	const [dir, bound = ""] = (opts.page ?? "").split(/:(.*)/s);
+	const named = poll.named
+		? await namedPage(ctx, poll, { size: NAMED_PAGE, after: dir === "a" ? bound : "", before: dir === "b" ? bound : "" })
+		: null;
+	const namedRows = (named?.rows ?? []).map((row) => ({
+		who: row.name || "A member",
+		choice: row.labels.join(", ") || "No choice",
+		action: {
+			type: "button",
+			action_id: "poll_mod",
+			label: "Remove votes",
+			style: "danger",
+			value: stamped("erase", poll.id, poll.rev, row.who),
+			confirm: {
+				title: "Remove these votes?",
+				text: "This person can vote again if the poll is still open.",
+				confirm: "Remove",
+				deny: "Keep them",
+			},
+		},
+	}));
 	const namedNav: BlockMap[] = [];
-	if (namedRows.length > NAMED_PAGE) {
+	if (named && namedRows.length) {
 		const elements: Array<Record<string, unknown>> = [];
-		if (start > 0) {
-			elements.push({
-				type: "button",
-				label: "Previous",
-				action_id: "poll_mod",
-				value: stamped("results", poll.id, poll.rev, String(Math.max(0, start - NAMED_PAGE))),
-			});
-		}
-		if (start + NAMED_PAGE < namedRows.length) {
-			elements.push({
-				type: "button",
-				label: "Next",
-				action_id: "poll_mod",
-				value: stamped("results", poll.id, poll.rev, String(start + NAMED_PAGE)),
-			});
-		}
+		const first = named.rows[0]?.who ?? "";
+		const last = named.rows[named.rows.length - 1]?.who ?? "";
+		if (named.hasPrev) elements.push({ type: "button", label: "Previous", action_id: "poll_mod", value: stamped("results", poll.id, poll.rev, `b:${first}`) });
+		if (named.hasNext) elements.push({ type: "button", label: "Next", action_id: "poll_mod", value: stamped("results", poll.id, poll.rev, `a:${last}`) });
 		if (elements.length) namedNav.push({ type: "actions", elements });
 	}
+	const counted = ready ? Math.min(ready.step, poll.options.length) : 0;
+	const counting: BlockMap[] = results
+		? []
+		: [
+				{
+					type: "banner",
+					variant: "default",
+					title: "Counting votes",
+					description: `This poll's votes are being counted again from the stored votes: ${counted} of ${poll.options.length} answers so far. Visitors see the results once every answer is counted.`,
+				},
+				{ type: "actions", elements: [{ type: "button", label: "Continue counting", action_id: "poll_mod", style: "primary", value: stamped("results", poll.id, poll.rev) }] },
+			];
 
 	return {
 		blocks: [
 			{ type: "header", text: "Results" },
 			{ type: "section", text: poll.question || "Untitled poll" },
+			...counting,
 			{
 				type: "stats",
 				items: [
-					{ label: "Votes", value: String(results.total) },
-					{ label: "Answers", value: String(results.options.length) },
+					{ label: "Votes", value: results ? String(results.total) : "Counting" },
+					{ label: "Answers", value: String(poll.options.length) },
 					{ label: "Status", value: displayStatus(poll) },
 				],
 			},
-			{
-				type: "chart",
-				config: {
-					chart_type: "custom",
-					height: 240,
-					options: {
-						grid: { left: 8, right: 16, top: 8, bottom: 8, containLabel: true },
-						tooltip: { trigger: "item" },
-						xAxis: { type: "value", minInterval: 1 },
-						yAxis: {
-							type: "category",
-							data: results.options.map((row) =>
-								row.label.length > 24 ? `${row.label.slice(0, 24)}...` : row.label,
-							),
-						},
-						series: [{ type: "bar", data: results.options.map((row) => row.count) }],
-					},
-				},
-			},
+			...(results
+				? [
+						{
+							type: "chart",
+							config: {
+								chart_type: "custom",
+								height: 240,
+								options: {
+									grid: { left: 8, right: 16, top: 8, bottom: 8, containLabel: true },
+									tooltip: { trigger: "item" },
+									xAxis: { type: "value", minInterval: 1 },
+									yAxis: {
+										type: "category",
+										data: results.options.map((row) => (row.label.length > 24 ? `${row.label.slice(0, 24)}...` : row.label)),
+									},
+									series: [{ type: "bar", data: results.options.map((row) => row.count) }],
+								},
+							},
+						} as BlockMap,
+					]
+				: []),
 			{
 				type: "context",
 				text: poll.named
 					? "Named: each signed-in member and their choice. Guests stay anonymous."
 					: "Anonymous: totals only. Names are not stored.",
 			},
-			{
-				type: "table",
-				page_action_id: "poll_results",
-				columns: [
-					{ key: "label", label: "Answer" },
-					{ key: "count", label: "Votes" },
-					{ key: "percent", label: "Share" },
-				],
-				rows: results.options.map((row) => ({
-					label: row.label,
-					count: String(row.count),
-					percent: `${row.percent}%`,
-				})),
-			},
-			...(poll.named
+			...(results
+				? [
+						{
+							type: "table",
+							page_action_id: "poll_results",
+							columns: [
+								{ key: "label", label: "Answer" },
+								{ key: "count", label: "Votes" },
+								{ key: "percent", label: "Share" },
+							],
+							rows: results.options.map((row) => ({
+								label: row.label,
+								count: String(row.count),
+								percent: `${row.percent}%`,
+							})),
+						} as BlockMap,
+					]
+				: []),
+			...(named
 				? namedRows.length
 					? [
 							{
@@ -507,15 +576,32 @@ async function renderResults(
 									{ key: "choice", label: "Choice" },
 									{ key: "action", label: "Erase", format: "element" },
 								],
-								rows: namedPage,
+								rows: namedRows,
 							} as BlockMap,
 							...namedNav,
 						]
 					: [{ type: "empty", title: "No named votes yet", description: "Totals above still count guest votes." } as BlockMap]
 				: []),
-			{ type: "actions", elements: [link("Back to polls", "/polls")] },
+			{
+				type: "actions",
+				elements: [
+					link("Back to polls", "/polls"),
+					{
+						type: "button",
+						label: "Recount votes",
+						action_id: "poll_mod",
+						value: stamped("recount", poll.id, poll.rev),
+						confirm: {
+							title: "Count this poll's votes again?",
+							text: "The totals are counted again from the stored votes, a few answers at a time. Visitors see the results again once every answer is counted.",
+							confirm: "Recount",
+							deny: "Cancel",
+						},
+					},
+				],
+			},
 		],
-		toast: extra?.toast,
+		toast: opts.extra?.toast,
 	};
 }
 
@@ -645,25 +731,27 @@ async function savePoll(ctx: Ctx, values: Record<string, unknown>): Promise<Bloc
 		return renderList(ctx, {}, { toast: { message: "Poll saved.", type: "success" } });
 	}
 
-	await putPoll(ctx, pollId, next);
+	await createPoll(ctx, pollId, next);
 	return renderList(ctx, {}, { toast: { message: "Poll created.", type: "success" } });
 }
 
 async function moderate(ctx: Ctx, value: unknown): Promise<BlockResponse> {
 	const { action, rev, id } = parseStamped(value);
+	if (action === "delete_confirm") return confirmDelete(ctx, id, rev);
 	const poll = await getPoll(ctx, id);
 	const stale = statusError(poll, rev);
 	if (stale) return renderList(ctx, {}, { toast: { message: stale, type: "error" } });
 	if (!poll) return renderList(ctx, {}, { toast: { message: "That poll is gone.", type: "error" } });
 
 	if (action === "edit") return renderForm(ctx, poll.id);
-	if (action === "results") {
-		const offset = Number(extraOf(value));
-		return renderResults(ctx, poll, undefined, Number.isFinite(offset) ? offset : 0);
+	if (action === "results") return renderResults(ctx, poll, { page: extraOf(value), used: 1, tidy: true });
+	if (action === "recount") {
+		const tally = await restartTally(ctx, poll.id);
+		return renderResults(ctx, poll, { tally, used: 2, extra: { toast: { message: "Counting the votes again.", type: "info" } } });
 	}
 	if (action === "copy") {
 		const copyId = newId("p");
-		await putPoll(ctx, copyId, copyPoll(poll));
+		await createPoll(ctx, copyId, copyPoll(poll));
 		return renderForm(ctx, copyId, {
 			toast: { message: "Rename this copy, then open it.", type: "success" },
 		});
@@ -671,15 +759,27 @@ async function moderate(ctx: Ctx, value: unknown): Promise<BlockResponse> {
 	if (action === "erase") {
 		const memberId = extraOf(value);
 		if (!memberId) {
-			return renderResults(ctx, poll, { toast: { message: "Pick a member to remove.", type: "error" } });
+			return renderResults(ctx, poll, { used: 1, extra: { toast: { message: "Pick a member to remove.", type: "error" } } });
 		}
-		const removed = await deleteVotesForMember(ctx, poll.id, memberId);
-		return renderResults(ctx, (await getPoll(ctx, poll.id)) ?? poll, {
-			toast: {
-				message: removed ? "Those votes were removed." : "No votes to remove.",
-				type: removed ? "success" : "info",
+		// Under the member's vote lock (not counted toward their hourly limit): a vote change landing at
+		// the same moment cannot take the same votes off the counts twice.
+		const done = await withVoteLock(
+			ctx,
+			memberId,
+			async () => {
+				const ids = await memberVoteIds(ctx, poll.id, memberId);
+				if (!ids.length) return { removed: false, tally: null };
+				await ctx.storage[VOTES].deleteMany(ids);
+				// The rows were deleted: the count update cannot fail this answer (applyVoteDelta never throws).
+				return { removed: true, tally: await applyVoteDelta(ctx, poll, [], ids.map((id) => id.slice(id.lastIndexOf(":") + 1))) };
 			},
-		});
+			false,
+		);
+		if ("error" in done) {
+			return renderResults(ctx, poll, { used: 3, extra: { toast: { message: "This member is voting right now. Try again in a moment.", type: "error" } } });
+		}
+		if (!done.removed) return renderResults(ctx, poll, { used: 5, extra: { toast: { message: "No votes to remove.", type: "info" } } });
+		return renderResults(ctx, poll, { tally: done.tally, used: 7, extra: { toast: { message: "Those votes were removed.", type: "success" } } });
 	}
 
 	if (action === "open") {
@@ -733,20 +833,26 @@ async function moderate(ctx: Ctx, value: unknown): Promise<BlockResponse> {
 		};
 	}
 
-	if (action === "delete_confirm") {
-		const applied = await ctx.storage.polls.updateIf(poll.id, {
-			where: { rev: poll.rev },
-			set: { rev: `deleting:${poll.rev}` },
-		});
-		if (!applied.applied) {
-			return renderList(ctx, {}, { toast: { message: "Someone else changed this poll. Open it again.", type: "error" } });
-		}
-		await deleteVotesForPoll(ctx, poll.id);
-		await ctx.storage.polls.delete(poll.id);
-		return renderList(ctx, {}, { toast: { message: "Poll deleted.", type: "success" } });
-	}
-
 	return renderList(ctx, {}, { toast: { message: "Unknown action.", type: "error" } });
+}
+
+/**
+ * One write hides the poll from every visitor and admin view; its version check stands in for a read
+ * of the poll. What the list leaves of the budget removes its first hundred votes at once. Later admin
+ * screens remove the rest a hundred at a time, then its counts and the poll row (see deleteStep).
+ */
+async function confirmDelete(ctx: Ctx, id: string, rev: string): Promise<BlockResponse> {
+	const marked = id
+		? await ctx.storage[POLLS].updateIf(id, {
+				where: { rev },
+				set: { status: DELETING, attach: "none", attach_key: "", rev: `deleting:${rev}`, deleted_at: nowIso() },
+			})
+		: { applied: false as const };
+	if (!marked.applied) {
+		return renderList(ctx, {}, { toast: { message: "Someone else changed this poll, or it is gone. Open the list again.", type: "error" } });
+	}
+	await deleteStep(ctx, MAX_CALLS - 1 - LIST_CALLS, { id, data: marked.data }).catch(() => false);
+	return renderList(ctx, {}, { toast: { message: "Poll deleted.", type: "success" } });
 }
 
 const KIT_DONE = "kit_pages_done";
@@ -845,7 +951,26 @@ async function withSetup(ctx: Ctx, res: BlockResponse, guestsOff: boolean): Prom
 }
 
 export async function handleAdmin(input: unknown, ctx: Ctx, opts: { guestsOff?: boolean } = {}): Promise<BlockResponse> {
-	return withSetup(ctx, await routeAdmin(input, ctx), opts.guestsOff === true);
+	return drawn(async () => withSetup(ctx, await routeAdmin(input, ctx), opts.guestsOff === true));
+}
+
+/**
+ * Most admin actions write, then draw the next screen. If drawing fails after the write, the
+ * answer must not turn into an error page: say what to do instead. Nothing here hides a failed
+ * write, because the message never claims the action worked.
+ */
+export async function drawn(render: () => Promise<BlockResponse>): Promise<BlockResponse> {
+	try {
+		return await render();
+	} catch {
+		return {
+			blocks: [
+				{ type: "section", text: "This screen could not load. Reload the page to see where things stand." },
+				{ type: "actions", elements: [link("Polls", "/polls")] },
+			],
+			toast: { message: "This screen could not load.", type: "error" },
+		};
+	}
 }
 
 async function routeAdmin(input: unknown, ctx: Ctx): Promise<BlockResponse> {
@@ -878,16 +1003,22 @@ async function routeAdmin(input: unknown, ctx: Ctx): Promise<BlockResponse> {
 	if (type === "block_action" && asString(raw.action_id) === "page") {
 		const [dir = "", bound = "", ...rest] = asString(raw.value).split("|");
 		const q = rest.join("|");
-		if (dir === "before") return renderList(ctx, { q, before: bound });
-		if (dir === "after") return renderList(ctx, { q, after: bound });
-		return renderList(ctx, { q });
+		// A search reads up to three pages of polls, so only a plain page leaves calls for upkeep.
+		const spare = q ? 0 : UPKEEP;
+		if (dir === "before") return renderList(ctx, { q, before: bound }, undefined, spare);
+		if (dir === "after") return renderList(ctx, { q, after: bound }, undefined, spare);
+		return renderList(ctx, { q }, undefined, spare);
 	}
 
 	if (asString(raw.widget) === "open" || page === "widget:open" || page.includes("widget:open")) {
-		return renderOpenWidget(ctx);
+		const widget = await renderOpenWidget(ctx);
+		await tidy(ctx, MAX_CALLS - WIDGET_CALLS);
+		return widget;
 	}
 	if (page.includes("/edit") || page.endsWith("edit")) {
-		return renderForm(ctx, asString(raw.id));
+		const form = await renderForm(ctx, asString(raw.id));
+		await tidy(ctx, MAX_CALLS - FORM_CALLS);
+		return form;
 	}
-	return renderList(ctx);
+	return renderList(ctx, {}, undefined, UPKEEP);
 }

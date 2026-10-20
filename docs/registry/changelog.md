@@ -1,44 +1,33 @@
-## 0.4.0
+## 0.5.0
 
-New permission: Read your content, so a poll attached to a draft stays hidden until you publish that page. You approve it once when you update.
+Every poll page, vote and admin screen now fits Cloudflare's limit of 10 requests per plugin call.
 
-Guests vote only where the host gives EmDash the visitor's address (Cloudflare, or `trustedProxyHeaders` set the safe way, see FAQ). Elsewhere they sign in.
+- New      - Each poll keeps a running total, so results show in one read on any size of poll.
+- New      - Results has Recount votes, which counts a poll again from the stored votes.
+- Improve  - Deleting a poll hides it at once; its votes, names included, are removed as you open admin screens.
+- Improve  - Open and close times are read from the poll's dates on every view.
+- Fix      - On Cloudflare a guest vote no longer shows "Something went wrong" after it was saved.
+- Fix      - On Cloudflare the Polls screen, Results, My votes and the Poll panel no longer fail on a busy site.
 
-- New: a Set up visitor pages card and `scripts/add-to-site.sh` copy the kit in one command.
-- Fix: the PollSlot snippet works on the blog post template. Dark mode buttons pass 4.5:1.
-- Security: a poll on a draft page stays hidden until you publish it. Two votes sent at once by one voter count once. An IPv6 guest counts once per /64.
-
-Copy the kit again after you update, from your site's root folder:
+A poll from an earlier version is counted the first time it is opened. Copy the kit again after you update, from your site's root folder:
 
 ```bash
 kit="$(mktemp -d)" &&
   git clone --depth 1 \
-    --branch v0.4.0 \
+    --branch v0.5.0 \
     https://github.com/wbcomdesigns/emdash-polls \
     "$kit/emdash-polls" &&
   "$kit/emdash-polls/scripts/add-to-site.sh" .
 ```
 
+## 0.4.0
+
+- New: Read your content permission, so a poll on a draft page stays hidden until you publish it.
+- New: a Set up visitor pages card and `scripts/add-to-site.sh` copy the kit in one command.
+- Security: guests vote only where the host gives the visitor's address. Two votes sent at once by one voter count once.
+
 ## 0.3.0
 
-- New: poll stats on the list, a results bar chart, and an optional This page's poll block for post text (trusted install).
-- Security: server-side calls run inside EmDash with no web request. Copy the kit again after updating.
-
-## 0.2.4
-
-- Fix: polls stay readable when a visitor picks the site's light mode on a device set to dark. New guides for use cases and posts and pages.
-
-## 0.2.3
-
-- New: one field per answer on the poll form, and the next appears as you type. Fields show only when they apply.
-- New: pick open and close times from a date picker and a time list (UTC).
-- Fix: Position on the page now places the poll above or below the content.
-- Fix: the post editor's Poll panel names the shared poll visitors see.
-- Fix: delete asks once. Cleaner poll card, brand-colour bars, plain sign-in note.
-
-## 0.2.2
-
-- Fix: the page editor Poll panel can open a poll, and new polls open so visitors can vote.
-- Fix: the existing-poll list starts with "Choose a poll".
+- New: poll stats on the list, a results bar chart, and an optional This page's poll block for post text.
 
 Older versions: https://github.com/wbcomdesigns/emdash-polls/blob/main/CHANGELOG.md

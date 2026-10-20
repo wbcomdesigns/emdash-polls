@@ -134,7 +134,7 @@ Ask for nothing more without the owner's agreement: every capability is shown to
 
 ### `polls`
 
-Row id: Random id made at create time. Indexes: `status`, `createdAt`, `attach_key`.
+Row id: Random id made at create time. Indexes: `status`, `createdAt`, `attach_key`, `attach` (0.5.0: the poll slot finds page, content type and whole-site polls in one query).
 
 | Field | Type | Notes |
 | --- | --- | --- |
@@ -143,10 +143,12 @@ Row id: Random id made at create time. Indexes: `status`, `createdAt`, `attach_k
 | `multiple` | boolean | Allow more than one choice |
 | `allow_change` | boolean | Member may change their vote while open |
 | `results` | string | `always`, `after_vote` or `after_close` |
-| `status` | string | `draft`, `open` or `closed` |
+| `status` | string | `draft`, `open` or `closed` as the owner set it. What visitors see comes from this and the dates on every read (`effectiveStatus`); no read stores a status (0.5.0). `deleting` marks a poll the owner deleted while its votes are removed in steps: it is hidden from every view |
+| `deleted_at` | string | Deleting polls only: ISO time of the delete. The poll row stays at least 30 seconds after it, so a vote that loaded the poll just before cannot leave rows behind |
+| `purge` | boolean | Deleting polls only: a sweep after those 30 seconds found no vote rows; the next step deletes the count record and the poll row |
 | `closes_at` | string | ISO time or empty |
 | `thanks` | string | Optional line shown after voting. Plain text, up to 140 characters |
-| `opens_at` | string | ISO time or empty. A draft with a future time shows as Scheduled and opens on read |
+| `opens_at` | string | ISO time or empty. A draft with a future time shows as Scheduled, and is open from that time on (read from the date, never stored) |
 | `position` | string | `above` or `below` the content when attached. Default `below` |
 | `numbers` | string | `full` (percent and count) or `percent`. Admin always shows counts |
 | `createdAt` | string | ISO time |
@@ -162,11 +164,33 @@ Row id: `<pollId>:<memberId>:<optionId>`. One row per chosen option. A guest's r
 | Field | Type | Notes |
 | --- | --- | --- |
 | `poll` | string | Poll id |
-| `poll_option` | string | `<pollId>:<optionId>`. Counted with `storage.count` for tallies |
+| `poll_option` | string | `<pollId>:<optionId>`. Counted with `storage.count` when a poll's counts are rebuilt |
 | `member_id` | string | From `routeCtx.user.id` |
 | `createdAt` | string | ISO time |
 | `visitor` | string | Guests only: SHA-256 of the IP plus a per-site salt. Empty for members |
 | `member_name` | string | Only on a named poll: the member's display name at vote time. Empty on anonymous polls and for guests |
+
+### `tallies` (0.5.0)
+
+Stored vote counts, so a page shows results in one read (Cloudflare allows 10 requests per plugin call). Row id: the poll id. No indexes. Vote rows stay the source of truth.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `poll` | string | Poll id |
+| `a0` to `a9` | number | Votes for the poll's answers by position. Answers cannot be added, removed or reordered once a poll has votes |
+| `seq` | number | Goes up with every change a vote makes, so a rebuild step that raced a vote is not stored |
+| `step` | number | Next answer a rebuild counts |
+| `ready` | boolean | Every answer is counted. Until then readers get `counting: true` and no numbers |
+
+Written: zeros when a poll is created or copied; `+1`/`-1` per answer in one guarded `updateIf` with every vote, change and admin erase; rebuilt from the vote rows when missing (polls from 0.4.0, or after a member erased votes in more polls than one call can adjust): one query when the poll has up to 100 vote rows, otherwise an empty record first (so votes apply their change from then on), then a few `count` calls per plugin call, each step stored only if `seq` did not move and tried once more in the same call when the budget allows. On a busy poll it settles once votes pause. The owner's **Recount votes** restarts a rebuild. The admin list counts the listed polls that have none in one query per load.
+
+### Key-value
+
+| Key | Value |
+| --- | --- |
+| `vote:<who>` | Lock time, hour start and votes this hour, joined by a vertical bar. One compare-and-set takes the per-voter lock and counts the hourly limit (0.5.0; replaces `ballot:<poll>:<who>`, `rate:vote:<who>` and `rate:erase:<memberId>`). `mine` DELETE takes the same lock and counts toward the same limit; the owner's Remove votes takes the lock without counting. Lost compare-and-set: `BUSY` |
+| `visitor-salt` | Per-site salt for guest hashes |
+| `kit_pages_done` | Plugin version for which the owner said the kit is set up |
 
 ## Settings
 
@@ -184,9 +208,9 @@ Base: `/_emdash/api/plugins/polls/<name>` on a local install. A registry install
 | `get` | public | GET | `id` or `latest=1` | Poll (question, options, multiple, status, closes_at), `guestWrites`, and `results` when visible to a guest |
 | `slot` | public | GET | `collection`, `id` | The open poll attached to this entry, else to its collection, else site-wide, else nothing |
 | `ballot` | member | GET | `id` | The caller's own choices and the results they are allowed to see |
-| `vote` | member | POST | `id`, `choices` (option ids) | Saved choices and results if now visible. One compare-and-set lock per poll and voter: a second vote sent at the same moment gets `BUSY` |
-| `mine` | member | GET, DELETE | - | GET: polls the caller voted in. DELETE: erase all own votes |
-| `vote_guest` | public | POST | `id`, `choices`, honeypot field | Saved choices and results if now visible. Refused when the poll is members only, and with `MEMBERS_ONLY` plus `reason: "GUEST_UNAVAILABLE"` when the host gives no visitor address. The browser id (`visitor`) is accepted and ignored, for kits talking to the 0.3.0 engine |
+| `vote` | member | POST | `id`, `choices` (option ids) | Saved choices and results if now visible (`counting: true` instead while a poll from 0.4.0 is counted). One compare-and-set lock per voter: a second vote sent at the same moment gets `BUSY` |
+| `mine` | member | GET, DELETE | - | GET: polls the caller voted in (up to 800 vote rows). DELETE: erase all own votes, 200 rows per call; more answers `BUSY` with `reason: "MORE"` and `erased`, and the kit calls again |
+| `vote_guest` | public | POST | `id`, `choices`, honeypot field | Saved choices and results if now visible. Refused when the poll is members only, and with `MEMBERS_ONLY` plus `reason: "GUEST_UNAVAILABLE"` when the host gives no visitor address. `BUSY` when another first guest created the site's salt at the same moment. The browser id (`visitor`) is accepted and ignored, for kits talking to the 0.3.0 engine |
 | `ballot_guest` | public | GET | `id` | The visitor's own choices and the results they may see |
 | `admin` | admin | POST | Block Kit | List, form, results |
 
@@ -200,7 +224,7 @@ None.
 
 | Page | What it shows |
 | --- | --- |
-| `/polls` | Table: question, status, who can vote, anonymous or named, where it shows, total votes. Row menu: Edit, Open, Close, Results, Copy, Delete (two-step). 25 a page, Next, Previous, find by question |
+| `/polls` | Table: question, status, who can vote, anonymous or named, where it shows, total votes. Row menu: Edit, Open, Close, Results, Copy, Delete (two-step). 25 a page, Next, Previous, find by question. Delete hides the poll at once; its votes, names on a named poll included, are removed a hundred per admin load (the delete screen, this list, Results, the edit form, the dashboard widget), so on a site whose owner seldom opens the admin it can take a while |
 | Editing screen panel | On every post and page: the attached poll, pick an existing one, create one, remove. Issue #14 |
 | `/edit` | Form: question, options (one per line), choice type, who can vote, anonymous or named, where it shows, results visibility, allow change, close time |
 

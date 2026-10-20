@@ -64,9 +64,9 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | A-2 | Create, then open a poll | It appears on the site |
 | A-3 | Edit options on a poll that has votes | Labels can change. Removing an option is refused |
 | A-4 | Close a poll | Voting stops. Results follow the visibility rule. The slot still shows the poll. Actions still has Open |
-| A-5 | Delete a poll (two steps) | Poll and its votes are gone |
+| A-5 | Delete a poll (two steps) | The poll is gone from the site, the list, the dashboard card and My votes at once. Reloading Polls removes its votes a hundred per load, then the poll row |
 | A-6 | Open results | Bars, counts and totals match the ballots |
-| A-7 | Set a close time in the past, load the poll | It shows as closed |
+| A-7 | Set a close time in the past, load the poll | It shows as closed. The stored status stays as the owner set it (no read writes) |
 | A-8 | Create one poll for anyone and one for members | Each behaves as set. The list shows which is which |
 | A-9 | Attach one poll to a post, one to all posts, one site-wide | The post shows its own poll. Other posts show the collection poll. Pages show the site-wide poll |
 | A-10 | Open results of a named poll and of an anonymous one | Named: members and choices listed. Anonymous: totals only, no names anywhere |
@@ -79,6 +79,24 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | A-17 | Host gives no visitor address, open Polls | One line: guests cannot vote here, with the Guest voting guide link. Not shown when the host gives an address |
 | A-18 | Polls screen at 1440, 768 and 390 with the setup card | Six-line command fully visible at 1440 and 768, `main` does not scroll sideways. At 390 the clone address line is cut and the guide link under it ("Copy it from the install guide on a phone") gives the full command |
 | A-19 | Press Visitor pages are set up, then Show the setup steps again; update the plugin | The card hides, comes back on Show the setup steps again, and comes back after a version change. The list names a content type (Pages), not "A content type" |
+| A-20 | Site updated from 0.4.0 with a poll of 100+ votes: open it on the site, then Results in admin | The site shows "Results are being counted" on the first view at most, then exact bars. Results says Counting votes with Continue counting until done, then totals that match the ballots. The list shows Counting, then the number |
+| A-21 | Results, Recount votes, confirm | Counting votes banner, Continue counting until done, same totals as before |
+| A-22 | Named poll with 30+ members: Results, Next, Previous | 25 members a page or fewer, no member split across pages, Previous returns to the first page |
+| A-23 | Find by question on a site with 300+ polls, for a question older than the newest 300 | No match on the first page, Next finds it |
+
+## Cloudflare (call budget, every release)
+
+Run on the Cloudflare testbed with the plugin from the registry and a seeded busy poll (10 answers, 500 votes, named). Every case must answer without "Too many subrequests" and without "Something went wrong".
+
+| ID | Steps | Expected |
+| --- | --- | --- |
+| C-1 | Guest votes on a fresh poll, then changes the vote (allow change on) | Saved, bars show, totals move by one each way. Reload: same totals |
+| C-2 | Member votes on the busy poll, changes five answers | Saved, totals exact |
+| C-3 | Polls list load, Next and Previous, Find (and Next on a search with no match among the newest polls); Open, Close, Delete (asks), Delete poll, Copy, Edit and Save | Each screen loads; after Delete poll the list loads and the poll is gone |
+| C-4 | Results of the busy poll, Next on named voters, Remove votes on one member, Recount votes and Continue counting | Each loads, totals drop by that member's answers |
+| C-5 | Post editor Poll panel: load, attach, open, remove, create here | Each loads |
+| C-6 | My votes as a member with votes in many polls, then Delete my votes | List loads, erase finishes, totals drop |
+| C-7 | Dashboard Open polls card | Loads with vote counts |
 
 ## Presentation, every screen
 

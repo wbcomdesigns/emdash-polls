@@ -34,8 +34,12 @@
 			"indexes": [
 				"status",
 				"createdAt",
-				"attach_key"
+				"attach_key",
+				"attach"
 			]
+		},
+		"tallies": {
+			"indexes": []
 		},
 		"votes": {
 			"indexes": [

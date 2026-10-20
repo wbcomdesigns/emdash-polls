@@ -7,6 +7,7 @@ export const polls = {
 	closed: "This poll is closed.",
 	hidden: "Results will show after you vote.",
 	hiddenClosed: "Results will show after the poll closes.",
+	counting: "Results are being counted. They show here in a moment.",
 	answers: "Answers",
 	vote: "Vote",
 	voted: "You voted.",

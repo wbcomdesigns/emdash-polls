@@ -1,13 +1,12 @@
 import type { PluginContext } from "emdash/plugin";
 
-import type { BlockResponse } from "./admin";
+import { drawn, type BlockResponse } from "./admin";
 import {
 	answerFields,
 	answersFromForm,
 	applyOptionEdits,
-	applySchedule,
-	attachLabel,
 	countVotes,
+	createPoll,
 	effectiveStatus,
 	entryAttachKey,
 	entryPublished,
@@ -18,7 +17,6 @@ import {
 	parsePoll,
 	pollForEntry,
 	pollForSlot,
-	putPoll,
 	statusLabel,
 } from "./lib/polls";
 import { asBoolean, asRecord, asString } from "./util";
@@ -66,7 +64,7 @@ async function renderPanelBody(
 	if (!attached) {
 		// Nothing on this page itself, but a poll attached to the content type or the whole site may still show here.
 		const shared = await pollForSlot(ctx, entry.collection, entry.id);
-		const showing = shared && effectiveStatus(await applySchedule(ctx, shared)) !== "draft" ? shared : null;
+		const showing = shared && effectiveStatus(shared) !== "draft" ? shared : null;
 		const where = showing?.attach === "site" ? "the whole site" : "every entry of this content type";
 		return {
 			blocks: [
@@ -214,7 +212,7 @@ async function createHere(ctx: Ctx, entry: { collection: string; id: string }, v
 		attach_key: entryAttachKey(entry.collection, entry.id),
 		status: openNow ? "open" : "draft",
 	});
-	await putPoll(ctx, newId("p"), poll);
+	await createPoll(ctx, newId("p"), poll);
 	return renderPanel(ctx, entry, {
 		toast: { message: openNow ? "Poll created and opened on this page." : "Poll created on this page.", type: "success" },
 	});
@@ -250,7 +248,11 @@ async function removeHere(ctx: Ctx, entry: { collection: string; id: string }): 
 	return renderPanel(ctx, entry, { toast: { message: "Poll removed from this page.", type: "success" } });
 }
 
-export async function handleEditorPanel(routeCtx: RouteCtx, ctx: Ctx): Promise<BlockResponse> {
+export function handleEditorPanel(routeCtx: RouteCtx, ctx: Ctx): Promise<BlockResponse> {
+	return drawn(() => routePanel(routeCtx, ctx));
+}
+
+async function routePanel(routeCtx: RouteCtx, ctx: Ctx): Promise<BlockResponse> {
 	const entry = entryOf(routeCtx);
 	if (!entry) {
 		return {

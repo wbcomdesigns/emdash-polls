@@ -9,7 +9,7 @@ Members who are signed in to your site can see every poll they voted in, and del
 ## What a member sees
 
 - Each poll they voted in, its status, and what they chose.
-- **Delete my votes**, which asks for a second click before it removes their votes from every poll on the site. Totals drop to match.
+- **Delete my votes**, which asks for a second click before it removes their votes from every poll on the site. Totals drop to match. A member with votes in hundreds of polls is erased in a few steps the page runs by itself.
 - If they have not voted yet, a short note saying so.
 - If they are not signed in, a plain prompt to sign in.
 

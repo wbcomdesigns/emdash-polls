@@ -199,12 +199,13 @@ describe("hourly limit and BUSY", () => {
 		dispose = site.dispose;
 		await site.rt.fixtures.plugin.storage(POLLS, "p", poll());
 		// Another request holds this voter's lock.
-		await site.rt.fixtures.plugin.kv("ballot:p:ana", String(Date.now()));
+		// 0.5.0: one key per voter holds the lock time, the hour start and the votes this hour.
+		await site.rt.fixtures.plugin.kv("vote:ana", `${Date.now()}|0|0`);
 		for (let i = 0; i < 12; i += 1) {
 			expect(await site.call("vote", { id: "p", choices: ["blue"] }, site.as(ana))).toMatchObject({ error: { code: "BUSY" } });
 		}
 		// The lock goes stale; the next vote is the first one that counts.
-		await site.rt.fixtures.plugin.kv("ballot:p:ana", "0");
+		await site.rt.fixtures.plugin.kv("vote:ana", "0|0|0");
 		expect(await site.call("vote", { id: "p", choices: ["blue"] }, site.as(ana))).toMatchObject({ ok: true });
 	});
 });

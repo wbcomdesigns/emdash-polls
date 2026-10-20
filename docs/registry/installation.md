@@ -19,7 +19,7 @@ Checked on EmDash 1.3.1 with the `blog` template on Node.
    ```bash
    kit="$(mktemp -d)" &&
      git clone --depth 1 \
-       --branch v0.4.0 \
+       --branch v0.5.0 \
        https://github.com/wbcomdesigns/emdash-polls \
        "$kit/emdash-polls" &&
      "$kit/emdash-polls/scripts/add-to-site.sh" .
@@ -31,4 +31,4 @@ Checked on EmDash 1.3.1 with the `blog` template on Node.
 
 After an update, run step 2 with the new tag.
 
-Guide: https://github.com/wbcomdesigns/emdash-polls/blob/v0.4.0/docs/website/getting-started/install.md
+Guide: https://github.com/wbcomdesigns/emdash-polls/blob/v0.5.0/docs/website/getting-started/install.md

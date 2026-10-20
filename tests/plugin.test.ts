@@ -332,6 +332,13 @@ describe("admin", () => {
 			site.as(admin),
 		)) as { toast?: { message: string } };
 		expect(deleted.toast?.message).toBe("Poll deleted.");
+		// Hidden at once; the row goes on later list loads, after its votes and a grace time for votes in flight.
+		expect(await site.call("get", { id: row.id }, { method: "GET" })).toMatchObject({ ok: false, error: { code: "NOT_FOUND" } });
+		await site.call("admin", { type: "page_load", page: "/polls" }, site.as(admin));
+		expect(await site.rt.inspect.storage.get(POLLS, row.id)).not.toBeNull();
+		const marked = (await site.rt.inspect.storage.get<Record<string, unknown>>(POLLS, row.id))!;
+		await site.rt.fixtures.plugin.storage(POLLS, row.id, { ...marked, deleted_at: "2020-01-01T00:00:00.000Z" });
+		for (let i = 0; i < 2; i += 1) await site.call("admin", { type: "page_load", page: "/polls" }, site.as(admin));
 		expect(await site.rt.inspect.storage.get(POLLS, row.id)).toBeNull();
 	});
 
@@ -594,7 +601,7 @@ describe("public get", () => {
 		expect(got.results).toBeDefined();
 	});
 
-	it("hides after_close results while open, then closes on read and shows them", async () => {
+	it("hides after_close results while open, then shows them once the close time passes, without storing a status", async () => {
 		const site = await openSite();
 		dispose = site.dispose;
 		const openHidden = samplePoll({ results: "after_close", rev: "r-open" });
@@ -635,8 +642,9 @@ describe("public get", () => {
 				],
 			},
 		});
+		// A read never writes the status: it comes from the dates every time.
 		expect(await site.rt.inspect.storage.get<{ status: string }>(POLLS, "poll_due")).toMatchObject({
-			status: "closed",
+			status: "open",
 		});
 
 		await site.rt.fixtures.plugin.storage(
@@ -653,7 +661,7 @@ describe("public get", () => {
 		};
 		expect(opened.poll.status).toBe("open");
 		expect(await site.rt.inspect.storage.get<{ status: string }>(POLLS, "poll_due_open")).toMatchObject({
-			status: "open",
+			status: "draft",
 		});
 	});
 
