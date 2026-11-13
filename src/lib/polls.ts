@@ -71,6 +71,7 @@ export function emptyPoll(now = nowIso()): Poll {
 		named: false,
 		attach: "none",
 		attach_key: "",
+		created_by: "",
 		rev: newRev(),
 	};
 }
@@ -112,6 +113,7 @@ export function parsePoll(input: unknown, fallback: Partial<Poll> = {}): Poll {
 		named: asBoolean(raw.named ?? fallback.named),
 		attach: oneOf(raw.attach ?? fallback.attach, ATTACH, "none"),
 		attach_key: asString(raw.attach_key ?? fallback.attach_key),
+		created_by: asString(raw.created_by ?? fallback.created_by),
 		rev: asString(raw.rev || fallback.rev) || newRev(),
 	};
 }

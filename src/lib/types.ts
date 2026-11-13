@@ -38,6 +38,8 @@ export type Poll = {
 	named: boolean;
 	attach: PollAttach;
 	attach_key: string;
+	/** Member who made the poll from a page's Poll panel. Empty for polls made in the admin. */
+	created_by: string;
 	/** Write token for admin decisions. Not shown on screens. */
 	rev: string;
 };

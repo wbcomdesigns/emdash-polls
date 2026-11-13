@@ -96,12 +96,12 @@ describe("0.5.1 Poll panel for Editors and Authors", () => {
 		expect(await site.rt.inspect.storage.get(POLLS, "p_site")).toMatchObject({ attach: "entry" });
 	});
 
-	it("lets an Author use the panel on their own post and take an unused poll", async () => {
+	it("lets an Author use the panel on their own post and take back a poll they made", async () => {
 		const site = await openSite();
 		dispose = site.dispose;
 		await withPosts(site.rt);
 		const mine = await ownedPost(site, author, "mine");
-		await site.rt.fixtures.plugin.storage(POLLS, "p_free", poll({ question: "Free poll?" }));
+		await site.rt.fixtures.plugin.storage(POLLS, "p_free", poll({ question: "Free poll?", created_by: author.id }));
 		const as = { user: author } as never;
 
 		const load = checked("load", await site.rt.admin.loadEditorPanel("poll", "posts", mine, as));
@@ -125,6 +125,29 @@ describe("0.5.1 Poll panel for Editors and Authors", () => {
 			),
 		);
 		expect(created.toast).toMatchObject({ type: "success" });
+		const made = (await site.rt.inspect.storage.list<{ question: string; created_by: string }>(POLLS)).find((row) => row.data.question === "Mine?");
+		expect(made?.data.created_by).toBe(author.id);
+	});
+
+	it("never lets an Author take another member's detached poll or one made in the admin", async () => {
+		const site = await openSite();
+		dispose = site.dispose;
+		await withPosts(site.rt);
+		const mine = await ownedPost(site, author, "mine");
+		// Detached and closed, made by another author: taking it would let them reopen it.
+		await site.rt.fixtures.plugin.storage(POLLS, "p_theirs", poll({ question: "Theirs?", status: "closed", created_by: "someone-else" }));
+		await site.rt.fixtures.plugin.storage(POLLS, "p_admin", poll({ question: "Admin made?" }));
+		const as = { user: author } as never;
+
+		const load = JSON.stringify(checked("load", await site.rt.admin.loadEditorPanel("poll", "posts", mine, as)).blocks);
+		expect(load).not.toContain('"value":"p_theirs"');
+		expect(load).not.toContain('"value":"p_admin"');
+		for (const id of ["p_theirs", "p_admin"]) {
+			const refused = checked("attach", await site.rt.admin.submitEditorPanel("poll", "posts", mine, "attach", { poll_id: id }, as));
+			expect(refused.toast).toMatchObject({ type: "error" });
+		}
+		expect(await site.rt.inspect.storage.get(POLLS, "p_theirs")).toMatchObject({ attach: "none", status: "closed" });
+		expect(await site.rt.inspect.storage.get(POLLS, "p_admin")).toMatchObject({ attach: "none" });
 	});
 
 	it("never lets an Author pull a poll off another page or the whole site", async () => {

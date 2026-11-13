@@ -83,7 +83,7 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | A-21 | Results, Recount votes, confirm | Counting votes banner, Continue counting until done, same totals as before |
 | A-22 | Named poll with 30+ members: Results, Next, Previous | 25 members a page or fewer, no member split across pages, Previous returns to the first page |
 | A-23 | Find by question on a site with 300+ polls, for a question older than the newest 300 | No match on the first page, Next finds it |
-| A-24 | Sign in as an Editor, open someone else's saved post, expand the Poll panel; then as an Author on their own post; then as a Contributor | Editor and Author can create, open, remove and attach. The Author's existing-poll list shows only unattached polls. The Contributor's panel does not load |
+| A-24 | Sign in as an Editor, open someone else's saved post, expand the Poll panel; then as an Author on their own post; then as a Contributor | Editor and Author can create, open, remove and attach. The Author's existing-poll list shows only their own polls that no page uses. The Contributor's panel does not load |
 
 ## Cloudflare (call budget, every release)
 

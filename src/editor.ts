@@ -25,19 +25,27 @@ type Ctx = PluginContext;
 type RouteCtx = {
 	input: unknown;
 	ui?: { entry?: { collection: string; id: string } };
-	user?: { role: number };
+	user?: { id?: string; role: number };
 };
-/** The entry the panel is open on. `anyEntry` is false below Editor (EmDash role 40, content:edit_any). */
-type Entry = { collection: string; id: string; anyEntry?: boolean };
+/**
+ * The entry the panel is open on. `anyEntry` is false below Editor (EmDash role 40, content:edit_any);
+ * `by` is the member using the panel.
+ */
+type Entry = { collection: string; id: string; anyEntry?: boolean; by: string };
 
 function entryOf(routeCtx: RouteCtx): Entry | null {
 	const entry = routeCtx.ui?.entry;
 	if (!entry?.collection || !entry.id) return null;
-	return { collection: entry.collection, id: entry.id, anyEntry: (routeCtx.user?.role ?? 0) >= 40 };
+	return { collection: entry.collection, id: entry.id, anyEntry: (routeCtx.user?.role ?? 0) >= 40, by: routeCtx.user?.id ?? "" };
 }
 
-/** An Author may only take a poll no other page or slot uses, so they never change what another entry shows. */
-const mayTake = (entry: Entry, poll: { attach: string }) => entry.anyEntry === true || poll.attach === "none";
+/**
+ * Below Editor, a member may only take back a poll they made from the panel themselves and that no page
+ * or slot uses now: never another member's poll (even a closed one they could then reopen), never one
+ * made in the admin.
+ */
+const mayTake = (entry: Entry, poll: { attach: string; created_by: string }) =>
+	entry.anyEntry === true || (poll.attach === "none" && entry.by !== "" && poll.created_by === entry.by);
 
 /** The panel, with one plain line first when the page is not published yet. */
 async function renderPanel(
@@ -220,6 +228,7 @@ async function createHere(ctx: Ctx, entry: Entry, values: Record<string, unknown
 		attach: "entry",
 		attach_key: entryAttachKey(entry.collection, entry.id),
 		status: openNow ? "open" : "draft",
+		created_by: entry.by,
 	});
 	await createPoll(ctx, newId("p"), poll);
 	return renderPanel(ctx, entry, {

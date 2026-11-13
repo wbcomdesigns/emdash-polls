@@ -1,7 +1,7 @@
 ## 0.5.1
 
 - Fix      - The post editor's Poll panel works for Editors, and for Authors on their own entries.
-- Security - An Author can attach only a poll no other page or slot uses.
+- Security - An Author can attach only their own poll that no page uses now.
 - Compat   - Needs EmDash 1.2.0 or later.
 
 Copy the kit again after you update, from your site's root folder:
