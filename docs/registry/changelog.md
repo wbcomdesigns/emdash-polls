@@ -1,3 +1,20 @@
+## 0.5.1
+
+- Fix      - The post editor's Poll panel works for Editors, and for Authors on their own entries.
+- Security - An Author can attach only a poll no other page or slot uses.
+- Compat   - Needs EmDash 1.2.0 or later.
+
+Copy the kit again after you update, from your site's root folder:
+
+```bash
+kit="$(mktemp -d)" &&
+  git clone --depth 1 \
+    --branch v0.5.1 \
+    https://github.com/wbcomdesigns/emdash-polls \
+    "$kit/emdash-polls" &&
+  "$kit/emdash-polls/scripts/add-to-site.sh" .
+```
+
 ## 0.5.0
 
 Every poll page, vote and admin screen now fits Cloudflare's limit of 10 requests per plugin call.
@@ -9,16 +26,7 @@ Every poll page, vote and admin screen now fits Cloudflare's limit of 10 request
 - Fix      - On Cloudflare a guest vote no longer shows "Something went wrong" after it was saved.
 - Fix      - On Cloudflare the Polls screen, Results, My votes and the Poll panel no longer fail on a busy site.
 
-A poll from an earlier version is counted the first time it is opened. Copy the kit again after you update, from your site's root folder:
-
-```bash
-kit="$(mktemp -d)" &&
-  git clone --depth 1 \
-    --branch v0.5.0 \
-    https://github.com/wbcomdesigns/emdash-polls \
-    "$kit/emdash-polls" &&
-  "$kit/emdash-polls/scripts/add-to-site.sh" .
-```
+A poll from an earlier version is counted the first time it is opened.
 
 ## 0.4.0
 
@@ -26,8 +34,4 @@ kit="$(mktemp -d)" &&
 - New: a Set up visitor pages card and `scripts/add-to-site.sh` copy the kit in one command.
 - Security: guests vote only where the host gives the visitor's address. Two votes sent at once by one voter count once.
 
-## 0.3.0
-
-- New: poll stats on the list, a results bar chart, and an optional This page's poll block for post text.
-
-Older versions: https://github.com/wbcomdesigns/emdash-polls/blob/main/CHANGELOG.md
+Earlier versions: see CHANGELOG.md in the repository.

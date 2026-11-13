@@ -25,18 +25,24 @@ type Ctx = PluginContext;
 type RouteCtx = {
 	input: unknown;
 	ui?: { entry?: { collection: string; id: string } };
+	user?: { role: number };
 };
+/** The entry the panel is open on. `anyEntry` is false below Editor (EmDash role 40, content:edit_any). */
+type Entry = { collection: string; id: string; anyEntry?: boolean };
 
-function entryOf(routeCtx: RouteCtx): { collection: string; id: string } | null {
+function entryOf(routeCtx: RouteCtx): Entry | null {
 	const entry = routeCtx.ui?.entry;
 	if (!entry?.collection || !entry.id) return null;
-	return { collection: entry.collection, id: entry.id };
+	return { collection: entry.collection, id: entry.id, anyEntry: (routeCtx.user?.role ?? 0) >= 40 };
 }
+
+/** An Author may only take a poll no other page or slot uses, so they never change what another entry shows. */
+const mayTake = (entry: Entry, poll: { attach: string }) => entry.anyEntry === true || poll.attach === "none";
 
 /** The panel, with one plain line first when the page is not published yet. */
 async function renderPanel(
 	ctx: Ctx,
-	entry: { collection: string; id: string },
+	entry: Entry,
 	extra?: Pick<BlockResponse, "toast">,
 ): Promise<BlockResponse> {
 	const panel = await renderPanelBody(ctx, entry, extra);
@@ -49,13 +55,13 @@ async function renderPanel(
 
 async function renderPanelBody(
 	ctx: Ctx,
-	entry: { collection: string; id: string },
+	entry: Entry,
 	extra?: Pick<BlockResponse, "toast">,
 ): Promise<BlockResponse> {
 	const attached = await pollForEntry(ctx, entry.collection, entry.id);
 	const others = (await listPolls(ctx, { limit: 25 })).items.filter((poll) => poll.id !== attached?.id);
 	const pickOptions = others
-		.filter((poll) => poll.question)
+		.filter((poll) => poll.question && mayTake(entry, poll))
 		.map((poll) => ({
 			label: `${poll.question} (${statusLabel(poll)})`,
 			value: poll.id,
@@ -171,13 +177,16 @@ async function renderPanelBody(
 	};
 }
 
-async function attachExisting(ctx: Ctx, entry: { collection: string; id: string }, pollId: string): Promise<BlockResponse> {
+async function attachExisting(ctx: Ctx, entry: Entry, pollId: string): Promise<BlockResponse> {
 	if (!pollId) {
 		return renderPanel(ctx, entry, { toast: { message: "Choose a poll.", type: "error" } });
 	}
 	const poll = await getPoll(ctx, pollId);
 	if (!poll) {
 		return renderPanel(ctx, entry, { toast: { message: "That poll is gone.", type: "error" } });
+	}
+	if (!mayTake(entry, poll)) {
+		return renderPanel(ctx, entry, { toast: { message: "That poll is in use elsewhere. Ask an editor to move it.", type: "error" } });
 	}
 	const applied = await ctx.storage.polls.updateIf(poll.id, {
 		where: { rev: poll.rev },
@@ -193,7 +202,7 @@ async function attachExisting(ctx: Ctx, entry: { collection: string; id: string 
 	return renderPanel(ctx, entry, { toast: { message: "Poll attached to this page.", type: "success" } });
 }
 
-async function createHere(ctx: Ctx, entry: { collection: string; id: string }, values: Record<string, unknown>): Promise<BlockResponse> {
+async function createHere(ctx: Ctx, entry: Entry, values: Record<string, unknown>): Promise<BlockResponse> {
 	const question = asString(values.question);
 	if (!question) {
 		return renderPanel(ctx, entry, { toast: { message: "Write a question.", type: "error" } });
@@ -218,7 +227,7 @@ async function createHere(ctx: Ctx, entry: { collection: string; id: string }, v
 	});
 }
 
-async function openHere(ctx: Ctx, entry: { collection: string; id: string }): Promise<BlockResponse> {
+async function openHere(ctx: Ctx, entry: Entry): Promise<BlockResponse> {
 	const poll = await pollForEntry(ctx, entry.collection, entry.id);
 	if (!poll) {
 		return renderPanel(ctx, entry, { toast: { message: "No poll on this page.", type: "info" } });
@@ -233,7 +242,7 @@ async function openHere(ctx: Ctx, entry: { collection: string; id: string }): Pr
 	return renderPanel(ctx, entry, { toast: { message: "Poll opened.", type: "success" } });
 }
 
-async function removeHere(ctx: Ctx, entry: { collection: string; id: string }): Promise<BlockResponse> {
+async function removeHere(ctx: Ctx, entry: Entry): Promise<BlockResponse> {
 	const poll = await pollForEntry(ctx, entry.collection, entry.id);
 	if (!poll) {
 		return renderPanel(ctx, entry, { toast: { message: "No poll on this page.", type: "info" } });

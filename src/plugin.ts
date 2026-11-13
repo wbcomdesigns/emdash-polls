@@ -56,9 +56,12 @@ const plugin: SandboxedPlugin = {
 		},
 		mine: { permission: MEMBER, methods: ["GET", "DELETE"], handler: handleMine },
 		admin: {
+			permission: "plugins:manage",
 			handler: async (routeCtx, ctx) => handleAdmin(routeCtx.input, ctx, { guestsOff: !guestWrites(routeCtx) }),
 		},
 		editor_poll: {
+			// Authors and up. The host also checks the caller may edit this entry (own, or any for Editors).
+			permission: "content:edit_own",
 			handler: async (routeCtx, ctx) => handleEditorPanel(routeCtx, ctx),
 		},
 	},
