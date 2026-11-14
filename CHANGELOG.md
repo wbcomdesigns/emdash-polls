@@ -2,6 +2,14 @@
 
 Versions match `package.json`, the git tag and the registry release. Newest first.
 
+## [0.5.1]
+
+Editors and Authors can use the post editor's Poll panel. Needs EmDash 1.2.0 or later.
+
+- Fix      - The post editor's Poll panel works for Editors on any entry and for Authors on their own entries, not only for site admins.
+- Security - An Author can attach only a poll they made in the panel themselves that no page uses now, so they never change another entry or reopen someone else's poll.
+- Compat   - The release declares EmDash 1.2.0 or later, so an older site is told before it installs.
+
 ## [0.5.0]
 
 Every poll page, vote and admin screen now fits Cloudflare's limit of 10 requests per plugin call. Copy the kit again after you update.

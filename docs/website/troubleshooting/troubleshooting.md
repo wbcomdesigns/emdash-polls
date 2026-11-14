@@ -47,3 +47,9 @@ The kit's two style files must be copied: `src/styles/polls.css` and `src/styles
 ## No poll list in the post editor's Poll panel
 
 **Use an existing poll** lists polls that are not already attached to this page. Create a poll first on the Polls screen, or use the form in the panel.
+
+For an Author, the list shows only polls they made in the panel themselves and that no page uses now. Polls made in the admin, and other members' polls, do not appear. An Editor or admin sees every poll and can move it.
+
+## The Poll panel says I cannot use it
+
+The panel works for Editors and admins on any post or page, and for Authors on their own. Contributors and Subscribers cannot use it. It needs EmDash 1.2.0 or later.
