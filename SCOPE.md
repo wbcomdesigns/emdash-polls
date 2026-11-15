@@ -22,9 +22,9 @@ Let the owner ask a question, let signed-in members vote once, and show results 
 
 **Who it is for:** Blogs, communities and product sites that want quick audience input without a form builder.
 
-**WordPress source:** WB Polls (`~/dev/repos/buddypress-polls`) for vocabulary only. Its BuddyPress activity features do not apply. Do not copy PHP.
+**WordPress source:** WB Polls (the WordPress plugin) for vocabulary only. Its BuddyPress activity features do not apply. Do not copy PHP.
 
-**Brand:** WB Polls, teal. Full kit (mark, wordmark, horizontal, square, each in light, dark and white, plus PNGs and social banners) and the brand sheet: `~/Documents/brand logos/wb-polls/`. `icon.png` and `images/banner.png` in this repo come from it. Rebuild with the pipeline in `~/Documents/brand logos/_render-src/`, never by hand. The lockup tagline names WordPress, so use the mark and the no-tagline lockup on EmDash.
+**Brand:** WB Polls, teal. Full kit (mark, wordmark, horizontal, square, each in light, dark and white, plus PNGs and social banners) and the brand sheet are in the brand kit. `icon.png` and `images/banner.png` in this repo come from it. Rebuild from the brand kit, never by hand. The lockup tagline names WordPress, so use the mark and the no-tagline lockup on EmDash.
 
 ## Fits every kind of site
 

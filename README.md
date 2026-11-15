@@ -1,39 +1,77 @@
-# WB Polls for EmDash
+<p align="center"><img src="images/banner.png" alt="WB Polls for EmDash" width="900"></p>
 
-Create polls, let visitors or members vote once, and show live results anywhere on your site.
+<h3 align="center">Ask a question, show live results</h3>
 
-Status: 0.5.1 in review. 0.4.0 is live on the EmDash registry as `@vapvarun.bsky.social/polls`.
+<p align="center">Create polls, let visitors or members vote once, and show live results anywhere on your EmDash site.</p>
 
-- Install on a site: [docs/website/getting-started/install.md](docs/website/getting-started/install.md)
-- Scope and schema: [SCOPE.md](SCOPE.md)
-- Plan and decisions: [PLAN.md](PLAN.md)
-- State of the work: [ops/handoff.md](ops/handoff.md)
-- How to build and release: [CONTRIBUTING.md](CONTRIBUTING.md)
-- Release cases: [docs/qa/QA_CHECKLIST.md](docs/qa/QA_CHECKLIST.md)
-- Registry listing copy: [docs/registry](docs/registry)
-- What changed: [CHANGELOG.md](CHANGELOG.md)
+<p align="center">
+  <a href="https://plugins.emdashcms.com/plugins/@vapvarun.bsky.social/polls"><b>Install from the EmDash registry</b></a>
+  &nbsp;·&nbsp;
+  <a href="docs/website/getting-started/introduction.md">Read the docs</a>
+  &nbsp;·&nbsp;
+  <a href="CHANGELOG.md">What's new</a>
+</p>
 
-The plugin is the engine. An EmDash plugin cannot add pages to a site, so the visible parts ship as a site kit in `site-kit/`. One command copies it: `scripts/add-to-site.sh /path/to/site`. See [site-kit/README.md](site-kit/README.md).
+<p align="center"><img src="images/screenshot-1-poll-on-post.png" alt="A poll at the end of a blog post" width="900"></p>
 
-## What it does
+## Who it is for
 
-- Admin: create, edit, open, close, delete, results with a chart, copy
-- Who can vote: anyone (where the host gives EmDash the visitor's address), or signed-in members
-- Attach to one page, a content type, or the whole site, above or below the content
-- Anonymous or named results (owner only)
-- Kit: `<Poll id />`, `<Poll latest />`, `<PollSlot />`, `<MyVotes />`, and an optional in-text block for a trusted install
-- One wording file for every visitor-facing phrase
-- My votes: a signed-in member can see and erase their own votes
+A blogger asking readers what to write next, a shop gathering opinions, or a membership site that wants a quick vote. If you want polls on your EmDash site without a separate service, WB Polls is for you.
 
-Not in this plugin: member-created polls, a poll list page, export.
+## What you get
 
-## Local lab
+**For you, the site owner**
 
-```bash
-npm install --legacy-peer-deps
-./scripts/setup-lab.sh
-./scripts/reset-lab.sh
-./scripts/prove-lab.sh
-```
+- **Polls with two to ten answers**, one choice or several.
+- **Open, close or schedule.** Open a poll when you are ready, close it by hand, or set a close time.
+- **You choose who votes and who sees results.** Anyone or signed-in members only, and results always, after a vote, or after the poll closes.
+- **Anonymous totals or named results.** Names are visible to you only.
+- **Show a poll where you want it.** On one page, on every entry of a content type, or across the whole site.
+- **Copy a poll** into a new draft with no votes.
 
-The lab is a fresh `--template blog` site on port 4332. Then open http://127.0.0.1:4332/polls-demo and http://127.0.0.1:4332/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin/plugins/polls/polls
+**For your visitors and members**
+
+- **One vote each**, with live results.
+- **My votes.** A signed-in member can see the polls they voted in and erase their own votes.
+- **Dark mode** that follows the visitor's system setting.
+
+<p align="center">
+  <img src="images/screenshot-2-results.png" alt="Poll results" width="440">
+  <img src="images/screenshot-3-poll-on-page.png" alt="A poll on a page" width="440">
+</p>
+
+## Get started
+
+1. In your EmDash dashboard, open **Registry**, search for **WB Polls** and install it. Your site needs a sandbox runner first, and the [install guide](docs/website/getting-started/install.md) shows how.
+2. Copy the site kit into your site once, with the one command in the guide.
+3. Create your first poll, open it and attach it to a page. See [Your first poll](docs/website/getting-started/first-poll.md).
+
+<p align="center">
+  <img src="images/screenshot-4-admin-list.png" alt="The Polls list in the EmDash dashboard" width="440">
+  <img src="images/screenshot-5-admin-form.png" alt="Creating a poll in the EmDash dashboard" width="440">
+</p>
+
+## Good to know
+
+- **Guests can vote only when your host gives EmDash the visitor's address,** for example on Cloudflare. Without it, guests are asked to sign in.
+- **No poll in the middle of an article** from a registry install. Place it above or below the content, or in a template.
+- **Only you create polls.** There is no member-created poll, poll list page or export yet.
+- **Free, with no paid version.**
+
+## Docs
+
+- [Introduction](docs/website/getting-started/introduction.md)
+- [Install](docs/website/getting-started/install.md)
+- [Your first poll](docs/website/getting-started/first-poll.md)
+- [Use cases](docs/website/getting-started/use-cases.md)
+- [Where polls show](docs/website/features/where-polls-show.md)
+- [Wording and look](docs/website/customize/wording-and-look.md)
+- [FAQ](docs/website/faq/faq.md) and [Troubleshooting](docs/website/troubleshooting/troubleshooting.md)
+
+## More from Wbcom Designs for EmDash
+
+[Learnomy](https://github.com/wbcomdesigns/emdash-learnomy) courses · [Listora](https://github.com/wbcomdesigns/emdash-listora) directories · [WB Reviews](https://github.com/wbcomdesigns/emdash-reviews) · [Product Roadmap](https://github.com/wbcomdesigns/emdash-roadmap) · [KnowX](https://github.com/wbcomdesigns/emdash-knowx)
+
+Found a bug or have an idea? [Open an issue](https://github.com/wbcomdesigns/emdash-polls/issues). Want to build on WB Polls? Start with [CONTRIBUTING.md](CONTRIBUTING.md).
+
+MIT licence. Made by [Wbcom Designs](https://wbcomdesigns.com).

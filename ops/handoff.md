@@ -4,7 +4,7 @@ Live: **0.4.0** on the EmDash registry as `@vapvarun.bsky.social/polls`.
 
 Public page: https://plugins.emdashcms.com/plugins/@vapvarun.bsky.social/polls
 
-Lab is `../emdash-lab-polls` on port 4332 (fresh `--template blog`). Shared judging site `~/code/emdash-lab-all` (port 4340). Cloudflare testbed `~/code/emdash-plugin-testbed`.
+Lab is `../emdash-lab-polls` on port 4332 (fresh `--template blog`). Shared judging site the shared lab site. Cloudflare testbed the Cloudflare test site.
 
 ## Next
 
