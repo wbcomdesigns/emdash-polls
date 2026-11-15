@@ -1,17 +1,19 @@
-# Handoff: WB Polls (2026-10-20)
+# Handoff: WB Polls (2026-11-15)
 
-Live: **0.4.0** on the EmDash registry as `@vapvarun.bsky.social/polls`.
+Live: **0.5.1** on the EmDash registry as `@vapvarun.bsky.social/polls`. Public page: https://plugins.emdashcms.com/plugins/@vapvarun.bsky.social/polls
 
-Public page: https://plugins.emdashcms.com/plugins/@vapvarun.bsky.social/polls
+Test on a fresh `create-emdash` blog site (registry install, kit from the release tag) and on the Cloudflare test site. On Cloudflare, redeploy after a registry install or update before judging anything (emdash-cms/emdash#4865).
 
-Lab is `../emdash-lab-polls` on port 4332 (fresh `--template blog`). Shared judging site the shared lab site. Cloudflare testbed the Cloudflare test site.
+## Next: 0.5.2
 
-## Next
+Milestone `0.5.2` on GitHub holds the work, in this order:
 
-- 0.5.0 is on branch `0.5.0` with a pull request into main (#60): every entry point fits Cloudflare's 10 requests per plugin call. `tests/bridge-budget.test.ts` pins every entry at 9 or fewer on a busy seeded site; `KNOWN_OVER` is empty.
-- Before publish: a Sonnet walk of `docs/qa/QA_CHECKLIST.md` on the Node lab and the Cloudflare testbed (cases A-5, A-20 to A-23 and C-1 to C-7 are new), the independent pre-publish review, and the owner's word.
-- Cloudflare stays "not supported yet" in `docs/registry/installation.md` and the install guide until that walk passes. The draft replacement line is in the pull request.
-- Do not republish an existing version: a registry release cannot be changed.
+- #62 Small points from the 0.5.0 Cloudflare walk
+- #64 Composite storage indexes for filtered and sorted queries
+- #66 Poll panel: Remove from this page showed no change for 7 seconds on Cloudflare
+- #69 Next release: registry install text and shared kit
+
+Then the release gate (`gate.sh`, which also checks that no public file carries machine paths and that the README is the product landing page), an independent walk on Node and Cloudflare, and publish only with the owner's go-ahead.
 
 ## What 0.5.0 changed in the data
 
