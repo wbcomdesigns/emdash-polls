@@ -14,10 +14,13 @@ import {
 	namedPage,
 	newId,
 	newRev,
+	PAST_CLOSE,
+	pastClose,
 	answerFields,
 	answersFromForm,
 	openPolls,
 	parsePoll,
+	timesError,
 	formTime,
 	parseTimeField,
 	splitTime,
@@ -88,6 +91,26 @@ function parseStamped(value: unknown): { action: string; rev: string; id: string
 	return { action, rev, id, extra: rest.join("|") };
 }
 
+/** `pages`: pages of 100 a search may read (an action's answer reads one, to stay within its budget). */
+type ListOpts = { q?: string; before?: string; after?: string; pages?: number };
+
+/** The list's page and search, carried in an action's value: `<b|a>~<bound>~<search>`. Dates hold no "~". */
+function listState(opts: ListOpts): string {
+	const q = asString(opts.q);
+	if (opts.before) return `b~${opts.before}~${q}`;
+	if (opts.after) return `a~${opts.after}~${q}`;
+	return q ? `~~${q}` : "";
+}
+
+function parseListState(extra: string): ListOpts {
+	const [dir = "", bound = "", ...rest] = extra.split("~");
+	// After an action the search reads one page of 100: the action's own calls leave no room for three.
+	const q = rest.join("~");
+	if (dir === "b" && bound) return { q, before: bound, pages: 1 };
+	if (dir === "a" && bound) return { q, after: bound, pages: 1 };
+	return { q, pages: 1 };
+}
+
 function extraOf(value: unknown): string {
 	return parseStamped(value).extra;
 }
@@ -141,6 +164,15 @@ async function upkeep(ctx: Ctx, spare: number, listed: PollRow[], tallies: Map<s
 	for (const [id, row] of await buildMissing(ctx, missing)) tallies.set(id, row);
 }
 
+/** The question in a list cell: a long one is cut at a word with an ellipsis, so the row stays readable. */
+export function shortQuestion(question: string): string {
+	if (!question) return "Untitled poll";
+	if (question.length <= 60) return question;
+	const cut = question.slice(0, 60);
+	const space = cut.lastIndexOf(" ");
+	return `${(space > 30 ? cut.slice(0, space) : cut).trimEnd()}…`;
+}
+
 function displayStatus(poll: Poll): string {
 	return statusLabel(poll);
 }
@@ -148,30 +180,32 @@ function displayStatus(poll: Poll): string {
 /** The polls list. `spare`: calls the caller leaves for upkeep (only a plain list load leaves any). */
 export async function renderList(
 	ctx: Ctx,
-	opts: { q?: string; before?: string; after?: string } = {},
+	opts: ListOpts = {},
 	extra?: Extra,
 	spare = 0,
 ): Promise<BlockResponse> {
 	const q = asString(opts.q);
-	const listed = await listPolls(ctx, { q, before: opts.before, after: opts.after, limit: PAGE });
+	const listed = await listPolls(ctx, { q, before: opts.before, after: opts.after, limit: PAGE, pages: opts.pages });
 	const typeNames = new Map((await siteCollections(ctx)).map((type) => [type.slug, type.label]));
 	const tallies = await talliesFor(ctx, listed.items);
 	await upkeep(ctx, spare, listed.items, tallies);
+	// Open, Close and Delete come back to this same page and search.
+	const here = listState(opts);
 	const rows = await Promise.all(
 		listed.items.map(async (poll) => {
 			const votes = totalOf(poll, tallies.get(poll.id) ?? null);
 			const items: Array<{ label: string; value: string }> = [{ label: "Edit", value: stamped("edit", poll.id, poll.rev) }];
 			if (displayStatus(poll) !== "Open") {
-				items.push({ label: "Open", value: stamped("open", poll.id, poll.rev) });
+				items.push({ label: "Open", value: stamped("open", poll.id, poll.rev, here) });
 			}
 			if (displayStatus(poll) === "Open") {
-				items.push({ label: "Close", value: stamped("close", poll.id, poll.rev) });
+				items.push({ label: "Close", value: stamped("close", poll.id, poll.rev, here) });
 			}
 			items.push({ label: "Results", value: stamped("results", poll.id, poll.rev) });
 			items.push({ label: "Copy", value: stamped("copy", poll.id, poll.rev) });
-			items.push({ label: "Delete", value: stamped("delete", poll.id, poll.rev) });
+			items.push({ label: "Delete", value: stamped("delete", poll.id, poll.rev, here) });
 			return {
-				poll: poll.question || "Untitled poll",
+				poll: shortQuestion(poll.question),
 				who: `${poll.who === "members" ? "Members" : "Anyone"}, ${poll.named ? "named" : "anonymous"}`,
 				where: attachLabel(poll, typeNames),
 				votes: votes === null ? "Counting" : String(votes),
@@ -231,13 +265,15 @@ export async function renderList(
 					{
 						type: "table",
 						page_action_id: "polls_page",
+						// Status and Actions come right after the question: on a phone the table scrolls sideways
+						// and only the first columns are in view (the full question shows on Edit and Results).
 						columns: [
 							{ key: "poll", label: "Poll" },
-							{ key: "who", label: "Who can vote" },
-							{ key: "where", label: "Shows on" },
-							{ key: "votes", label: "Votes" },
 							{ key: "status", label: "Status", format: "badge" },
 							{ key: "action", label: "Actions", format: "element" },
+							{ key: "votes", label: "Votes" },
+							{ key: "who", label: "Who can vote" },
+							{ key: "where", label: "Shows on" },
 						],
 						rows,
 					},
@@ -425,7 +461,7 @@ export async function renderOpenWidget(ctx: Ctx): Promise<BlockResponse> {
 	const tallies = await talliesFor(ctx, open);
 	const rows = open.map((poll) => {
 		const votes = totalOf(poll, tallies.get(poll.id) ?? null);
-		return { question: poll.question, votes: votes === null ? "Counting" : String(votes) };
+		return { question: shortQuestion(poll.question), votes: votes === null ? "Counting" : String(votes) };
 	});
 	return {
 		blocks: [
@@ -641,6 +677,8 @@ async function savePoll(ctx: Ctx, values: Record<string, unknown>): Promise<Bloc
 	const closes = parseTimeField(formTime(existing?.closes_at ?? "", values.closes_date, values.closes_time));
 	if (!opens.ok) return renderForm(ctx, existing?.id ?? "", { toast: { message: opens.error, type: "error" }, values });
 	if (!closes.ok) return renderForm(ctx, existing?.id ?? "", { toast: { message: closes.error, type: "error" }, values });
+	const times = timesError(opens.value, closes.value, existing?.closes_at ?? "");
+	if (times) return renderForm(ctx, existing?.id ?? "", { toast: { message: times, type: "error" }, values });
 
 	const thanks = asString(values.thanks);
 	if (thanks.length > THANKS_MAX) {
@@ -736,12 +774,14 @@ async function savePoll(ctx: Ctx, values: Record<string, unknown>): Promise<Bloc
 }
 
 async function moderate(ctx: Ctx, value: unknown): Promise<BlockResponse> {
-	const { action, rev, id } = parseStamped(value);
-	if (action === "delete_confirm") return confirmDelete(ctx, id, rev);
+	const { action, rev, id, extra } = parseStamped(value);
+	// Open, Close and Delete answer with the page and search the owner was on (other actions' extra parses to no search).
+	const back = parseListState(extra);
+	if (action === "delete_confirm") return confirmDelete(ctx, id, rev, back);
 	const poll = await getPoll(ctx, id);
 	const stale = statusError(poll, rev);
-	if (stale) return renderList(ctx, {}, { toast: { message: stale, type: "error" } });
-	if (!poll) return renderList(ctx, {}, { toast: { message: "That poll is gone.", type: "error" } });
+	if (stale) return renderList(ctx, back, { toast: { message: stale, type: "error" } });
+	if (!poll) return renderList(ctx, back, { toast: { message: "That poll is gone.", type: "error" } });
 
 	if (action === "edit") return renderForm(ctx, poll.id);
 	if (action === "results") return renderResults(ctx, poll, { page: extraOf(value), used: 1, tidy: true });
@@ -783,14 +823,15 @@ async function moderate(ctx: Ctx, value: unknown): Promise<BlockResponse> {
 	}
 
 	if (action === "open") {
+		if (pastClose(poll)) return renderList(ctx, back, { toast: { message: PAST_CLOSE, type: "error" } });
 		const applied = await ctx.storage.polls.updateIf(poll.id, {
 			where: { rev: poll.rev },
 			set: { status: "open", rev: newRev() },
 		});
 		if (!applied.applied) {
-			return renderList(ctx, {}, { toast: { message: "Someone else changed this poll. Open it again.", type: "error" } });
+			return renderList(ctx, back, { toast: { message: "Someone else changed this poll. Open it again.", type: "error" } });
 		}
-		return renderList(ctx, {}, { toast: { message: "Poll opened.", type: "success" } });
+		return renderList(ctx, back, { toast: { message: "Poll opened.", type: "success" } });
 	}
 
 	if (action === "close") {
@@ -799,13 +840,13 @@ async function moderate(ctx: Ctx, value: unknown): Promise<BlockResponse> {
 			set: { status: "closed", rev: newRev() },
 		});
 		if (!applied.applied) {
-			return renderList(ctx, {}, { toast: { message: "Someone else changed this poll. Open it again.", type: "error" } });
+			return renderList(ctx, back, { toast: { message: "Someone else changed this poll. Open it again.", type: "error" } });
 		}
-		return renderList(ctx, {}, { toast: { message: "Poll closed.", type: "success" } });
+		return renderList(ctx, back, { toast: { message: "Poll closed.", type: "success" } });
 	}
 
 	if (action === "delete") {
-		const list = await renderList(ctx);
+		const list = await renderList(ctx, back);
 		return {
 			...list,
 			blocks: [
@@ -823,7 +864,7 @@ async function moderate(ctx: Ctx, value: unknown): Promise<BlockResponse> {
 							label: "Delete poll",
 							action_id: "delete_confirm",
 							style: "danger",
-							value: stamped("delete_confirm", poll.id, poll.rev),
+							value: stamped("delete_confirm", poll.id, poll.rev, extra),
 						},
 						link("Keep it", "/polls"),
 					],
@@ -841,7 +882,7 @@ async function moderate(ctx: Ctx, value: unknown): Promise<BlockResponse> {
  * of the poll. What the list leaves of the budget removes its first hundred votes at once. Later admin
  * screens remove the rest a hundred at a time, then its counts and the poll row (see deleteStep).
  */
-async function confirmDelete(ctx: Ctx, id: string, rev: string): Promise<BlockResponse> {
+async function confirmDelete(ctx: Ctx, id: string, rev: string, back: ListOpts): Promise<BlockResponse> {
 	const marked = id
 		? await ctx.storage[POLLS].updateIf(id, {
 				where: { rev },
@@ -849,10 +890,10 @@ async function confirmDelete(ctx: Ctx, id: string, rev: string): Promise<BlockRe
 			})
 		: { applied: false as const };
 	if (!marked.applied) {
-		return renderList(ctx, {}, { toast: { message: "Someone else changed this poll, or it is gone. Open the list again.", type: "error" } });
+		return renderList(ctx, back, { toast: { message: "Someone else changed this poll, or it is gone. Open the list again.", type: "error" } });
 	}
 	await deleteStep(ctx, MAX_CALLS - 1 - LIST_CALLS, { id, data: marked.data }).catch(() => false);
-	return renderList(ctx, {}, { toast: { message: "Poll deleted.", type: "success" } });
+	return renderList(ctx, back, { toast: { message: "Poll deleted.", type: "success" } });
 }
 
 const KIT_DONE = "kit_pages_done";
@@ -861,8 +902,8 @@ const KIT_DONE = "kit_pages_done";
 export function kitCommand(tag: string): string {
 	return [
 		`kit="$(mktemp -d)" &&`,
-		`  git clone --depth 1 \\`,
-		`    --branch ${tag} \\`,
+		`  git -c advice.detachedHead=false clone \\`,
+		`    --depth 1 --branch ${tag} \\`,
 		`    ${REPO_URL} \\`,
 		`    "$kit/emdash-polls" &&`,
 		`  "$kit/emdash-polls/scripts/add-to-site.sh" .`,

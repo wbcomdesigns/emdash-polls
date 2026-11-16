@@ -27,8 +27,8 @@ Checked on EmDash 1.3.1 with the `blog` template, on Node and on Cloudflare Work
 
    ```bash
    kit="$(mktemp -d)" &&
-     git clone --depth 1 \
-       --branch v0.5.1 \
+     git -c advice.detachedHead=false clone \
+       --depth 1 --branch v0.5.2 \
        https://github.com/wbcomdesigns/emdash-polls \
        "$kit/emdash-polls" &&
      "$kit/emdash-polls/scripts/add-to-site.sh" .

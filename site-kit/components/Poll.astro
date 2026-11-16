@@ -210,6 +210,15 @@ const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}${position
 		});
 	}
 
+	// One request per address per page load: an above and a below slot for the same page ask for the
+	// same slot, and two cards of one poll for the same ballot. Votes never go through this.
+	const asked = new Map<string, Promise<unknown>>();
+	function once(path: string): Promise<unknown> {
+		let found = asked.get(path);
+		if (!found) asked.set(path, (found = api("polls", path)));
+		return found;
+	}
+
 	async function load(root: HTMLElement) {
 		const latest = root.dataset.latest === "1";
 		const id = root.dataset.id ?? "";
@@ -220,7 +229,7 @@ const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}${position
 			: latest
 				? "get?latest=1"
 				: `get?id=${encodeURIComponent(id)}`;
-		const got = (await api("polls", path)) as Payload;
+		const got = (await once(path)) as Payload;
 		// A slot placed for one position stays empty when the poll is set to the other one.
 		const wanted = root.dataset.position;
 		// A plugin older than 0.2.3 sends no position: treat it as the default, below, so a poll never shows twice.
@@ -236,15 +245,12 @@ const uid = `wbp-${collection ? `slot-${collection}-${entry || "none"}${position
 		}
 		// Pages are cached without regard to cookies, so sign-in is found out here: the member route
 		// answers a guest with 401 (expected, and documented in the install guide), then the guest path runs.
-		const memberBallot = (await api("polls", `ballot?id=${encodeURIComponent(got.poll.id)}`)) as Payload;
+		const memberBallot = (await once(`ballot?id=${encodeURIComponent(got.poll.id)}`)) as Payload;
 		const signedIn = Boolean(memberBallot.ok);
 		let data: Payload = got;
 		if (signedIn) data = { ...got, ...memberBallot, poll: memberBallot.poll || got.poll };
 		else if (got.poll.who === "anyone" && got.guestWrites !== false) {
-			const guest = (await api(
-				"polls",
-				`ballot_guest?id=${encodeURIComponent(got.poll.id)}&visitor=${encodeURIComponent(visitorToken())}`,
-			)) as Payload;
+			const guest = (await once(`ballot_guest?id=${encodeURIComponent(got.poll.id)}&visitor=${encodeURIComponent(visitorToken())}`)) as Payload;
 			if (guest.ok) data = { ...got, ...guest, poll: guest.poll || got.poll };
 		}
 		paint(root, data, signedIn);

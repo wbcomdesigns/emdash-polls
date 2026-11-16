@@ -5,11 +5,11 @@
 - **Node:** in your site, run `npm install @emdash-cms/sandbox-workerd workerd`, then add `sandboxRunner: "@emdash-cms/sandbox-workerd/sandbox",` inside `emdash({ ... })` in `astro.config.mjs`.
 - **Cloudflare:** add `import { sandbox } from "@emdash-cms/cloudflare";` and `sandboxRunner: sandbox(),`. It needs the Workers Paid plan, the `worker_loaders` binding named `LOADER` (uncomment it in your Wrangler config) and an R2 bucket as `storage: r2(...)`, or the install stops with "Storage error while installing plugin". Then run `npm run deploy`.
 
-Stop the dev server and start it again. **Registry** now shows in the admin menu.
+Restart the dev server. **Registry** now shows in the admin menu.
 
 **2. The plugin is the engine. Visitor pages come from its site kit.** A registry plugin cannot add pages to your site. Until you copy the kit, its addresses (for example `/account/votes`) show your site's 404 page. That is expected. The kit copy below takes one command.
 
-Checked on EmDash 1.3.1 with the `blog` template, on Node and on Cloudflare Workers (registry install).
+Checked on EmDash 1.3.1 with the `blog` template, registry install, on Node and Cloudflare Workers.
 
 ## Install
 
@@ -18,8 +18,8 @@ Checked on EmDash 1.3.1 with the `blog` template, on Node and on Cloudflare Work
 
    ```bash
    kit="$(mktemp -d)" &&
-     git clone --depth 1 \
-       --branch v0.5.1 \
+     git -c advice.detachedHead=false clone \
+       --depth 1 --branch v0.5.2 \
        https://github.com/wbcomdesigns/emdash-polls \
        "$kit/emdash-polls" &&
      "$kit/emdash-polls/scripts/add-to-site.sh" .
@@ -29,6 +29,6 @@ Checked on EmDash 1.3.1 with the `blog` template, on Node and on Cloudflare Work
 4. Add the menu link it printed in Admin, Menus.
 5. Open Polls in the admin.
 
-After an update, run step 2 with the new tag.
+After an update, run step 2 with the new tag. On Cloudflare, run `npm run deploy` after every install or update, or some requests miss the plugin (emdash-cms/emdash#4865).
 
-Guide: https://github.com/wbcomdesigns/emdash-polls/blob/v0.5.1/docs/website/getting-started/install.md
+Guide: https://github.com/wbcomdesigns/emdash-polls/blob/v0.5.2/docs/website/getting-started/install.md

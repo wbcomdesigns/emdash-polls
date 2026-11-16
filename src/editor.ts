@@ -14,7 +14,9 @@ import {
 	listPolls,
 	newId,
 	newRev,
+	PAST_CLOSE,
 	parsePoll,
+	pastClose,
 	pollForEntry,
 	pollForSlot,
 	statusLabel,
@@ -52,8 +54,9 @@ async function renderPanel(
 	ctx: Ctx,
 	entry: Entry,
 	extra?: Pick<BlockResponse, "toast">,
+	q = "",
 ): Promise<BlockResponse> {
-	const panel = await renderPanelBody(ctx, entry, extra);
+	const panel = await renderPanelBody(ctx, entry, extra, q);
 	if (await entryPublished(ctx, entry.collection, entry.id)) return panel;
 	return {
 		...panel,
@@ -64,10 +67,12 @@ async function renderPanel(
 async function renderPanelBody(
 	ctx: Ctx,
 	entry: Entry,
-	extra?: Pick<BlockResponse, "toast">,
+	extra: Pick<BlockResponse, "toast"> | undefined,
+	q: string,
 ): Promise<BlockResponse> {
 	const attached = await pollForEntry(ctx, entry.collection, entry.id);
-	const others = (await listPolls(ctx, { limit: 25 })).items.filter((poll) => poll.id !== attached?.id);
+	// The picker lists the 25 newest polls, or with a search the newest 25 whose question matches (an older poll on a busy site).
+	const others = (await listPolls(ctx, { q, limit: 25 })).items.filter((poll) => poll.id !== attached?.id);
 	const pickOptions = others
 		.filter((poll) => poll.question && mayTake(entry, poll))
 		.map((poll) => ({
@@ -91,6 +96,17 @@ async function renderPanelBody(
 							type: "section",
 							text: "No poll on this page yet. Attach one, or create it below. Visitors see it once it is open.",
 						},
+				...(others.length || q
+					? [
+							{
+								type: "form",
+								block_id: "find",
+								fields: [{ type: "text_input", action_id: "q", label: "Find a poll by its question", initial_value: q }],
+								submit: { action_id: "find_poll", label: "Find" },
+							} as const,
+						]
+					: []),
+				...(q && !pickOptions.length ? [{ type: "context", text: `No poll you can attach matches "${q}".` }] : []),
 				...(pickOptions.length
 					? [
 							{
@@ -241,6 +257,7 @@ async function openHere(ctx: Ctx, entry: Entry): Promise<BlockResponse> {
 	if (!poll) {
 		return renderPanel(ctx, entry, { toast: { message: "No poll on this page.", type: "info" } });
 	}
+	if (pastClose(poll)) return renderPanel(ctx, entry, { toast: { message: PAST_CLOSE, type: "error" } });
 	const applied = await ctx.storage.polls.updateIf(poll.id, {
 		where: { rev: poll.rev },
 		set: { status: "open", rev: newRev() },
@@ -289,6 +306,9 @@ async function routePanel(routeCtx: RouteCtx, ctx: Ctx): Promise<BlockResponse> 
 	const type = asString(raw.type);
 	if (type === "form_submit" && asString(raw.action_id) === "attach") {
 		return attachExisting(ctx, entry, asString(asRecord(raw.values).poll_id));
+	}
+	if (type === "form_submit" && asString(raw.action_id) === "find_poll") {
+		return renderPanel(ctx, entry, undefined, asString(asRecord(raw.values).q).slice(0, 200));
 	}
 	if (type === "form_submit" && asString(raw.action_id) === "create") {
 		return createHere(ctx, entry, asRecord(raw.values));

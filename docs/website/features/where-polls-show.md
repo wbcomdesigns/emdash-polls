@@ -32,7 +32,7 @@ Open a post or page in admin and expand the **Poll** panel in the right sidebar.
 ![The Poll panel in the post editor, naming the shared poll this post already shows](../images/page-editor-panel.webp)
 
 - If the post already shows a poll from its content type or the whole site, the panel names it ("Visitors see ... here").
-- **Use an existing poll** attaches a poll you already made to this page only.
+- **Use an existing poll** attaches a poll you already made to this page only. It lists the 25 newest; **Find a poll by its question** searches older ones.
 - The form below creates a new poll for this page. Leave **Open now so visitors can vote** on to publish it straight away.
 
 When a poll is attached to the page, the panel shows its question, status, vote count, position and who can vote, with **Remove from this page** (and **Open** while it is not open yet). Removing only detaches it; the poll and its votes stay in Polls.

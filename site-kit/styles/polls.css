@@ -93,6 +93,8 @@
 
 .wbp-option span {
 	flex: 1;
+	/* A long unbroken answer wraps inside the row instead of pushing it wider than the card. */
+	min-width: 0;
 }
 
 .wbp-option input:focus-visible {
