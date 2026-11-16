@@ -138,14 +138,32 @@ export function effectiveStatus(poll: Poll, now = Date.now()): PollStatus {
 	if (poll.status === "closed") return "closed";
 	// A draft that never reached its opening time stays a draft, even past its closing time.
 	if (poll.status === "draft" && !(poll.opens_at && Date.parse(poll.opens_at) <= now)) return "draft";
-	if (poll.closes_at && Date.parse(poll.closes_at) <= now) return "closed";
+	if (pastClose(poll, now)) return "closed";
 	return "open";
+}
+
+/** True when the poll's closing time has passed: opening it would close it again at once. */
+export function pastClose(poll: Pick<Poll, "closes_at">, now = Date.now()): boolean {
+	return Boolean(poll.closes_at) && Date.parse(poll.closes_at) <= now;
+}
+
+/** Said when Open is pressed on a poll whose closing time has passed. */
+export const PAST_CLOSE = "This poll's closing date has passed. Edit it to set a later one or clear it, then open it.";
+
+/** The save's check of the two times. Only a closing time the owner changed is checked against now. */
+export function timesError(opensAt: string, closesAt: string, storedClose: string, now = Date.now()): string | null {
+	if (closesAt && closesAt !== storedClose && Date.parse(closesAt) <= now) return "That closing date has passed. Pick a later one, or leave it empty.";
+	if (opensAt && closesAt && Date.parse(closesAt) <= Date.parse(opensAt)) return "The poll has to close after it opens.";
+	return null;
 }
 
 export function optionLabelsOk(options: PollOption[]): string | null {
 	if (options.length < OPTIONS_MIN) return "Add at least two answers.";
 	if (options.length > OPTIONS_MAX) return "A poll can have at most ten answers.";
 	if (options.some((option) => !option.label)) return "Every answer needs text.";
+	// Visitors could not tell two equal answers apart, and the votes would split between them.
+	const seen = new Set(options.map((option) => option.label.trim().toLowerCase()));
+	if (seen.size !== options.length) return "Give each answer different text.";
 	return null;
 }
 
@@ -285,13 +303,9 @@ export function applyOptionEdits(
 		if (labels.length !== previous.length) {
 			return { ok: false, error: "This poll has votes, so answers cannot be added or removed." };
 		}
-		if (labels.some((label) => !label)) {
-			return { ok: false, error: "Every answer needs text." };
-		}
-		return {
-			ok: true,
-			options: previous.map((option, index) => ({ id: option.id, label: labels[index] ?? option.label })),
-		};
+		const options = previous.map((option, index) => ({ id: option.id, label: labels[index] ?? option.label }));
+		const error = optionLabelsOk(options);
+		return error ? { ok: false, error } : { ok: true, options };
 	}
 	const options = labels.slice(0, OPTIONS_MAX).map((label, index) => ({
 		id: previous[index]?.id || newId("o"),
@@ -543,11 +557,11 @@ export function copyPoll(poll: Poll, now = nowIso()): Poll {
 
 /**
  * One page of the admin list, newest first. Without a search it is one query. A search reads at
- * most SEARCH_PAGES pages of 100 polls; when it stops there, `olderBound` lets Next carry on.
+ * most `pages` (default SEARCH_PAGES) pages of 100 polls; when it stops there, `olderBound` lets Next carry on.
  */
 export async function listPolls(
 	ctx: Ctx,
-	opts: { q?: string; before?: string; after?: string; limit?: number } = {},
+	opts: { q?: string; before?: string; after?: string; limit?: number; pages?: number } = {},
 ): Promise<{ items: PollRow[]; hasOlder: boolean; hasNewer: boolean; olderBound: string }> {
 	const limit = opts.limit ?? 25;
 	const q = asString(opts.q).toLowerCase();
@@ -567,7 +581,7 @@ export async function listPolls(
 	let cursor: string | undefined;
 	let more = false;
 	let scanned = "";
-	for (let step = 0; step < SEARCH_PAGES; step += 1) {
+	for (let step = 0; step < (opts.pages ?? SEARCH_PAGES); step += 1) {
 		const found = await ctx.storage[POLLS].query({
 			where: opts.before ? { createdAt: { lt: opts.before } } : undefined,
 			orderBy: { createdAt: "desc" },

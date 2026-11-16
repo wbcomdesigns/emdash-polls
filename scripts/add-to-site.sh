@@ -127,8 +127,8 @@ cat <<DONE
 After every plugin update, run this again from your site's root folder, with the new version's tag in place of $ref:
 
   kit="\$(mktemp -d)" &&
-    git clone --depth 1 \\
-      --branch $ref \\
+    git -c advice.detachedHead=false clone \\
+      --depth 1 --branch $ref \\
       https://github.com/wbcomdesigns/emdash-polls \\
       "\$kit/emdash-polls" &&
     "\$kit/emdash-polls/scripts/add-to-site.sh" .

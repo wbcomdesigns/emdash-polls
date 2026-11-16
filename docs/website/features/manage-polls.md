@@ -2,7 +2,7 @@
 
 **Included in Free.** WB Polls has no paid version.
 
-Everything happens on the **Polls** screen. The top shows how many polls are open and how many votes came in this week. Each row shows the question, who can vote and whether it is named, where it shows, the vote count and a status badge. **Find by question** narrows a long list. A long list shows 25 polls at a time.
+Everything happens on the **Polls** screen. The top shows how many polls are open and how many votes came in this week. Each row shows the question, a status badge, the Actions menu, the vote count, who can vote and whether it is named, and where it shows. A long question is shortened in the list; Edit and Results show it in full. **Find by question** narrows a long list. A long list shows 25 polls at a time.
 
 ![The Polls screen listing three polls with their status and an Actions menu](../images/admin-poll-list.webp)
 

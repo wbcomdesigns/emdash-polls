@@ -157,7 +157,8 @@ describe("first admin screen", () => {
 		expect(lines).toHaveLength(6);
 		for (const line of lines) expect(line.length).toBeLessThanOrEqual(52);
 		expect(lines[0]).toBe('kit="$(mktemp -d)" &&');
-		expect(lines[2]).toMatch(/^    --branch v\d+\.\d+\.\d+ \\$/);
+		expect(lines[1]).toBe("  git -c advice.detachedHead=false clone \\");
+		expect(lines[2]).toMatch(/^    --depth 1 --branch v\d+\.\d+\.\d+ \\$/);
 		expect(lines[5]).toBe('  "$kit/emdash-polls/scripts/add-to-site.sh" .');
 		expect(text).toContain("Copy it from the install guide on a phone");		expect(text).not.toContain("/tmp/emdash-polls");
 		expect(text).toContain("/account/votes");

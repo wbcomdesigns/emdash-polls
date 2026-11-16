@@ -56,6 +56,8 @@ const MEASURED: Record<string, number> = {
 	"admin form save (voted, content type)": 9,
 	"admin poll_mod open": 8,
 	"admin poll_mod close": 8,
+	"admin poll_mod close (search kept, no match, 150+ polls)": 7,
+	"admin poll_mod open (search kept, no match, 150+ polls)": 7,
 	"admin poll_mod delete (asks)": 6,
 	"admin poll_mod stale stamp": 7,
 	"admin poll_mod erase (500 votes, recount under way)": 8,
@@ -67,7 +69,8 @@ const MEASURED: Record<string, number> = {
 	"editor panel open": 7,
 	"editor panel remove": 7,
 	"editor panel create": 7,
-	"admin delete_confirm (500 votes)": 9,
+	"editor panel find (no match, 150+ polls)": 6,
+	"admin delete_confirm (500 votes, search kept)": 8,
 	"admin page_load /polls (deleted poll's votes removed)": 9,
 };
 
@@ -318,6 +321,9 @@ describe("admin actions", () => {
 		await measure("admin poll_mod close", async () => mod("close", await getPoll("p000"), "p000"));
 		await measure("admin poll_mod delete (asks)", async () => mod("delete", await getPoll("p000"), "p000"));
 		await measure("admin poll_mod stale stamp", () => mod("open", { rev: "old" }, "p000"));
+		// 0.5.2: the answer keeps the owner's search, which reads up to three pages of polls.
+		await measure("admin poll_mod close (search kept, no match, 150+ polls)", async () => mod("close", await getPoll("p000"), "p000", "~~zzz"));
+		await measure("admin poll_mod open (search kept, no match, 150+ polls)", async () => mod("open", await getPoll("p000"), "p000", "~~zzz"));
 	});
 
 	it("poll_mod erase one member's votes on the 500-vote poll", async () => {
@@ -345,6 +351,7 @@ describe("editor panel", () => {
 		await measure("editor panel attach", () => s.rt.admin.submitEditorPanel("poll", "posts", other, "attach", { poll_id: "p001" }));
 		await measure("editor panel open", () => s.rt.admin.actEditorPanel("poll", "posts", other, "open"));
 		await measure("editor panel remove", () => s.rt.admin.actEditorPanel("poll", "posts", other, "remove"));
+		await measure("editor panel find (no match, 150+ polls)", () => s.rt.admin.submitEditorPanel("poll", "posts", other, "find_poll", { q: "zzz" }));
 		const answers = Object.fromEntries(TEN.map((o, i) => [`answer_${i + 1}`, o.label]));
 		await measure("editor panel create", () =>
 			s.rt.admin.submitEditorPanel("poll", "posts", other, "create", { question: "Here?", ...answers, who: "anyone", position: "below", open_now: true }),
@@ -354,9 +361,9 @@ describe("editor panel", () => {
 
 describe("delete a poll with 500 votes", () => {
 	it("delete_confirm", async () => {
-		await measure("admin delete_confirm (500 votes)", async () => {
+		await measure("admin delete_confirm (500 votes, search kept)", async () => {
 			const big = await getPoll("big");
-			return admin({ type: "block_action", action_id: "delete_confirm", value: `delete_confirm|${big.rev}|big` });
+			return admin({ type: "block_action", action_id: "delete_confirm", value: `delete_confirm|${big.rev}|big|~~zzz` });
 		});
 		// Gone for visitors at once, then its rows go a hundred per list load.
 		expect(await s.call("get", { id: "big" }, { method: "GET" })).toMatchObject({ ok: false, error: { code: "NOT_FOUND" } });
