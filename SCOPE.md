@@ -188,7 +188,7 @@ Written: zeros when a poll is created or copied; `+1`/`-1` per answer in one gua
 
 | Key | Value |
 | --- | --- |
-| `vote:<who>` | Lock time, hour start and votes this hour, joined by a vertical bar. One compare-and-set takes the per-voter lock and counts the hourly limit (0.5.0; replaces `ballot:<poll>:<who>`, `rate:vote:<who>` and `rate:erase:<memberId>`). `mine` DELETE takes the same lock and counts toward the same limit; the owner's Remove votes takes the lock without counting. Lost compare-and-set: `BUSY` |
+| `vote:<who>` | Lock time, hour start and votes this hour, joined by a vertical bar. One compare-and-set takes the per-voter lock and counts the hourly limit (0.5.0; replaces `ballot:<poll>:<who>`, `rate:vote:<who>` and `rate:erase:<memberId>`). `mine` DELETE and the owner's Remove votes take the same lock without counting toward the limit (0.5.2: erasing your own votes is never refused). The limit is 8 vote writes per voter per hour. Lost compare-and-set: `BUSY` |
 | `visitor-salt` | Per-site salt for guest hashes |
 | `kit_pages_done` | Plugin version for which the owner said the kit is set up |
 

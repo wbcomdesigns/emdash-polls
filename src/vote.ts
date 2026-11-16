@@ -187,8 +187,8 @@ async function guestWho(ctx: Ctx, routeCtx: RouteCtx) {
  * take turns (the loser gets BUSY) and a BUSY answer to a double click does not use up the hour.
  * A lock older than LOCK_MS is left over from a request that died, and is taken over.
  * Erasing votes takes the same lock, so an erase and a vote change never take the same votes off
- * the counts twice. `counted: false` (the owner removing a member's votes) skips the hourly limit
- * and leaves the member's count as it was. One attempt: a lost compare-and-set answers BUSY.
+ * the counts twice. `counted: false` (a member erasing their own votes, or the owner removing them)
+ * skips the hourly limit and leaves the member's count as it was: removing your own data is never refused. One attempt: a lost compare-and-set answers BUSY.
  */
 export async function withVoteLock<T>(
 	ctx: Pick<PluginContext, "kv">,
@@ -307,9 +307,12 @@ async function listMine(ctx: Ctx, memberId: string) {
 /** Pages of 100 rows one erase call removes. More than that answers BUSY with reason MORE, and the kit calls again. */
 const ERASE_PAGES = 2;
 
-/** Under the member's vote lock, which also counts the erase toward their hourly limit. */
+/**
+ * Under the member's vote lock, not counted toward the hourly vote limit: erasing your own data must
+ * always work. The lock is the guard: one erase at a time per member, and each call only deletes.
+ */
 function eraseMine(ctx: Ctx, memberId: string) {
-	return withVoteLock(ctx, memberId, () => eraseRows(ctx, memberId));
+	return withVoteLock(ctx, memberId, () => eraseRows(ctx, memberId), false);
 }
 
 async function eraseRows(ctx: Ctx, memberId: string) {

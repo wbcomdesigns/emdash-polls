@@ -30,7 +30,7 @@ That visitor's vote is already counted. On a poll with **Members may change thei
 
 ## "Too many requests. Try again in an hour."
 
-The same visitor sent a lot of votes in a short time. WB Polls slows this down to keep results fair. It clears by itself.
+Each visitor can save a vote, or change it, 8 times an hour across all polls. WB Polls slows faster voting down to keep results fair, and it clears by itself within the hour. Deleting your own votes from **My votes** never counts toward this limit.
 
 ## Visitors see "Results are being counted" or the list says Counting
 
