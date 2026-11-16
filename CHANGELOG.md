@@ -2,6 +2,21 @@
 
 Versions match `package.json`, the git tag and the registry release. Newest first.
 
+## [0.5.2]
+
+Fixes from the 0.5.1 QA pass. Copy the kit again after you update.
+
+- Improve  - The Poll panel in the post editor can find an older poll by its question, not only the 25 newest.
+- Improve  - On the Polls list, Status and Actions sit right after the question and a long question is shortened, so a phone shows them first.
+- Improve  - Open, Close and Delete on the Polls list keep the page and search you were on.
+- Improve  - A poll page asks the site for each poll and ballot once, even with an above and a below slot.
+- Improve  - The install command no longer prints git's long detached HEAD notice before the kit summary.
+- Fix      - Delete my votes always works: erasing your own votes no longer counts toward the hourly vote limit.
+- Fix      - A poll cannot be saved with two answers that have the same text.
+- Fix      - Open on a poll whose closing date has passed now says so instead of "Poll opened.", and a past or too-early closing date is refused on save.
+- Fix      - Long unbroken words in a poll answer wrap inside the card instead of widening it.
+- Dev      - Shared kit files updated to wbcom-shared 5 (styles) and 6 (scripts).
+
 ## [0.5.1]
 
 Editors and Authors can use the post editor's Poll panel. Needs EmDash 1.2.0 or later.

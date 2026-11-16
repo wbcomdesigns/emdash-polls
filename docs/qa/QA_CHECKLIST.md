@@ -35,7 +35,7 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | G-93 | Page with a poll slot and no matching poll | Nothing. No empty bordered box |
 | G-10 | Host gives no visitor address (Node, no `trustedProxyHeaders`): open a post with an Anyone poll | Answers listed and "Sign in to vote." with a Sign in link. No Vote button. `vote_guest` answers `MEMBERS_ONLY` with reason `GUEST_UNAVAILABLE` and stores nothing |
 | G-11 | Same host, `trustedProxyHeaders: ["x-real-ip"]` and the header sent | Guest votes once; a second vote from that address is refused |
-| G-12 | Guest console on a post with a poll | Exactly one 401, from `ballot` (documented as expected). One 401 from `mine` on `/account/votes` |
+| G-12 | Guest console on a post with a poll (two slots, above and below) | Exactly one 401, from `ballot` (documented as expected), and one `slot` request. One 401 from `mine` on `/account/votes` |
 | G-13 | Post template with the two slots from `add-to-site.sh` (`../../components/PollSlot.astro`) | Page renders, poll in the slot that matches its Position |
 | G-14 | Several votes for different answers sent at once by one voter on a one-choice poll | One stored choice; the others get ALREADY_VOTED, BUSY or RATE_LIMITED |
 | G-15 | Results Always, guest who cannot vote (no-address host or members-only poll) | Bars and counts show, then a neutral (not green) "Sign in to vote." note. After a vote and After close polls still hide results |
@@ -55,6 +55,7 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | M-7 | Open My votes | Polls voted in, with the choice |
 | M-8 | Delete my votes (two clicks) | List empties. Poll totals drop |
 | M-9 | Vote in a named poll | The notice is visible before voting. The vote is saved with your name |
+| M-10 | Use up the hourly limit (8 vote saves), then Delete my votes | Erased: no "Too many requests". Voting again is still limited until the hour passes |
 
 ## Admin
 
@@ -84,6 +85,11 @@ Three roles, in this order: guest (private window), member (subscriber), admin. 
 | A-22 | Named poll with 30+ members: Results, Next, Previous | 25 members a page or fewer, no member split across pages, Previous returns to the first page |
 | A-23 | Find by question on a site with 300+ polls, for a question older than the newest 300 | No match on the first page, Next finds it |
 | A-24 | Sign in as an Editor, open someone else's saved post, expand the Poll panel; then as an Author on their own post; then as a Contributor | Editor and Author can create, open, remove and attach. The Author's existing-poll list shows only their own polls that no page uses. The Contributor's panel does not load |
+| A-25 | New poll with answers "same" and "Same " | Refused: "Give each answer different text." Same in the post editor's Poll panel |
+| A-26 | Poll with a closing date that has passed: Open from the list, and from the Poll panel | Error saying the closing date has passed, status unchanged. Saving a new past closing date, or one before the opening date, is refused |
+| A-27 | Polls list at 390 | Poll, Status and Actions in view first; a long question ends with an ellipsis |
+| A-28 | Find a poll, go to page 2, then Close (or Open, Delete) a poll | The answer shows the same search and page |
+| A-29 | Poll panel on a site with 30+ polls: Find a poll by its question for an older one | It is listed and can be attached; no match says so |
 
 ## Cloudflare (call budget, every release)
 
